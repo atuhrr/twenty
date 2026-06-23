@@ -8,6 +8,13 @@ import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import { PermissionFlagType } from '~/generated-metadata/graphql';
 
+// FORK: WhatsApp integration
+const SettingsWhatsapp = lazy(() =>
+  import('~/pages/settings/whatsapp/SettingsWhatsapp').then((module) => ({
+    default: module.SettingsWhatsapp,
+  })),
+);
+
 const SettingsGraphQLPlayground = lazy(() =>
   import('~/pages/settings/developers/playground/SettingsGraphQLPlayground').then(
     (module) => ({
@@ -681,6 +688,11 @@ export const SettingsRoutes = ({ isAdminPageEnabled }: SettingsRoutesProps) => (
         <Route
           path={SettingsPath.PublicDomain}
           element={<SettingPublicDomain />}
+        />
+        {/* FORK: WhatsApp integration */}
+        <Route
+          path={SettingsPath.Whatsapp}
+          element={<SettingsWhatsapp />}
         />
       </Route>
       <Route

@@ -3,6 +3,7 @@ import { MainNavigationDrawerNavigationContent } from '@/navigation/components/M
 import { MainNavigationDrawerTabsRow } from '@/navigation/components/MainNavigationDrawerTabsRow';
 import { NavigationDrawerTabbedContent } from '@/navigation/components/NavigationDrawerTabbedContent';
 import { useHasPermissionFlag } from '@/settings/roles/hooks/useHasPermissionFlag';
+import { WhatsappSidebarBadge } from '@/settings/whatsapp/components/WhatsappSidebarBadge';
 import { NavigationDrawer } from '@/ui/navigation/navigation-drawer/components/NavigationDrawer';
 import { NavigationDrawerFixedContent } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerFixedContent';
 import { NavigationDrawerScrollableContent } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerScrollableContent';
@@ -38,6 +39,9 @@ export const MainNavigationDrawer = ({ className }: { className?: string }) => {
           navigationContent={<MainNavigationDrawerNavigationContent />}
         />
       </NavigationDrawerScrollableContent>
+
+      {/* FORK: WhatsApp connection status badge in sidebar footer */}
+      <WhatsappSidebarBadge />
     </NavigationDrawer>
   );
 };

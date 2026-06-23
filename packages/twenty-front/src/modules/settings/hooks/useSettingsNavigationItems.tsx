@@ -172,6 +172,13 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           Icon: IconSparkles,
           isHidden: !permissionMap[PermissionFlagType.AI_SETTINGS],
         },
+        // FORK: WhatsApp integration
+        {
+          label: t`WhatsApp`,
+          path: SettingsPath.Whatsapp,
+          Icon: IconMessage,
+          isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
+        },
         {
           label: t`Email`,
           path: SettingsPath.WorkspaceEmail,
