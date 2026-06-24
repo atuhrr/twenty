@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { ConnectWhatsappInput } from 'src/engine/core-modules/whatsapp/dtos/connect-whatsapp.input';
+import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
 import {
   WhatsappConnectionStatus,
   WhatsappInstanceEntity,
@@ -30,6 +31,8 @@ export class WhatsappService {
     private readonly instanceRepo: Repository<WhatsappInstanceEntity>,
     @InjectRepository(WhatsappMessageEntity)
     private readonly messageRepo: Repository<WhatsappMessageEntity>,
+    @InjectRepository(WhatsappContactWindowEntity)
+    private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
     private readonly secretEncryptionService: SecretEncryptionService,
   ) {
     this.evolutionClient = axios.create({
@@ -234,6 +237,31 @@ export class WhatsappService {
     workspaceId: string,
   ): Promise<WhatsappInstanceEntity | null> {
     return this.instanceRepo.findOne({ where: { workspaceId } });
+  }
+
+  async getLastMessageByContact(
+    workspaceId: string,
+    contactId: string,
+  ): Promise<WhatsappMessageEntity | null> {
+    return this.messageRepo.findOne({
+      where: { workspaceId, contactId },
+      order: { timestamp: 'DESC' },
+    });
+  }
+
+  async getContactWindow(
+    workspaceId: string,
+    contactId: string,
+  ): Promise<{ contactId: string; lastInboundAt: Date | null; isWindowOpen: boolean }> {
+    const window = await this.contactWindowRepo.findOne({
+      where: { workspaceId, contactId },
+    });
+    const lastInboundAt = window?.lastInboundAt ?? null;
+    const isWindowOpen = lastInboundAt
+      ? Date.now() - lastInboundAt.getTime() < 24 * 60 * 60 * 1_000
+      : false;
+
+    return { contactId, lastInboundAt, isWindowOpen };
   }
 
   private async callWithRetry<T>(

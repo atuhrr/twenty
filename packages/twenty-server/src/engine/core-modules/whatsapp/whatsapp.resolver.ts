@@ -8,6 +8,7 @@ import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { ConnectWhatsappInput } from 'src/engine/core-modules/whatsapp/dtos/connect-whatsapp.input';
 import { SendWhatsappMessageInput } from 'src/engine/core-modules/whatsapp/dtos/send-whatsapp-message.input';
 import { WhatsappConnectionStatusDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-connection-status.dto';
+import { WhatsappContactWindowDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-contact-window.dto';
 import { WhatsappMessageDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-message.dto';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { WhatsappConnectionStatus } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
@@ -34,6 +35,22 @@ export class WhatsappResolver {
       workspace.id,
       contactId,
     );
+  }
+
+  @Query(() => WhatsappMessageDTO, { nullable: true })
+  async lastWhatsappMessage(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('contactId') contactId: string,
+  ): Promise<WhatsappMessageDTO | null> {
+    return this.whatsappService.getLastMessageByContact(workspace.id, contactId);
+  }
+
+  @Query(() => WhatsappContactWindowDTO)
+  async whatsappContactWindow(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('contactId') contactId: string,
+  ): Promise<WhatsappContactWindowDTO> {
+    return this.whatsappService.getContactWindow(workspace.id, contactId);
   }
 
   @Query(() => WhatsappConnectionStatusDTO)

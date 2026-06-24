@@ -30,6 +30,8 @@ import { useAtomComponentFamilyStateValue } from '@/ui/utilities/state/jotai/hoo
 import { useAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentState';
 import { useSetAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useSetAtomComponentState';
 import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
+// FORK: WhatsApp board card footer (EPIC 5)
+import { WhatsappBoardCardFooter } from '@/whatsapp/components/board/WhatsappBoardCardFooter';
 import { styled } from '@linaria/react';
 import { useContext } from 'react';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
@@ -180,6 +182,8 @@ export const RecordBoardCard = () => {
               >
                 <RecordBoardCardBody />
               </AnimatedEaseInOut>
+              {/* FORK: WhatsApp preview footer (EPIC 5) */}
+              <WhatsappBoardCardFooter recordId={recordId} />
             </RecordCard>
           </StyledCardContainer>
           <RecordBoardCardCellHoveredPortal />

@@ -17,6 +17,8 @@ import { SidePanelPageLayoutRecordPageWidgetTypeSelect } from '@/side-panel/page
 import { SidePanelPageLayoutTabSettings } from '@/side-panel/pages/page-layout/components/SidePanelPageLayoutTabSettings';
 import { SidePanelMergeRecordPage } from '@/side-panel/pages/record-page/components/SidePanelMergeRecordPage';
 import { SidePanelRecordPage } from '@/side-panel/pages/record-page/components/SidePanelRecordPage';
+// FORK: WhatsApp Chat|Detalhes tabs for record view (EPIC 5)
+import { SidePanelRecordPageWithWhatsappTabs } from '@/whatsapp/components/side-panel/SidePanelRecordPageWithWhatsappTabs';
 import { SidePanelUpdateMultipleRecords } from '@/side-panel/pages/record-page/components/SidePanelUpdateMultipleRecords';
 import { SidePanelEditRichTextPage } from '@/side-panel/pages/rich-text-page/components/SidePanelEditRichTextPage';
 import { SidePanelSearchRecordsPage } from '@/side-panel/pages/search/components/SidePanelSearchRecordsPage';
@@ -34,7 +36,8 @@ export const SIDE_PANEL_PAGES_CONFIG = new Map<SidePanelPages, React.ReactNode>(
       SidePanelPages.CommandMenuDisplay,
       <SidePanelCommandMenuItemDisplayPage />,
     ],
-    [SidePanelPages.ViewRecord, <SidePanelRecordPage />],
+    // FORK: replaced with WhatsApp tabs wrapper (EPIC 5); original is rendered inside Detalhes tab
+    [SidePanelPages.ViewRecord, <SidePanelRecordPageWithWhatsappTabs />],
     [SidePanelPages.MergeRecords, <SidePanelMergeRecordPage />],
     [SidePanelPages.UpdateRecords, <SidePanelUpdateMultipleRecords />],
     [SidePanelPages.EditRichText, <SidePanelEditRichTextPage />],

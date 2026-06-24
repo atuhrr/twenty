@@ -17,6 +17,7 @@ jest.mock('axios', () => {
 import axios from 'axios';
 
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
+import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
 import {
   WhatsappConnectionStatus,
   WhatsappInstanceEntity,
@@ -48,6 +49,10 @@ const mockMessageRepo = {
   update: jest.fn(),
 };
 
+const mockContactWindowRepo = {
+  findOne: jest.fn(),
+};
+
 const mockSecretEncryption = {
   encrypt: jest.fn((v: string) => `enc:${v}`),
   decrypt: jest.fn((v: string) => v.replace('enc:', '')),
@@ -62,6 +67,7 @@ describe('WhatsappService', () => {
         WhatsappService,
         { provide: getRepositoryToken(WhatsappInstanceEntity), useValue: mockInstanceRepo },
         { provide: getRepositoryToken(WhatsappMessageEntity), useValue: mockMessageRepo },
+        { provide: getRepositoryToken(WhatsappContactWindowEntity), useValue: mockContactWindowRepo },
         { provide: SecretEncryptionService, useValue: mockSecretEncryption },
       ],
     }).compile();
