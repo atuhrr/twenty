@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { styled } from '@linaria/react';
 import { TabButton } from 'twenty-ui/input';
@@ -9,6 +9,7 @@ import { SidePanelRecordPage } from '@/side-panel/pages/record-page/components/S
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { ChatTab } from '@/whatsapp/components/chat/ChatTab';
+import { useWhatsappContactWindow } from '@/whatsapp/hooks/useWhatsappContactWindow';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -77,6 +78,19 @@ const StyledPhone = styled.span`
   font-size: 12px;
 `;
 
+// B2: 24h window countdown pill in chat header
+const StyledWindowPill = styled.span<{ status: 'open' | 'closing' | 'closed' }>`
+  background: ${({ status }) =>
+    status === 'open' ? '#E2F6E8' : status === 'closing' ? '#FFF6DA' : '#F4F5F8'};
+  border-radius: 10px;
+  color: ${({ status }) =>
+    status === 'open' ? '#1DAA52' : status === 'closing' ? '#B7891A' : '#8B8B9A'};
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+`;
+
 type RecordWithName = {
   name?: { firstName?: string; lastName?: string } | string;
   phones?: { primaryPhoneNumber?: string };
@@ -112,6 +126,28 @@ const getInitials = (name: string): string => {
     .join('');
 };
 
+const formatWindowCountdown = (
+  isWindowOpen: boolean,
+  lastInboundAt: string | null,
+): { label: string; status: 'open' | 'closing' | 'closed' } => {
+  if (!isWindowOpen || !lastInboundAt) {
+    return { label: 'Janela fechada', status: 'closed' };
+  }
+
+  const msLeft =
+    24 * 3_600_000 - (Date.now() - new Date(lastInboundAt).getTime());
+  const hoursLeft = msLeft / 3_600_000;
+
+  if (hoursLeft <= 0) return { label: 'Janela fechada', status: 'closed' };
+
+  const h = Math.floor(hoursLeft);
+  const m = Math.floor((hoursLeft - h) * 60);
+  const label = h > 0 ? `Janela: ${h}h${m > 0 ? ` ${m}min` : ''}` : `Janela: ${m}min`;
+  const status = hoursLeft > 4 ? 'open' : 'closing';
+
+  return { label, status };
+};
+
 export const SidePanelRecordPageWithWhatsappTabs = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'details'>('chat');
 
@@ -120,17 +156,31 @@ export const SidePanelRecordPageWithWhatsappTabs = () => {
   );
 
   // FORK: reads Person fields for chat header display
-  const record = useAtomFamilyStateValue(
+  const recordStore = useAtomFamilyStateValue(
     recordStoreFamilyState,
     viewableRecordId ?? '',
   );
 
   const { displayName, phoneNumber } = extractNameAndPhone(
-    record as Record<string, unknown> | null,
+    recordStore as Record<string, unknown> | null,
   );
 
-  const originLabel = (record as Record<string, unknown> | null)
+  const originLabel = (recordStore as Record<string, unknown> | null)
     ?.whatsappOriginTag as string | undefined;
+
+  // B2: 24h window data for countdown pill
+  const { window: contactWindow, isWindowOpen } = useWhatsappContactWindow(
+    viewableRecordId ?? '',
+  );
+
+  const windowCountdown = useMemo(
+    () =>
+      formatWindowCountdown(
+        isWindowOpen,
+        contactWindow?.lastInboundAt ?? null,
+      ),
+    [isWindowOpen, contactWindow?.lastInboundAt],
+  );
 
   return (
     <StyledContainer>
@@ -160,6 +210,10 @@ export const SidePanelRecordPageWithWhatsappTabs = () => {
                   <StyledPhone>{phoneNumber}</StyledPhone>
                 )}
               </StyledNameBlock>
+              {/* B2: window countdown pill — always visible in chat header */}
+              <StyledWindowPill status={windowCountdown.status}>
+                {windowCountdown.label}
+              </StyledWindowPill>
             </StyledChatHeader>
             <ChatTab
               contactId={viewableRecordId}

@@ -4,6 +4,8 @@ import { AppFullScreenErrorFallback } from '@/error-handler/components/AppFullSc
 import { AppPageErrorFallback } from '@/error-handler/components/AppPageErrorFallback';
 import { FileUploadProvider } from '@/file-upload/components/FileUploadProvider';
 import { InformationBannerIsImpersonating } from '@/information-banner/components/impersonate/InformationBannerIsImpersonating';
+// FORK: persistent WhatsApp disconnection banner
+import { InformationBannerWhatsappDisconnected } from '@/settings/whatsapp/components/InformationBannerWhatsappDisconnected';
 import { KeyboardShortcutMenu } from '@/keyboard-shortcut-menu/components/KeyboardShortcutMenu';
 import { LayoutCustomizationBar } from '@/layout-customization/components/LayoutCustomizationBar';
 import { AppNavigationDrawer } from '@/navigation/components/AppNavigationDrawer';
@@ -69,6 +71,8 @@ export const DefaultLayout = () => {
         <StyledLayout>
           <AppErrorBoundary FallbackComponent={AppFullScreenErrorFallback}>
             <InformationBannerIsImpersonating />
+            {/* FORK: WhatsApp disconnection banner */}
+            <InformationBannerWhatsappDisconnected />
             <LayoutCustomizationBar />
             <StyledPageContainer>
               <PageDragDropProvider>

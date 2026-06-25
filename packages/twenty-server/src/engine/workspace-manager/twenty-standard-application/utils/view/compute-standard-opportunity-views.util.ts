@@ -18,8 +18,9 @@ export const computeStandardOpportunityViews = (
         viewName: 'allOpportunities',
         name: 'All {objectLabelPlural}',
         type: ViewType.TABLE,
-        key: ViewKey.INDEX,
-        position: 0,
+        // FORK: demoted to non-index so Kanban opens by default
+        key: null,
+        position: 1,
         icon: 'IconList',
       },
     }),
@@ -30,8 +31,9 @@ export const computeStandardOpportunityViews = (
         viewName: 'byStage',
         name: 'By Stage',
         type: ViewType.KANBAN,
-        key: null,
-        position: 2,
+        // FORK: Kanban is now the INDEX (default) view for Opportunities
+        key: ViewKey.INDEX,
+        position: 0,
         icon: 'IconLayoutKanban',
         mainGroupByFieldName: 'stage',
         kanbanAggregateOperation: AggregateOperations.SUM,
