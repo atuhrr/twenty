@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { MessageQueueModule } from 'src/engine/core-modules/message-queue/message-queue.module';
 import { SecretEncryptionModule } from 'src/engine/core-modules/secret-encryption/secret-encryption.module';
+import { WhatsappOpportunityStageJob } from 'src/engine/core-modules/whatsapp/jobs/whatsapp-opportunity-stage.job';
+import { WhatsappOpportunityStageListener } from 'src/engine/core-modules/whatsapp/listeners/whatsapp-opportunity-stage.listener';
 import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
 import { WhatsappInstanceEntity } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
 import { WhatsappMessageEntity } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
@@ -24,7 +26,13 @@ import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.servi
     SecretEncryptionModule,
   ],
   controllers: [WhatsappController],
-  providers: [WhatsappService, WhatsappResolver, WhatsappWebhookJob],
+  providers: [
+    WhatsappService,
+    WhatsappResolver,
+    WhatsappWebhookJob,
+    WhatsappOpportunityStageJob,
+    WhatsappOpportunityStageListener,
+  ],
   exports: [WhatsappService],
 })
 export class WhatsappModule {}
