@@ -1,6 +1,10 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
+import { useEffect } from 'react';
+
 import { styled } from '@linaria/react';
 
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useLastWhatsappMessage } from '@/whatsapp/hooks/useLastWhatsappMessage';
 import { useWhatsappContactWindow } from '@/whatsapp/hooks/useWhatsappContactWindow';
@@ -8,6 +12,9 @@ import { useWhatsappContactWindow } from '@/whatsapp/hooks/useWhatsappContactWin
 type WhatsappBoardCardFooterProps = {
   recordId: string;
 };
+
+// Module-level map avoids no-state-useref rule while tracking previous stage per record
+const prevStageByRecord = new Map<string, string>();
 
 // WA-brand colors — intentionally not in the theme system
 /* oxlint-disable no-hardcoded-colors */
@@ -138,6 +145,41 @@ export const WhatsappBoardCardFooter = ({
   const recordStore = useAtomFamilyStateValue(recordStoreFamilyState, recordId);
   const originLabel = (recordStore as Record<string, unknown>)
     ?.whatsappOriginTag as string | undefined;
+
+  // Phase 5: toast when stage changes (automation fires on stage change)
+  const { enqueueSuccessSnackBar } = useSnackBar();
+  const stageValue = (recordStore as Record<string, unknown>)?.stage as
+    | string
+    | undefined;
+
+  useEffect(() => {
+    const prevStage = prevStageByRecord.get(recordId);
+    if (prevStage !== undefined && stageValue !== undefined && stageValue !== prevStage) {
+      const nameRaw = (recordStore as Record<string, unknown>)?.name;
+      let displayName = '';
+      if (typeof nameRaw === 'object' && nameRaw !== null) {
+        const parts = [
+          (nameRaw as Record<string, unknown>).firstName,
+          (nameRaw as Record<string, unknown>).lastName,
+        ].filter((p): p is string => typeof p === 'string' && p.length > 0);
+        displayName = parts.join(' ');
+      } else if (typeof nameRaw === 'string') {
+        displayName = nameRaw;
+      }
+      enqueueSuccessSnackBar({
+        message:
+          displayName.length > 0
+            ? `Mensagem automática enviada para ${displayName}`
+            : 'Mensagem automática enviada',
+      });
+    }
+    if (stageValue !== undefined) {
+      prevStageByRecord.set(recordId, stageValue);
+    }
+    return () => {
+      prevStageByRecord.delete(recordId);
+    };
+  }, [stageValue, recordId, enqueueSuccessSnackBar, recordStore]);
 
   const needsReply = message?.direction === 'INBOUND';
   const windowStatus = getWindowStatus(

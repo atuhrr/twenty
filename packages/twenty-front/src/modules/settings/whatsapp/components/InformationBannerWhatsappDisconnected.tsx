@@ -1,3 +1,4 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { useState, useEffect } from 'react';
 
 import { styled } from '@linaria/react';

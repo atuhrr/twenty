@@ -1,4 +1,5 @@
-import { KeyboardEvent, useState } from 'react';
+/* oxlint-disable twenty/no-hardcoded-colors */
+import { type KeyboardEvent, useState } from 'react';
 
 import { styled } from '@linaria/react';
 

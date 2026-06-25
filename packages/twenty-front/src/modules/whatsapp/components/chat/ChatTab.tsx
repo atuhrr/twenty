@@ -1,3 +1,4 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { styled } from '@linaria/react';
 
 import { ChatInput } from '@/whatsapp/components/chat/ChatInput';

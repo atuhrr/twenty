@@ -1,7 +1,7 @@
 import { useQuery } from '@apollo/client/react';
 
 import { GET_WHATSAPP_CONTACT_WINDOW } from '@/whatsapp/graphql/queries/getWhatsappContactWindow';
-import { WhatsappContactWindow } from '@/whatsapp/types/WhatsappMessage.type';
+import type { WhatsappContactWindow } from '@/whatsapp/types/WhatsappMessage.type';
 
 export const useWhatsappContactWindow = (contactId: string) => {
   const { data, loading } = useQuery<{

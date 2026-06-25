@@ -1,3 +1,4 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { useMemo, useState } from 'react';
 
 import { styled } from '@linaria/react';

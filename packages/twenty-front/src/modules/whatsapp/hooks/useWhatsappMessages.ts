@@ -1,7 +1,7 @@
 import { useQuery } from '@apollo/client/react';
 
 import { GET_WHATSAPP_MESSAGES } from '@/whatsapp/graphql/queries/getWhatsappMessages';
-import { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
+import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 
 // 5-second polling keeps the chat live without SSE; interval is configurable per env
 const POLLING_INTERVAL_MS = parseInt(

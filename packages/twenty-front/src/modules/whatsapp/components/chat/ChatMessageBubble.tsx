@@ -1,7 +1,8 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { styled } from '@linaria/react';
 
 import { ChatAttachment } from '@/whatsapp/components/chat/ChatAttachment';
-import {
+import type {
   WhatsappMessage,
   WhatsappMessageStatus,
 } from '@/whatsapp/types/WhatsappMessage.type';

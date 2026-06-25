@@ -1,7 +1,7 @@
 import { useQuery } from '@apollo/client/react';
 
 import { GET_LAST_WHATSAPP_MESSAGE } from '@/whatsapp/graphql/queries/getLastWhatsappMessage';
-import { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
+import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 
 type LastMessage = Pick<
   WhatsappMessage,

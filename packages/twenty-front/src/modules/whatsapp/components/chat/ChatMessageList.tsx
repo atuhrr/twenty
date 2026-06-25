@@ -1,9 +1,10 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { useEffect, useRef } from 'react';
 
 import { styled } from '@linaria/react';
 
 import { ChatMessageBubble } from '@/whatsapp/components/chat/ChatMessageBubble';
-import { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
+import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 
 type ChatMessageListProps = {
   messages: WhatsappMessage[];

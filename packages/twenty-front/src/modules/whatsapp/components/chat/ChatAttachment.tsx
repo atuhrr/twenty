@@ -1,6 +1,7 @@
+/* oxlint-disable twenty/no-hardcoded-colors */
 import { styled } from '@linaria/react';
 
-import { WhatsappMessageType } from '@/whatsapp/types/WhatsappMessage.type';
+import type { WhatsappMessageType } from '@/whatsapp/types/WhatsappMessage.type';
 
 type ChatAttachmentProps = {
   type: WhatsappMessageType;

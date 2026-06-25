@@ -16,7 +16,6 @@ import { SidePanelPageLayoutDashboardWidgetTypeSelect } from '@/side-panel/pages
 import { SidePanelPageLayoutRecordPageWidgetTypeSelect } from '@/side-panel/pages/page-layout/components/SidePanelPageLayoutRecordPageWidgetTypeSelect';
 import { SidePanelPageLayoutTabSettings } from '@/side-panel/pages/page-layout/components/SidePanelPageLayoutTabSettings';
 import { SidePanelMergeRecordPage } from '@/side-panel/pages/record-page/components/SidePanelMergeRecordPage';
-import { SidePanelRecordPage } from '@/side-panel/pages/record-page/components/SidePanelRecordPage';
 // FORK: WhatsApp Chat|Detalhes tabs for record view (EPIC 5)
 import { SidePanelRecordPageWithWhatsappTabs } from '@/whatsapp/components/side-panel/SidePanelRecordPageWithWhatsappTabs';
 import { SidePanelUpdateMultipleRecords } from '@/side-panel/pages/record-page/components/SidePanelUpdateMultipleRecords';

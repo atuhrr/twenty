@@ -3,7 +3,7 @@ import { useMutation } from '@apollo/client/react';
 
 import { SEND_WHATSAPP_MESSAGE } from '@/whatsapp/graphql/mutations/sendWhatsappMessage';
 import { GET_WHATSAPP_MESSAGES } from '@/whatsapp/graphql/queries/getWhatsappMessages';
-import {
+import type {
   WhatsappMessage,
   WhatsappMessageDirection,
   WhatsappMessageStatus,
