@@ -18,13 +18,13 @@ import {
   WhatsappMessageType,
 } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
 
-const EVOLUTION_TIMEOUT_MS = 10_000;
+const META_GRAPH_API_BASE = 'https://graph.facebook.com';
+const META_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 3;
 
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
-  private readonly evolutionClient: AxiosInstance;
 
   constructor(
     @InjectRepository(WhatsappInstanceEntity)
@@ -34,15 +34,55 @@ export class WhatsappService {
     @InjectRepository(WhatsappContactWindowEntity)
     private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
     private readonly secretEncryptionService: SecretEncryptionService,
-  ) {
-    this.evolutionClient = axios.create({
-      baseURL: process.env.EVOLUTION_API_URL ?? 'http://localhost:8080',
-      timeout: EVOLUTION_TIMEOUT_MS,
+  ) {}
+
+  private getMetaClient(accessToken: string): AxiosInstance {
+    const version = process.env.META_GRAPH_API_VERSION ?? 'v20.0';
+
+    return axios.create({
+      baseURL: `${META_GRAPH_API_BASE}/${version}`,
+      timeout: META_TIMEOUT_MS,
       headers: {
-        apikey: process.env.EVOLUTION_API_KEY ?? '',
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
+  }
+
+  private async getInstanceCredentials(
+    workspaceId: string,
+  ): Promise<{ accessToken: string; phoneNumberId: string }> {
+    const instance = await this.instanceRepo.findOne({ where: { workspaceId } });
+
+    if (!instance) {
+      throw new NotFoundException(
+        `WhatsApp instance not found for workspace ${workspaceId}`,
+      );
+    }
+
+    return {
+      accessToken: this.secretEncryptionService.decrypt(
+        instance.accessTokenEncrypted,
+      ),
+      phoneNumberId: instance.phoneNumberId,
+    };
+  }
+
+  private async verifyPhoneNumber(
+    phoneNumberId: string,
+    accessToken: string,
+  ): Promise<WhatsappConnectionStatus> {
+    try {
+      const client = this.getMetaClient(accessToken);
+
+      await client.get(`/${phoneNumberId}`, {
+        params: { fields: 'id,verified_name' },
+      });
+
+      return WhatsappConnectionStatus.CONNECTED;
+    } catch {
+      return WhatsappConnectionStatus.DISCONNECTED;
+    }
   }
 
   async registerInstance(
@@ -78,20 +118,14 @@ export class WhatsappService {
 
     const saved = await this.instanceRepo.save(instance);
 
-    // Register with Evolution API (Cloud API mode)
-    await this.callWithRetry(() =>
-      this.evolutionClient.post('/instance/create', {
-        instanceName: `ws_${workspaceId}`,
-        integration: 'WHATSAPP-CLOUD',
-        token: input.accessToken,
-        businessId: input.wabaId,
-        number: input.phoneNumberId,
-      }),
-    ).catch((err) => {
-      this.logger.warn(
-        `Evolution registerInstance failed for workspace ${workspaceId}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    });
+    // Verify credentials against Meta Graph API
+    const status = await this.verifyPhoneNumber(
+      input.phoneNumberId,
+      input.accessToken,
+    );
+
+    await this.instanceRepo.update({ workspaceId }, { connectionStatus: status });
+    saved.connectionStatus = status;
 
     return saved;
   }
@@ -101,16 +135,22 @@ export class WhatsappService {
     phoneNumber: string,
     text: string,
   ): Promise<string> {
-    const instanceName = `ws_${workspaceId}`;
+    const { accessToken, phoneNumberId } =
+      await this.getInstanceCredentials(workspaceId);
+    const client = this.getMetaClient(accessToken);
 
     const { data } = await this.callWithRetry(() =>
-      this.evolutionClient.post(`/message/sendText/${instanceName}`, {
-        number: phoneNumber,
+      client.post(`/${phoneNumberId}/messages`, {
+        messaging_product: 'whatsapp',
+        to: phoneNumber,
+        type: 'text',
         text: { body: text },
       }),
     );
 
-    return (data as { key?: { id?: string } }).key?.id ?? '';
+    return (
+      (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ?? ''
+    );
   }
 
   async sendTemplateMessage(
@@ -120,11 +160,15 @@ export class WhatsappService {
     languageCode: string,
     components: object[],
   ): Promise<string> {
-    const instanceName = `ws_${workspaceId}`;
+    const { accessToken, phoneNumberId } =
+      await this.getInstanceCredentials(workspaceId);
+    const client = this.getMetaClient(accessToken);
 
     const { data } = await this.callWithRetry(() =>
-      this.evolutionClient.post(`/message/sendTemplate/${instanceName}`, {
-        number: phoneNumber,
+      client.post(`/${phoneNumberId}/messages`, {
+        messaging_product: 'whatsapp',
+        to: phoneNumber,
+        type: 'template',
         template: {
           name: templateName,
           language: { code: languageCode },
@@ -133,25 +177,18 @@ export class WhatsappService {
       }),
     );
 
-    return (data as { key?: { id?: string } }).key?.id ?? '';
+    return (
+      (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ?? ''
+    );
   }
 
   async checkConnectionStatus(
     workspaceId: string,
   ): Promise<WhatsappConnectionStatus> {
-    const instanceName = `ws_${workspaceId}`;
-
     try {
-      const { data } = await this.evolutionClient.get(
-        `/instance/connectionState/${instanceName}`,
-      );
-
-      const state = (data as { instance?: { state?: string } }).instance?.state;
-
-      const status =
-        state === 'open'
-          ? WhatsappConnectionStatus.CONNECTED
-          : WhatsappConnectionStatus.DISCONNECTED;
+      const { accessToken, phoneNumberId } =
+        await this.getInstanceCredentials(workspaceId);
+      const status = await this.verifyPhoneNumber(phoneNumberId, accessToken);
 
       await this.instanceRepo.update({ workspaceId }, { connectionStatus: status });
 
@@ -161,23 +198,29 @@ export class WhatsappService {
     }
   }
 
+  // remoteJid kept for interface compatibility but unused with Meta API
   async markAsRead(
     workspaceId: string,
-    remoteJid: string,
+    _remoteJid: string,
     messageId: string,
   ): Promise<void> {
-    const instanceName = `ws_${workspaceId}`;
+    try {
+      const { accessToken, phoneNumberId } =
+        await this.getInstanceCredentials(workspaceId);
+      const client = this.getMetaClient(accessToken);
 
-    await this.callWithRetry(() =>
-      this.evolutionClient.put(`/message/markAsRead/${instanceName}`, {
-        remoteJid,
-        messageId,
-      }),
-    ).catch((err) => {
+      await this.callWithRetry(() =>
+        client.post(`/${phoneNumberId}/messages`, {
+          messaging_product: 'whatsapp',
+          status: 'read',
+          message_id: messageId,
+        }),
+      );
+    } catch (err) {
       this.logger.warn(
         `markAsRead failed for ${messageId}: ${err instanceof Error ? err.message : String(err)}`,
       );
-    });
+    }
   }
 
   async getDecryptedAppSecret(workspaceId: string): Promise<string> {
