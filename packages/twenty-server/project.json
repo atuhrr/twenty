@@ -54,8 +54,7 @@
       "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/twenty-server",
-        "commands": ["rimraf dist", "nest start --watch"],
-        "parallel": false,
+        "command": "nest start --watch",
         "env": {
           "NODE_ENV": "development"
         }

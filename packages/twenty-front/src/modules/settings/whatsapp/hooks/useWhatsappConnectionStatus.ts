@@ -16,7 +16,8 @@ export const useWhatsappConnectionStatus = () => {
 
   return {
     status: data?.whatsappConnectionStatus?.status ?? 'DISCONNECTED',
-    displayPhoneNumber: data?.whatsappConnectionStatus?.displayPhoneNumber ?? null,
+    displayPhoneNumber:
+      data?.whatsappConnectionStatus?.displayPhoneNumber ?? null,
     loading,
     refetch,
   };

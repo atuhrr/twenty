@@ -74,11 +74,7 @@ export const WhatsappSidebarBadge = () => {
           aria-hidden={true}
           strokeWidth={1.8}
         />
-        <StyledLabel>
-          {isConnected && displayPhoneNumber
-            ? displayPhoneNumber
-            : 'WhatsApp Business'}
-        </StyledLabel>
+        <StyledLabel>Conectado com WhatsApp Business</StyledLabel>
       </StyledHeader>
       <StyledStatusRow>
         <StyledDot connected={isConnected} />

@@ -125,10 +125,9 @@ export const SettingsWhatsapp = () => {
     ? `${REACT_APP_SERVER_BASE_URL}/whatsapp/webhook/${currentWorkspace.id}`
     : `${REACT_APP_SERVER_BASE_URL}/whatsapp/webhook/<workspace-id>`;
 
-  const handleChange =
-    (field: keyof typeof formValues) => (text: string) => {
-      setFormValues((prev) => ({ ...prev, [field]: text }));
-    };
+  const handleChange = (field: keyof typeof formValues) => (text: string) => {
+    setFormValues((prev) => ({ ...prev, [field]: text }));
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

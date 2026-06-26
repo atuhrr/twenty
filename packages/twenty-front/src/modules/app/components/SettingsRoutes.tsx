@@ -690,10 +690,7 @@ export const SettingsRoutes = ({ isAdminPageEnabled }: SettingsRoutesProps) => (
           element={<SettingPublicDomain />}
         />
         {/* FORK: WhatsApp integration */}
-        <Route
-          path={SettingsPath.Whatsapp}
-          element={<SettingsWhatsapp />}
-        />
+        <Route path={SettingsPath.Whatsapp} element={<SettingsWhatsapp />} />
       </Route>
       <Route
         element={
