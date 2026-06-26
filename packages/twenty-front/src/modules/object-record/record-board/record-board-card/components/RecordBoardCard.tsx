@@ -10,8 +10,6 @@ import { useActiveRecordBoardCard } from '@/object-record/record-board/hooks/use
 import { useFocusedRecordBoardCard } from '@/object-record/record-board/hooks/useFocusedRecordBoardCard';
 import { RecordBoardCardCellEditModePortal } from '@/object-record/record-board/record-board-card/anchored-portal/components/RecordBoardCardCellEditModePortal';
 import { RecordBoardCardCellHoveredPortal } from '@/object-record/record-board/record-board-card/anchored-portal/components/RecordBoardCardCellHoveredPortal';
-import { RecordBoardCardBody } from '@/object-record/record-board/record-board-card/components/RecordBoardCardBody';
-import { RecordBoardCardHeader } from '@/object-record/record-board/record-board-card/components/RecordBoardCardHeader';
 import { RecordBoardCardMultiDragStack } from '@/object-record/record-board/record-board-card/components/RecordBoardCardMultiDragStack';
 import { RECORD_BOARD_CARD_CLICK_OUTSIDE_ID } from '@/object-record/record-board/record-board-card/constants/RecordBoardCardClickOutsideId';
 import { RECORD_BOARD_CARD_INPUT_ID_PREFIX } from '@/object-record/record-board/record-board-card/constants/RecordBoardCardInputIdPrefix';
@@ -30,12 +28,13 @@ import { useAtomComponentFamilyStateValue } from '@/ui/utilities/state/jotai/hoo
 import { useAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentState';
 import { useSetAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useSetAtomComponentState';
 import { useGetCurrentViewOnly } from '@/views/hooks/useGetCurrentViewOnly';
-// FORK: WhatsApp board card footer (EPIC 5)
-import { WhatsappBoardCardFooter } from '@/whatsapp/components/board/WhatsappBoardCardFooter';
+// FORK: Kommo-style card + WhatsApp chat panel state
+import { KommoCardContent } from '@/whatsapp/components/board/KommoCardContent';
+import { activeBoardContactState } from '@/whatsapp/states/activeBoardContactState';
+import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { styled } from '@linaria/react';
 import { useContext } from 'react';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
-import { AnimatedEaseInOut } from 'twenty-ui/layout';
 import { useDebouncedCallback } from 'use-debounce';
 
 const StyledCardContainer = styled.div<{ isPrimaryMultiDrag?: boolean }>`
@@ -116,6 +115,7 @@ export const RecordBoardCard = () => {
   const { openRecordFromIndexView } = useOpenRecordFromIndexView();
   const { activateBoardCard } = useActiveRecordBoardCard(recordBoardId);
   const { unfocusBoardCard } = useFocusedRecordBoardCard(recordBoardId);
+  const setActiveBoardContact = useSetAtomState(activeBoardContactState);
 
   const handleContextMenuOpen = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -136,6 +136,7 @@ export const RecordBoardCard = () => {
   const handleCardClick = () => {
     activateBoardCard({ rowIndex, columnIndex });
     unfocusBoardCard();
+    setActiveBoardContact(recordId);
     openRecordFromIndexView({ recordId });
   };
 
@@ -175,15 +176,8 @@ export const RecordBoardCard = () => {
               isSecondaryDragged={isRecordIdSecondaryDragMultiple}
               isDragging={isDraggingThisCard}
             >
-              <RecordBoardCardHeader />
-              <AnimatedEaseInOut
-                isOpen={recordBoardCardIsExpanded || !isCompactModeActive}
-                initial={false}
-              >
-                <RecordBoardCardBody />
-              </AnimatedEaseInOut>
-              {/* FORK: WhatsApp preview footer (EPIC 5) */}
-              <WhatsappBoardCardFooter recordId={recordId} />
+              {/* FORK: Kommo-style card replaces Twenty default card body */}
+              <KommoCardContent />
             </RecordCard>
           </StyledCardContainer>
           <RecordBoardCardCellHoveredPortal />

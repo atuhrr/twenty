@@ -1,5 +1,7 @@
 import { NavigationDrawerOpenedSection } from '@/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection';
 import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadata/components/NavigationDrawerWorkspaceSectionSkeletonLoader';
+// FORK: WhatsApp nav section (Conversas, Campanhas, Disparos)
+import { WhatsappNavSection } from '@/whatsapp/components/nav/WhatsappNavSection';
 
 import { styled } from '@linaria/react';
 import { lazy, Suspense } from 'react';
@@ -36,6 +38,7 @@ export const MainNavigationDrawerScrollableItems = () => {
         <FavoritesSectionDispatcher />
         <WorkspaceSectionDispatcher />
       </Suspense>
+      <WhatsappNavSection />
     </StyledScrollableItemsContainer>
   );
 };

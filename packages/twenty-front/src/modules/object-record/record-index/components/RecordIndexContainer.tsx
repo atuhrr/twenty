@@ -11,6 +11,8 @@ import { RecordIndexCalendarContainer } from '@/object-record/record-index/compo
 import { RecordIndexEmptyStateNotShared } from '@/object-record/record-index/components/RecordIndexEmptyStateNotShared';
 import { RecordIndexFiltersToContextStoreEffect } from '@/object-record/record-index/components/RecordIndexFiltersToContextStoreEffect';
 import { useHasCurrentViewNonReadableFields } from '@/object-record/record-index/hooks/useHasCurrentViewNonReadableFields';
+// FORK: WhatsApp persistent chat panel on kanban view
+import { WhatsappKanbanChatPanel } from '@/whatsapp/components/panel/WhatsappKanbanChatPanel';
 import { ViewType } from '@/views/types/ViewType';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -27,6 +29,13 @@ const StyledContainerWithPadding = styled.div`
   flex: 1;
   margin-left: ${themeCssVariables.spacing[2]};
   min-height: 0;
+`;
+
+const StyledKanbanRow = styled.div`
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 `;
 
 export const RecordIndexContainer = () => {
@@ -51,13 +60,17 @@ export const RecordIndexContainer = () => {
             <RecordIndexTableContainer recordTableId={recordIndexId} />
           )}
           {recordIndexViewType === ViewType.KANBAN && (
-            <StyledContainerWithPadding>
-              <RecordBoardContainer
-                recordBoardId={recordIndexId}
-                viewBarId={recordIndexId}
-                objectNameSingular={objectNameSingular}
-              />
-            </StyledContainerWithPadding>
+            <StyledKanbanRow>
+              <StyledContainerWithPadding>
+                <RecordBoardContainer
+                  recordBoardId={recordIndexId}
+                  viewBarId={recordIndexId}
+                  objectNameSingular={objectNameSingular}
+                />
+              </StyledContainerWithPadding>
+              {/* FORK: WhatsApp persistent chat panel */}
+              <WhatsappKanbanChatPanel />
+            </StyledKanbanRow>
           )}
           {recordIndexViewType === ViewType.CALENDAR && (
             <StyledContainerWithPadding>
