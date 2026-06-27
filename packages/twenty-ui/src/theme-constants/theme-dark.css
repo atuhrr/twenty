@@ -166,7 +166,7 @@
   --t-font-weight-regular: 400;
   --t-font-weight-medium: 500;
   --t-font-weight-semi-bold: 600;
-  --t-font-family: Inter, sans-serif;
+  --t-font-family: 'Plus Jakarta Sans', Inter, sans-serif;
   --t-name: dark;
   --t-snack-bar-success-color: color(display-p3 0.297 0.637 0.581);
   --t-snack-bar-success-background-color: #11ff992d;

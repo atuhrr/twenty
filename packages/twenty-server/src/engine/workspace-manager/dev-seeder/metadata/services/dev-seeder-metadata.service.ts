@@ -16,14 +16,23 @@ import {
   SEED_YCOMBINATOR_WORKSPACE_ID,
 } from 'src/engine/workspace-manager/dev-seeder/core/constants/seeder-workspaces.constant';
 import { COMPANY_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/company-custom-field-seeds.constant';
+import { ETAPA_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/etapa-custom-field-seeds.constant';
+import { FUNIL_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/funil-custom-field-seeds.constant';
+import { CLIENTE_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/cliente-custom-field-seeds.constant';
+import { OPPORTUNITY_VOKA_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/opportunity-voka-field-seeds.constant';
 import { PERSON_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/person-custom-field-seeds.constant';
 import { PET_CARE_AGREEMENT_CARETAKER_MORPH_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/pet-care-agreement-custom-relation-field-seeds.constant';
 import { PET_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/pet-custom-field-seeds.constant';
 import { PET_CUSTOM_RELATION_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/pet-custom-relation-field-seeds.constant';
+import { PRODUTO_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/produto-custom-field-seeds.constant';
 import { SURVEY_RESULT_CUSTOM_FIELD_SEEDS } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-fields/constants/survey-results-field-seeds.constant';
+import { CLIENTE_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/cliente-custom-object-seed.constant';
 import { EMPLOYMENT_HISTORY_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/employment-history-custom-object-seed.constant';
+import { ETAPA_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/etapa-custom-object-seed.constant';
+import { FUNIL_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/funil-custom-object-seed.constant';
 import { PET_CARE_AGREEMENT_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/pet-care-agreement-custom-object-seed.constant';
 import { PET_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/pet-custom-object-seed.constant';
+import { PRODUTO_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/produto-custom-object-seed.constant';
 import { ROCKET_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/rocket-custom-object-seed.constant';
 import { SURVEY_RESULT_CUSTOM_OBJECT_SEED } from 'src/engine/workspace-manager/dev-seeder/metadata/custom-objects/constants/survey-results-object-seed.constant';
 import { type FieldMetadataSeed } from 'src/engine/workspace-manager/dev-seeder/metadata/types/field-metadata-seed.type';
@@ -84,10 +93,17 @@ export class DevSeederMetadataService {
         // Junction objects (minimal pivots)
         { seed: EMPLOYMENT_HISTORY_CUSTOM_OBJECT_SEED },
         { seed: PET_CARE_AGREEMENT_CUSTOM_OBJECT_SEED },
+        // FORK: Voka CRM — domínio Kommo (Fase 2)
+        { seed: FUNIL_CUSTOM_OBJECT_SEED, fields: FUNIL_CUSTOM_FIELD_SEEDS },
+        { seed: ETAPA_CUSTOM_OBJECT_SEED, fields: ETAPA_CUSTOM_FIELD_SEEDS },
+        { seed: CLIENTE_CUSTOM_OBJECT_SEED, fields: CLIENTE_CUSTOM_FIELD_SEEDS },
+        { seed: PRODUTO_CUSTOM_OBJECT_SEED, fields: PRODUTO_CUSTOM_FIELD_SEEDS },
       ],
       fields: [
         { objectName: 'company', seeds: COMPANY_CUSTOM_FIELD_SEEDS },
         { objectName: 'person', seeds: PERSON_CUSTOM_FIELD_SEEDS },
+        // FORK: Voka CRM — campos extras no Lead (Opportunity)
+        { objectName: 'opportunity', seeds: OPPORTUNITY_VOKA_FIELD_SEEDS },
       ],
       morphRelations: [
         {

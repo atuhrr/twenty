@@ -7,7 +7,7 @@ export const BORDER_LIGHT = {
   color: {
     strong: GRAY_SCALE_LIGHT.gray6,
     medium: GRAY_SCALE_LIGHT.gray5,
-    light: GRAY_SCALE_LIGHT.gray4,
+    light: 'color(display-p3 0.918 0.925 0.941)', // Kommo #EAECF0
     secondaryInverted: GRAY_SCALE_LIGHT.gray11,
     inverted: GRAY_SCALE_LIGHT.gray12,
     danger: COLOR_LIGHT.red5,

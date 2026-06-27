@@ -76,6 +76,13 @@ import { AddHasPaymentMethodToBillingCustomerFastInstanceCommand } from 'src/dat
 import { AddFolderImportToMessageFolderPendingSyncActionFastInstanceCommand } from './2-15/2-15-instance-command-fast-1781714499016-add-folder-import-to-message-folder-pending-sync-action';
 import { AddViewKanbanColumnWidthFastInstanceCommand } from './2-15/2-15-instance-command-fast-1781900000000-add-view-kanban-column-width';
 import { CreateWhatsappTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782172800000-create-whatsapp-tables';
+import { AddPhoneToWhatsappContactWindowFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782259200000-add-phone-to-whatsapp-contact-window';
+import { AddChannelTypeToWhatsappMessageFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782345600000-add-channel-type-to-whatsapp-message';
+import { CreateTeamChatTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782432000000-create-team-chat-table';
+import { AddAssignmentToContactWindowFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782518400000-add-assignment-to-contact-window';
+import { CreateQuickReplyTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782604800000-create-quick-reply-table';
+import { CreateBroadcastTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782691200000-create-broadcast-tables';
+import { TranslateStandardObjectLabelsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782777600000-translate-standard-object-labels';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -154,4 +161,11 @@ export const INSTANCE_COMMANDS = [
   AddFolderImportToMessageFolderPendingSyncActionFastInstanceCommand,
   AddViewKanbanColumnWidthFastInstanceCommand,
   CreateWhatsappTablesFastInstanceCommand,
+  AddPhoneToWhatsappContactWindowFastInstanceCommand,
+  AddChannelTypeToWhatsappMessageFastInstanceCommand,
+  CreateTeamChatTableFastInstanceCommand,
+  AddAssignmentToContactWindowFastInstanceCommand,
+  CreateQuickReplyTableFastInstanceCommand,
+  CreateBroadcastTablesFastInstanceCommand,
+  TranslateStandardObjectLabelsFastInstanceCommand,
 ];

@@ -76,6 +76,9 @@ import { ChannelSyncModule } from 'src/modules/connected-account/channel-sync/ch
 import { DashboardModule } from 'src/modules/dashboard/dashboard.module';
 import { SendEmailModule } from 'src/modules/messaging/message-outbound-manager/send-email.module';
 import { WhatsappModule } from 'src/engine/core-modules/whatsapp/whatsapp.module';
+import { OmniChannelModule } from 'src/engine/core-modules/omni-channel/omni-channel.module';
+import { TeamChatModule } from 'src/engine/core-modules/team-chat/team-chat.module';
+import { BroadcastModule } from 'src/engine/core-modules/broadcast/broadcast.module';
 import { ClientConfigModule } from './client-config/client-config.module';
 import { EventLogsViewerModule } from './event-logs/event-logs-viewer.module';
 import { FileModule } from './file/file.module';
@@ -164,6 +167,9 @@ import { FileModule } from './file/file.module';
     PreInstalledAppsModule,
     AppBillingModule,
     WhatsappModule,
+    OmniChannelModule,
+    TeamChatModule,
+    BroadcastModule,
   ],
   providers: [
     {

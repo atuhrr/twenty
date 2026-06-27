@@ -8,7 +8,7 @@ export const BACKGROUND_LIGHT = {
   noisy: 'var(--t-background-noisy)',
   primary: GRAY_SCALE_LIGHT.gray1,
   secondary: GRAY_SCALE_LIGHT.gray2,
-  tertiary: GRAY_SCALE_LIGHT.gray4,
+  tertiary: 'color(display-p3 0.949 0.957 0.969)', // Kommo #F2F4F7
   quaternary: GRAY_SCALE_LIGHT.gray5,
   invertedPrimary: GRAY_SCALE_LIGHT.gray12,
   invertedSecondary: GRAY_SCALE_LIGHT.gray11,

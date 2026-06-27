@@ -1,7 +1,10 @@
+// FORK: Voka CRM — Fase 11: "/" triggers quick reply picker
 /* oxlint-disable twenty/no-hardcoded-colors */
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 import { styled } from '@linaria/react';
+
+import { useWhatsappQuickReplies } from '@/whatsapp/hooks/useWhatsappQuickReplies';
 
 type ChatInputProps = {
   onSend: (text: string) => void;
@@ -86,8 +89,93 @@ const StyledWindowWarning = styled.div`
   text-align: center;
 `;
 
+const StyledQrDropdown = styled.div`
+  background: #ffffff;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  bottom: calc(100% + 4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  left: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  right: 12px;
+  z-index: 100;
+`;
+
+const StyledQrItem = styled.div<{ focused: boolean }>`
+  align-items: center;
+  background: ${({ focused }) => (focused ? '#EEF4FF' : '#fff')};
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+
+  &:hover {
+    background: #f9fafb;
+  }
+`;
+
+const StyledQrShortcut = styled.span`
+  color: #7c3aed;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 55px;
+`;
+
+const StyledQrTitle = styled.span`
+  color: #101828;
+  flex: 1;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const StyledQrPreview = styled.span`
+  color: #667085;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 110px;
+`;
+
+const StyledInputBarWrapper = styled.div`
+  position: relative;
+`;
+
 export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
   const [text, setText] = useState('');
+  const [showQr, setShowQr] = useState(false);
+  const [qrFilter, setQrFilter] = useState('');
+  const [focusedIdx, setFocusedIdx] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { quickReplies } = useWhatsappQuickReplies();
+
+  const filtered = quickReplies.filter(
+    (qr) =>
+      qrFilter === '' ||
+      qr.shortcut.toLowerCase().includes(qrFilter.toLowerCase()) ||
+      qr.title.toLowerCase().includes(qrFilter.toLowerCase()),
+  );
+
+  const handleChange = (value: string) => {
+    setText(value);
+    if (value.startsWith('/')) {
+      setQrFilter(value.slice(1));
+      setShowQr(true);
+      setFocusedIdx(0);
+    } else {
+      setShowQr(false);
+    }
+  };
+
+  const selectQr = (content: string) => {
+    setText(content);
+    setShowQr(false);
+    textareaRef.current?.focus();
+  };
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -95,14 +183,47 @@ export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
     if (!trimmed || sending) return;
     onSend(trimmed);
     setText('');
+    setShowQr(false);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (showQr && filtered.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setFocusedIdx((i) => Math.min(i + 1, filtered.length - 1));
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setFocusedIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (event.key === 'Tab' || (event.key === 'Enter' && filtered.length > 0 && showQr)) {
+        event.preventDefault();
+        const qr = filtered[focusedIdx];
+        if (qr) selectQr(qr.content);
+        return;
+      }
+      if (event.key === 'Escape') {
+        setShowQr(false);
+        return;
+      }
+    }
+    if (event.key === 'Enter' && !event.shiftKey && !showQr) {
       event.preventDefault();
       handleSend();
     }
   };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (textareaRef.current && !textareaRef.current.closest('[data-chat-input]')?.contains(e.target as Node)) {
+        setShowQr(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
     <>
@@ -111,29 +232,48 @@ export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
           Janela de 24h encerrada. Use um template para retomar a conversa.
         </StyledWindowWarning>
       )}
-      <StyledInputBar>
-        <StyledIconBtn title="Emoji" disabled={disabled}>
-          😊
-        </StyledIconBtn>
-        <StyledIconBtn title="Anexar arquivo" disabled={disabled}>
-          📎
-        </StyledIconBtn>
-        <StyledTextInput
-          placeholder="Digite uma mensagem..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          rows={1}
-        />
-        <StyledSendBtn
-          disabled={disabled || !text.trim() || sending}
-          onClick={handleSend}
-          title="Enviar"
-        >
-          ➤
-        </StyledSendBtn>
-      </StyledInputBar>
+      <StyledInputBarWrapper data-chat-input>
+        {showQr && filtered.length > 0 && (
+          <StyledQrDropdown>
+            {filtered.map((qr, idx) => (
+              <StyledQrItem
+                key={qr.id}
+                focused={idx === focusedIdx}
+                onMouseDown={() => selectQr(qr.content)}
+                onMouseEnter={() => setFocusedIdx(idx)}
+              >
+                <StyledQrShortcut>/{qr.shortcut}</StyledQrShortcut>
+                <StyledQrTitle>{qr.title}</StyledQrTitle>
+                <StyledQrPreview>{qr.content}</StyledQrPreview>
+              </StyledQrItem>
+            ))}
+          </StyledQrDropdown>
+        )}
+        <StyledInputBar>
+          <StyledIconBtn title="Emoji" disabled={disabled}>
+            😊
+          </StyledIconBtn>
+          <StyledIconBtn title="Anexar arquivo" disabled={disabled}>
+            📎
+          </StyledIconBtn>
+          <StyledTextInput
+            ref={textareaRef}
+            placeholder="Digite / para respostas rápidas…"
+            value={text}
+            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            rows={1}
+          />
+          <StyledSendBtn
+            disabled={disabled || !text.trim() || sending}
+            onClick={handleSend}
+            title="Enviar"
+          >
+            ➤
+          </StyledSendBtn>
+        </StyledInputBar>
+      </StyledInputBarWrapper>
     </>
   );
 };

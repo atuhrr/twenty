@@ -8,6 +8,7 @@ import { WhatsappOpportunityStageListener } from 'src/engine/core-modules/whatsa
 import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
 import { WhatsappInstanceEntity } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
 import { WhatsappMessageEntity } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
+import { WhatsappQuickReplyEntity } from 'src/engine/core-modules/whatsapp/whatsapp-quick-reply.entity';
 import { WhatsappTemplateEntity } from 'src/engine/core-modules/whatsapp/whatsapp-template.entity';
 import { WhatsappWebhookJob } from 'src/engine/core-modules/whatsapp/whatsapp-webhook.job';
 import { WhatsappController } from 'src/engine/core-modules/whatsapp/whatsapp.controller';
@@ -21,6 +22,7 @@ import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.servi
       WhatsappMessageEntity,
       WhatsappContactWindowEntity,
       WhatsappTemplateEntity,
+      WhatsappQuickReplyEntity,
     ]),
     MessageQueueModule,
     SecretEncryptionModule,

@@ -29,6 +29,7 @@ import {
   IconMail,
   IconMessage,
   IconPlug,
+  IconSend,
   IconServer,
   IconSettings,
   IconSparkles,
@@ -177,6 +178,13 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           label: t`WhatsApp`,
           path: SettingsPath.Whatsapp,
           Icon: IconMessage,
+          isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
+        },
+        // FORK: Voka CRM — Fase 12: broadcast
+        {
+          label: t`Broadcast`,
+          path: SettingsPath.Broadcast,
+          Icon: IconSend,
           isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
         },
         {

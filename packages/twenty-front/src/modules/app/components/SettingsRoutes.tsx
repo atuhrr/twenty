@@ -15,6 +15,13 @@ const SettingsWhatsapp = lazy(() =>
   })),
 );
 
+// FORK: Voka CRM — Fase 12: broadcast campaigns
+const SettingsBroadcast = lazy(() =>
+  import('~/pages/settings/broadcast/SettingsBroadcast').then((module) => ({
+    default: module.SettingsBroadcast,
+  })),
+);
+
 const SettingsGraphQLPlayground = lazy(() =>
   import('~/pages/settings/developers/playground/SettingsGraphQLPlayground').then(
     (module) => ({
@@ -691,6 +698,8 @@ export const SettingsRoutes = ({ isAdminPageEnabled }: SettingsRoutesProps) => (
         />
         {/* FORK: WhatsApp integration */}
         <Route path={SettingsPath.Whatsapp} element={<SettingsWhatsapp />} />
+        {/* FORK: Voka CRM — Fase 12: broadcast */}
+        <Route path={SettingsPath.Broadcast} element={<SettingsBroadcast />} />
       </Route>
       <Route
         element={

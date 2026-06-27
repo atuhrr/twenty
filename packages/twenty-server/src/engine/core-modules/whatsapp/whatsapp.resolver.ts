@@ -5,11 +5,17 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
+import { AssignWhatsappThreadInput } from 'src/engine/core-modules/whatsapp/dtos/assign-whatsapp-thread.input';
 import { ConnectWhatsappInput } from 'src/engine/core-modules/whatsapp/dtos/connect-whatsapp.input';
+import {
+  CreateWhatsappQuickReplyInput,
+  WhatsappQuickReplyDTO,
+} from 'src/engine/core-modules/whatsapp/dtos/whatsapp-quick-reply.dto';
 import { SendWhatsappMessageInput } from 'src/engine/core-modules/whatsapp/dtos/send-whatsapp-message.input';
 import { WhatsappConnectionStatusDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-connection-status.dto';
 import { WhatsappContactWindowDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-contact-window.dto';
 import { WhatsappMessageDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-message.dto';
+import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-thread-summary.dto';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { WhatsappConnectionStatus } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
 import {
@@ -24,6 +30,14 @@ import { normalizeBrPhone } from 'src/engine/core-modules/whatsapp/utils/normali
 @UsePipes(ResolverValidationPipe)
 export class WhatsappResolver {
   constructor(private readonly whatsappService: WhatsappService) {}
+
+  // FORK: Voka CRM — Fase 9: conversation thread list for the Inbox
+  @Query(() => [WhatsappThreadSummaryDTO])
+  async whatsappThreads(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<WhatsappThreadSummaryDTO[]> {
+    return this.whatsappService.getThreads(workspace.id);
+  }
 
   @Query(() => [WhatsappMessageDTO])
   async whatsappMessages(
@@ -66,6 +80,45 @@ export class WhatsappResolver {
       status,
       displayPhoneNumber: instance?.displayPhoneNumber ?? null,
     };
+  }
+
+  // FORK: Voka CRM — Fase 11: quick replies CRUD
+  @Query(() => [WhatsappQuickReplyDTO])
+  async whatsappQuickReplies(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<WhatsappQuickReplyDTO[]> {
+    return this.whatsappService.getQuickReplies(workspace.id);
+  }
+
+  @Mutation(() => WhatsappQuickReplyDTO)
+  async createWhatsappQuickReply(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: CreateWhatsappQuickReplyInput,
+  ): Promise<WhatsappQuickReplyDTO> {
+    return this.whatsappService.createQuickReply(workspace.id, input);
+  }
+
+  @Mutation(() => Boolean)
+  async deleteWhatsappQuickReply(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('id') id: string,
+  ): Promise<boolean> {
+    return this.whatsappService.deleteQuickReply(workspace.id, id);
+  }
+
+  // FORK: Voka CRM — Fase 11: assign (or unassign) a thread to a user
+  @Mutation(() => Boolean)
+  async assignWhatsappThread(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: AssignWhatsappThreadInput,
+  ): Promise<boolean> {
+    await this.whatsappService.assignThread(
+      workspace.id,
+      input.contactId,
+      input.assignedUserId ?? null,
+      input.assignedUserName ?? null,
+    );
+    return true;
   }
 
   @Mutation(() => WhatsappConnectionStatusDTO)

@@ -22,7 +22,10 @@ module.exports = defineConfig({
     }
 
     const currentNodeVersion = process.version;
-    if (!semver.satisfies(currentNodeVersion, requiredNodeVersion)) {
+    if (
+      !semver.satisfies(currentNodeVersion, requiredNodeVersion) &&
+      !process.env.YARN_IGNORE_NODE
+    ) {
       throw new Error(
         `Node version ${currentNodeVersion} doesn't match the required version, please use ${requiredNodeVersion}`,
       );

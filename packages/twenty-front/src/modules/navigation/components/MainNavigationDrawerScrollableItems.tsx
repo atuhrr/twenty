@@ -1,7 +1,7 @@
 import { NavigationDrawerOpenedSection } from '@/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection';
 import { NavigationDrawerWorkspaceSectionSkeletonLoader } from '@/object-metadata/components/NavigationDrawerWorkspaceSectionSkeletonLoader';
-// FORK: WhatsApp nav section (Conversas, Campanhas, Disparos)
-import { WhatsappNavSection } from '@/whatsapp/components/nav/WhatsappNavSection';
+// FORK: Voka CRM — Kommo-style sidebar navigation (replaces WorkspaceSectionDispatcher)
+import { VokaNavSection } from '@/navigation/components/VokaNavSection';
 
 import { styled } from '@linaria/react';
 import { lazy, Suspense } from 'react';
@@ -12,14 +12,6 @@ const FavoritesSectionDispatcher = lazy(() =>
   import('@/navigation-menu-item/display/sections/favorites/components/FavoritesSectionDispatcher').then(
     (module) => ({
       default: module.FavoritesSectionDispatcher,
-    }),
-  ),
-);
-
-const WorkspaceSectionDispatcher = lazy(() =>
-  import('@/navigation-menu-item/display/sections/workspace/components/WorkspaceSectionDispatcher').then(
-    (module) => ({
-      default: module.WorkspaceSectionDispatcher,
     }),
   ),
 );
@@ -36,9 +28,8 @@ export const MainNavigationDrawerScrollableItems = () => {
       <NavigationDrawerOpenedSection />
       <Suspense fallback={<NavigationDrawerWorkspaceSectionSkeletonLoader />}>
         <FavoritesSectionDispatcher />
-        <WorkspaceSectionDispatcher />
       </Suspense>
-      <WhatsappNavSection />
+      <VokaNavSection />
     </StyledScrollableItemsContainer>
   );
 };

@@ -96,4 +96,6 @@ export enum SettingsPath {
 
   // FORK: WhatsApp integration
   Whatsapp = 'whatsapp',
+  // FORK: Voka CRM — Fase 12
+  Broadcast = 'broadcast',
 }

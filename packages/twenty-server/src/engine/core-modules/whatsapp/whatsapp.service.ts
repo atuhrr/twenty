@@ -4,14 +4,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import axios, { type AxiosInstance } from 'axios';
 import { Repository } from 'typeorm';
 
+import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-thread-summary.dto';
+
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { ConnectWhatsappInput } from 'src/engine/core-modules/whatsapp/dtos/connect-whatsapp.input';
+import { CreateWhatsappQuickReplyInput } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-quick-reply.dto';
 import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
+import { WhatsappQuickReplyEntity } from 'src/engine/core-modules/whatsapp/whatsapp-quick-reply.entity';
 import {
   WhatsappConnectionStatus,
   WhatsappInstanceEntity,
 } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
 import {
+  ChannelType,
   WhatsappMessageDirection,
   WhatsappMessageEntity,
   WhatsappMessageStatus,
@@ -33,6 +38,8 @@ export class WhatsappService {
     private readonly messageRepo: Repository<WhatsappMessageEntity>,
     @InjectRepository(WhatsappContactWindowEntity)
     private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
+    @InjectRepository(WhatsappQuickReplyEntity)
+    private readonly quickReplyRepo: Repository<WhatsappQuickReplyEntity>,
     private readonly secretEncryptionService: SecretEncryptionService,
   ) {}
 
@@ -245,6 +252,7 @@ export class WhatsappService {
     externalMessageId: string;
     status: WhatsappMessageStatus;
     timestamp: Date;
+    channelType?: ChannelType;
   }): Promise<WhatsappMessageEntity | null> {
     const existing = await this.messageRepo.findOne({
       where: { externalMessageId: params.externalMessageId },
@@ -254,7 +262,10 @@ export class WhatsappService {
       return null;
     }
 
-    const entity = this.messageRepo.create(params);
+    const entity = this.messageRepo.create({
+      ...params,
+      channelType: params.channelType ?? ChannelType.WHATSAPP,
+    });
 
     return this.messageRepo.save(entity);
   }
@@ -282,6 +293,74 @@ export class WhatsappService {
     return this.instanceRepo.findOne({ where: { workspaceId } });
   }
 
+  // FORK: Voka CRM — Fase 9: returns one thread (latest msg) per contactId for the Inbox
+  async getThreads(workspaceId: string): Promise<WhatsappThreadSummaryDTO[]> {
+    // Step 1: latest message per contactId (DISTINCT ON requires raw SQL in PG)
+    const rows = await this.messageRepo.query(
+      `SELECT DISTINCT ON (m."contactId")
+          m."id",
+          m."contactId",
+          m."direction",
+          m."type",
+          m."content",
+          m."mediaUrl",
+          m."externalMessageId",
+          m."status",
+          m."timestamp",
+          m."createdAt",
+          m."channelType",
+          cw."phoneNumber",
+          cw."assignedUserId",
+          cw."assignedUserName"
+       FROM "core"."whatsappMessage" m
+       LEFT JOIN "core"."whatsappContactWindow" cw
+         ON cw."contactId" = m."contactId"
+        AND cw."workspaceId" = $1
+       WHERE m."workspaceId" = $1
+       ORDER BY m."contactId", m."timestamp" DESC`,
+      [workspaceId],
+    ) as Array<Record<string, unknown>>;
+
+    if (rows.length === 0) return [];
+
+    // Step 2: unread count per contactId
+    const contactIds = rows.map((r) => r.contactId as string);
+    const unreadRows = await this.messageRepo.query(
+      `SELECT "contactId", COUNT(*) AS unread
+       FROM "core"."whatsappMessage"
+       WHERE "workspaceId" = $1
+         AND "direction" = 'INBOUND'
+         AND "status" != 'READ'
+         AND "contactId" = ANY($2::uuid[])
+       GROUP BY "contactId"`,
+      [workspaceId, contactIds],
+    ) as Array<{ contactId: string; unread: string }>;
+
+    const unreadMap = new Map(unreadRows.map((r) => [r.contactId, parseInt(r.unread, 10)]));
+
+    return rows.map((row) => ({
+      contactId: row.contactId as string,
+      phoneNumber: (row.phoneNumber as string | null) ?? null,
+      channelType: (row.channelType as ChannelType) ?? ChannelType.WHATSAPP,
+      lastMessage: {
+        id: row.id as string,
+        contactId: row.contactId as string,
+        direction: row.direction as WhatsappMessageDirection,
+        type: row.type as WhatsappMessageType,
+        content: (row.content as string | null) ?? null,
+        mediaUrl: (row.mediaUrl as string | null) ?? null,
+        externalMessageId: row.externalMessageId as string,
+        status: row.status as WhatsappMessageStatus,
+        timestamp: row.timestamp as Date,
+        createdAt: row.createdAt as Date,
+        channelType: (row.channelType as ChannelType) ?? ChannelType.WHATSAPP,
+      },
+      unreadCount: unreadMap.get(row.contactId as string) ?? 0,
+      assignedUserId: (row.assignedUserId as string | null) ?? null,
+      assignedUserName: (row.assignedUserName as string | null) ?? null,
+    }));
+  }
+
   async getLastMessageByContact(
     workspaceId: string,
     contactId: string,
@@ -305,6 +384,60 @@ export class WhatsappService {
       : false;
 
     return { contactId, lastInboundAt, isWindowOpen };
+  }
+
+  async upsertContactWindowForChannel(
+    workspaceId: string,
+    contactId: string,
+    lastInboundAt: Date,
+  ): Promise<void> {
+    const existing = await this.contactWindowRepo.findOne({
+      where: { workspaceId, contactId },
+    });
+
+    if (existing) {
+      await this.contactWindowRepo.update({ workspaceId, contactId }, { lastInboundAt });
+    } else {
+      await this.contactWindowRepo.save(
+        this.contactWindowRepo.create({ workspaceId, contactId, lastInboundAt }),
+      );
+    }
+  }
+
+  // FORK: Voka CRM — Fase 11: quick reply CRUD
+  async getQuickReplies(workspaceId: string): Promise<WhatsappQuickReplyEntity[]> {
+    return this.quickReplyRepo.find({
+      where: { workspaceId },
+      order: { shortcut: 'ASC' },
+    });
+  }
+
+  async createQuickReply(
+    workspaceId: string,
+    input: CreateWhatsappQuickReplyInput,
+  ): Promise<WhatsappQuickReplyEntity> {
+    const entity = this.quickReplyRepo.create({ ...input, workspaceId });
+
+    return this.quickReplyRepo.save(entity);
+  }
+
+  async deleteQuickReply(workspaceId: string, id: string): Promise<boolean> {
+    const result = await this.quickReplyRepo.delete({ workspaceId, id });
+
+    return (result.affected ?? 0) > 0;
+  }
+
+  // FORK: Voka CRM — Fase 11: assign a thread to a user (or unassign if null)
+  async assignThread(
+    workspaceId: string,
+    contactId: string,
+    assignedUserId: string | null,
+    assignedUserName: string | null,
+  ): Promise<void> {
+    await this.contactWindowRepo.update(
+      { workspaceId, contactId },
+      { assignedUserId, assignedUserName },
+    );
   }
 
   private async callWithRetry<T>(

@@ -26,6 +26,17 @@ export class WhatsappContactWindowEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: false, type: 'timestamptz' })
   lastInboundAt: Date;
 
+  // FORK: Voka CRM — Fase 9: normalized phone number for thread display (added via migration)
+  @Column({ nullable: true, type: 'text' })
+  phoneNumber: string | null;
+
+  // FORK: Voka CRM — Fase 11: which user is handling this thread
+  @Column({ nullable: true, type: 'uuid' })
+  assignedUserId: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  assignedUserName: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

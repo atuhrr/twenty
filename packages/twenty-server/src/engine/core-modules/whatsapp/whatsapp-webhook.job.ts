@@ -125,7 +125,8 @@ export class WhatsappWebhookJob {
       return;
     }
 
-    await this.upsertContactWindow(workspaceId, contactId, timestamp);
+    // FORK: Voka CRM — Fase 9: store phone for thread display
+    await this.upsertContactWindow(workspaceId, contactId, timestamp, normalizedPhone);
   }
 
   private async processStatusUpdate(status: MetaStatus): Promise<void> {
@@ -149,6 +150,7 @@ export class WhatsappWebhookJob {
     workspaceId: string,
     contactId: string,
     lastInboundAt: Date,
+    phoneNumber?: string,
   ): Promise<void> {
     const existing = await this.contactWindowRepo.findOne({
       where: { workspaceId, contactId },
@@ -157,11 +159,16 @@ export class WhatsappWebhookJob {
     if (existing) {
       await this.contactWindowRepo.update(
         { workspaceId, contactId },
-        { lastInboundAt },
+        { lastInboundAt, ...(phoneNumber ? { phoneNumber } : {}) },
       );
     } else {
       await this.contactWindowRepo.save(
-        this.contactWindowRepo.create({ workspaceId, contactId, lastInboundAt }),
+        this.contactWindowRepo.create({
+          workspaceId,
+          contactId,
+          lastInboundAt,
+          phoneNumber: phoneNumber ?? null,
+        }),
       );
     }
   }

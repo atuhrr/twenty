@@ -108,6 +108,26 @@ const NotFound = lazy(() =>
   })),
 );
 
+// FORK: Voka CRM — placeholder pages for new modules
+const InboxPage = lazy(() =>
+  import('~/pages/inbox/InboxPage').then((module) => ({
+    default: module.InboxPage,
+  })),
+);
+
+const MailPage = lazy(() =>
+  import('~/pages/mail/MailPage').then((module) => ({
+    default: module.MailPage,
+  })),
+);
+
+// FORK: Voka CRM — Fase 5: Leads não classificados (incoming queue)
+const LeadsNaoClassificadosPage = lazy(() =>
+  import('~/pages/leads/LeadsNaoClassificadosPage').then((module) => ({
+    default: module.LeadsNaoClassificadosPage,
+  })),
+);
+
 export const useCreateAppRouter = (
   isFunctionSettingsEnabled?: boolean,
   isAdminPageEnabled?: boolean,
@@ -244,6 +264,32 @@ export const useCreateAppRouter = (
                   isFunctionSettingsEnabled={isFunctionSettingsEnabled}
                   isAdminPageEnabled={isAdminPageEnabled}
                 />
+              }
+            />
+            {/* FORK: Voka CRM — module placeholder routes */}
+            <Route
+              path="/inbox"
+              element={
+                <LazyRoute>
+                  <InboxPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/mail"
+              element={
+                <LazyRoute>
+                  <MailPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 5: leads incoming queue */}
+            <Route
+              path="/leads-nao-classificados"
+              element={
+                <LazyRoute>
+                  <LeadsNaoClassificadosPage />
+                </LazyRoute>
               }
             />
             <Route

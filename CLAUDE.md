@@ -1,224 +1,240 @@
-# CLAUDE.md
+# CLAUDE.md — Voka CRM (fork do Twenty CRM)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo é o **contrato de engenharia** do projeto. Toda sessão do Claude Code deve
+respeitá-lo à risca. Em caso de conflito entre "entregar rápido" e "fazer certo", **fazer certo
+vence**. Se uma instrução de um prompt de fase conflitar com este arquivo, **este arquivo vence**
+— e você deve apontar o conflito antes de codar.
 
-## Project Overview
+---
 
-Twenty is an open-source CRM built with modern technologies in a monorepo structure. The codebase is organized as an Nx workspace with multiple packages.
+## 1. Objetivo do projeto
 
-## Key Commands
+Transformar o Twenty num **clone completo do Kommo** — em UI/UX **e** em funcionalidades de CRM.
+100% em **português do Brasil**, com aparência de **tema claro estilo Kommo**, **sem que reste
+nenhum traço visual do Twenty**.
 
-### Development
-```bash
-# Start development environment (frontend + backend + worker)
-yarn start
+> **Escopo = produto inteiro, não 3 telas.** As telas Pipeline/Lista/Inbox são apenas 3
+> visualizações de **um** módulo. O CRM tem ~15 módulos (Leads/Funil, Perfil+Feed, Contatos/
+> Empresas/Clientes/Catálogo, Chats multicanal, Mail, Team chat, Tarefas/Calendário, Salesbot,
+> AI agent, Automações, Broadcast, Web forms, Chat widget, Analytics, Integrações/API,
+> Configurações/Permissões, Mobile, Onboarding). Nunca reduza o trabalho às 3 telas.
 
-# Individual package development
-npx nx start twenty-front     # Start frontend dev server
-npx nx start twenty-server    # Start backend server
-npx nx run twenty-server:worker  # Start background worker
-```
+---
 
-### Testing
-```bash
-# Preferred: run a single test file (fast)
-npx jest path/to/test.test.ts --config=packages/PROJECT/jest.config.mjs
+## 1.1 Referências do projeto (FONTES DE VERDADE — consultar antes de codar)
 
-# Run all tests for a package
-npx nx test twenty-front      # Frontend unit tests
-npx nx test twenty-server     # Backend unit tests
-npx nx run twenty-server:test:integration:with-db-reset  # Integration tests with DB reset
-# To run an indivual test or a pattern of tests, use the following command:
-cd packages/{workspace} && npx jest "pattern or filename"
+Os arquivos de referência ficam em **`docs/design/`** do repo. **Abra e leia** o que for relevante
+para a fase atual, antes de escrever código:
 
-# Storybook
-npx nx storybook:build twenty-front
-npx nx storybook:test twenty-front
+- `docs/design/voka-crm-kommo-clone-spec.md` — design tokens, anatomia detalhada das telas e
+  especificação de backend. **Fonte dos valores** (cores, espaçamentos, estrutura).
+- `docs/design/alvo-visual-voka.html` — **alvo visual** das 3 telas-âncora (Funil Kanban, Lista,
+  Inbox) em PT-BR. **Leia o CSS deste arquivo** para extrair cores/medidas exatas; é referência
+  legível por máquina, não enfeite.
+- `docs/design/kommo-ref-1-funil-kanban.png`, `…-2-funil-lista.png`, `…-3-inbox.png` — capturas do
+  Kommo original, referência de layout/intenção.
+- `docs/design/voka-prompts-claude-code.md` — **mapa de produto completo** (todos os módulos) e os
+  **prompts de cada fase**. O escopo total do projeto está aqui.
 
-# When testing the UI end to end, click on "Continue with Email" and use the prefilled credentials.
-```
+Regra: ao iniciar uma fase, declare no PR **quais** desses arquivos consultou e o que extraiu deles.
+Não invente cores/medidas "de cabeça" quando o valor está no spec ou no alvo visual.
 
-### Code Quality
-```bash
-# Linting (diff with main - fastest, always prefer this)
-npx nx lint:diff-with-main twenty-front
-npx nx lint:diff-with-main twenty-server
-npx nx lint:diff-with-main twenty-front --configuration=fix  # Auto-fix
+---
 
-# Linting (full project - slower, use only when needed)
-npx nx lint twenty-front
-npx nx lint twenty-server
+## 2. Princípios de engenharia — INEGOCIÁVEIS
 
-# Type checking
-npx nx typecheck twenty-front
-npx nx typecheck twenty-server
+1. **Clean code. Zero gambiarra.** Toda mudança deve ser a forma *idiomática* de fazê-la dentro
+   da arquitetura existente. Se a solução parece um "truque para forçar", está errada — pare e
+   resolva na raiz.
+2. **Alterar o VALOR na origem, nunca sobrepor.** Mudança de aparência/comportamento se faz
+   alterando o **token / a configuração canônica** de onde o resto do sistema consome — não
+   adicionando uma camada por cima que vença por especificidade.
+3. **Single source of truth.** Cada decisão (cor, fonte, espaçamento, label) mora em **um** lugar.
+   Se existe em dois lugares, os dois recebem o mesmo valor na origem — nunca um corrige o outro.
+4. **Investigar antes de editar.** Antes de tocar em tema, i18n ou metadata, **mapeie a arquitetura
+   real** do repo (grep/leitura) e descreva no PR onde está a fonte de verdade. Só então edite lá.
+5. **Sem dívida arquitetural.** Nenhuma solução pode dificultar a manutenção futura ou o `merge`
+   com o upstream do Twenty mais do que o estritamente necessário.
 
-# Format code
-npx nx fmt twenty-front
-npx nx fmt twenty-server
-```
+### 2.1 PROIBIÇÕES EXPLÍCITAS (lista de "isto é gambiarra, não faça")
 
-### Build
-```bash
-# Build packages (twenty-shared must be built first)
-npx nx build twenty-shared
-npx nx build twenty-front
-npx nx build twenty-server
-```
+- ❌ `!important` para impor estilo de tema/marca. (Necessidade de `!important` = você não mudou
+  o token na origem. Conserte a origem.)
+- ❌ Editar arquivos **gerados/compilados** (`dist/`, `build/`, `*.compiled.*`, catálogos `.js`
+  compilados do Lingui). Edite a **fonte**; o build regenera o resto.
+- ❌ Overrides globais de CSS no `index.html` (ou em qualquer folha global) para forçar fonte/cor.
+- ❌ Hardcodar hex de cor ou nome de fonte em componentes. Use sempre o token do tema.
+- ❌ Duplicar um token "para o meu caso". Reuse o token semântico existente ou crie um token novo
+  na camada certa.
+- ❌ Trocar apenas o locale default e dizer que "traduziu". Tradução exige catálogo + compilação +
+  labels de metadata (ver Seção 5).
+- ❌ "Funciona na minha tela" como critério. O critério é a **Definition of Done** (Seção 6).
 
-### Database Operations
-```bash
-# Database management
-npx nx database:reset twenty-server         # Reset database
-npx nx run twenty-server:database:init:prod # Initialize database
-npx nx run twenty-server:database:migrate:prod # Run instance commands (fast only)
+---
 
-# Generate an instance command (fast or slow)
-npx nx run twenty-server:database:migrate:generate --name <name> --type <fast|slow>
-```
+## 3. Arquitetura de tema do Twenty e a REGRA DE OURO
 
-### Database Inspection (Postgres MCP)
+O Twenty tem **duas camadas de tokens** que coexistem (confirme no repo antes de editar):
 
-A read-only Postgres MCP server is configured in `.mcp.json`. Use it to:
-- Inspect workspace data, metadata, and object definitions while developing
-- Verify migration results (columns, types, constraints) after running migrations
-- Explore the multi-tenant schema structure (core, metadata, workspace-specific schemas)
-- Debug issues by querying raw data to confirm whether a bug is frontend, backend, or data-level
-- Inspect metadata tables to debug GraphQL schema generation issues
+- **Emotion theme object** (`@emotion/react` `ThemeProvider`): tokens em
+  `packages/twenty-ui/src/theme/**` (ex.: a fonte vive em `theme/constants/FontCommon.ts`,
+  consumida como `theme.font.family`). Os componentes `styled` leem daqui.
+- **CSS custom properties** (prefixo `--t-*`): definidas em
+  `packages/twenty-ui/src/theme-constants/theme-light.css` e `theme-dark.css` (a versão `dist/`
+  é **gerada** — não editar). Componentes que estilizam via CSS leem daqui.
 
-This server is read-only — for write operations (reset, migrations, sync), use the CLI commands above.
+### REGRA DE OURO do tema
+> Para mudar fonte/cor/raio/espaçamento, **altere o valor do token nas DUAS origens**
+> (`theme/constants/*.ts` **e** `src/theme-constants/theme-*.css`), de forma que o valor passe a
+> ser o **nativo** do tema. Os componentes então consomem naturalmente, **sem nenhum override e
+> sem `!important`**. Se você sentiu necessidade de forçar especificidade, é porque deixou uma das
+> origens com o valor antigo. Volte e conserte a origem.
 
-### GraphQL
-```bash
-# Generate GraphQL types (run after schema changes)
-npx nx run twenty-front:graphql:generate
-npx nx run twenty-front:graphql:generate --configuration=metadata
-```
+### 3.1 Fonte (Plus Jakarta Sans) — forma correta
+- Instale a webfont como **dependência**: `@fontsource-variable/plus-jakarta-sans` (ou
+  `@fontsource/plus-jakarta-sans`). **Não** use `<link>` do Google Fonts no `index.html`.
+- Importe-a **uma vez** no entry do front (ex.: `packages/twenty-front/src/main.tsx`):
+  `import '@fontsource-variable/plus-jakarta-sans';`
+- Defina a família **no token**: `theme.font.family` (em `FontCommon.ts`) **e** a CSS var
+  `--t-font-family` (na fonte `src/theme-constants/*.css`). Mantenha `Inter` apenas como fallback
+  na cadeia (`'Plus Jakarta Sans', Inter, sans-serif`), nunca como override paralelo.
+- Resultado esperado: **nenhum** `!important`, **nenhuma** edição em `dist/`, **nenhum** override
+  em `index.html`. A fonte muda porque o token mudou.
 
-## Architecture Overview
+### 3.2 Cores de CHROME vs cores de ETAPA (não confundir)
+- **Chrome/marca** (fundo do app, superfície de card, texto, primário, foco, bordas): são **tokens
+  de tema**. Ajuste-os para a paleta clara do Kommo (ver Seção 4) nas duas origens de token.
+- **Cores de etapa do funil** (`#FFE247 #AE47FF #9AED6B #3174FF`): **NÃO são token de tema** e
+  **NÃO se hardcoda no componente**. São **dado**: a cor de cada **opção** do campo `select`
+  `stage` (por funil). A faixa de 4px no header (`RecordBoardColumnHeader.tsx`) deve **ler a cor da
+  opção da etapa** do tema/metadata daquela coluna — nunca um `switch` com hex fixo. Se o conjunto
+  de cores de opção do Twenty não cobre esses tons, **adicione essas cores ao catálogo de cores de
+  opção** (na origem), e configure as opções do funil para usá-las.
 
-### Tech Stack
-- **Frontend**: React 18, TypeScript, Jotai (state management), Linaria (styling), Vite
-- **Backend**: NestJS, TypeORM, PostgreSQL, Redis, GraphQL (with GraphQL Yoga)
-- **Monorepo**: Nx workspace managed with Yarn 4
+---
 
-### Package Structure
-```
-packages/
-├── twenty-front/          # React frontend application
-├── twenty-server/         # NestJS backend API
-├── twenty-ui/             # Shared UI components library
-├── twenty-shared/         # Common types and utilities
-├── twenty-emails/         # Email templates with React Email
-├── twenty-website/    # Next.js marketing website
-├── twenty-docs/           # Documentation website
-├── twenty-zapier/         # Zapier integration
-└── twenty-e2e-testing/    # Playwright E2E tests
-```
+## 4. Tema claro estilo Kommo (aparência-alvo)
 
-### Key Development Principles
-- **Functional components only** (no class components)
-- **Named exports only** (no default exports)
-- **Types over interfaces** (except when extending third-party interfaces)
-- **String literals over enums** (except for GraphQL enums)
-- **No 'any' type allowed** — strict TypeScript enforced
-- **Event handlers preferred over useEffect** for state updates
-- **Props down, events up** — unidirectional data flow
-- **Composition over inheritance**
-- **No abbreviations** in variable names (`user` not `u`, `fieldMetadata` not `fm`)
+O Kommo é **claro**. O default do app deve ser o tema **claro** com a paleta abaixo (aplicada como
+**valor nativo** dos tokens semânticos correspondentes — mapeie o nome real de cada token no repo):
 
-### Naming Conventions
-- **Variables/functions**: camelCase
-- **Constants**: SCREAMING_SNAKE_CASE
-- **Types/Classes**: PascalCase (suffix component props with `Props`, e.g. `ButtonProps`)
-- **Files/directories**: kebab-case with descriptive suffixes (`.component.tsx`, `.service.ts`, `.entity.ts`, `.dto.ts`, `.module.ts`)
-- **TypeScript generics**: descriptive names (`TData` not `T`)
+| Intenção (token semântico) | Valor |
+|---|---|
+| fundo do app | `#F2F4F7` |
+| superfície de card / linha | `#FFFFFF` |
+| borda sutil | `#EAECF0` |
+| texto primário | `#101828` |
+| texto secundário/muted | `#667085` |
+| link / título de lead | `#2E90FA` |
+| item ativo (seleção) | `#437EDD` |
+| primário da marca (chrome) | `#7C3AED` (Voka) — ver `brand.config.ts` |
+| acento da marca | `#D4AF37` (Voka) |
+| painel escuro da Inbox | `#203D49` |
+| ponto de tarefa: atrasada / hoje / sem | `#F04438` / `#12B76A` / `#F79009` |
 
-### File Structure
-- Components under 300 lines, services under 500 lines
-- Components in their own directories with tests and stories
-- Use `index.ts` barrel exports for clean imports
-- Import order: external libraries first, then internal (`@/`), then relative
+Fonte canônica de marca: `packages/twenty-front/src/brand/brand.config.ts`
+(`{ mode:'kommo-faithful', primary:'#7C3AED', accent:'#D4AF37' }`). O chrome lê deste arquivo.
 
-### Comments
-- Use short-form comments (`//`), not JSDoc blocks
-- Explain WHY (business logic), not WHAT
-- Do not comment obvious code
-- Multi-line comments use multiple `//` lines, not `/** */`
+---
 
-### State Management
-- **Jotai** for global state: atoms for primitive state, selectors for derived state, atom families for dynamic collections
-- Component-specific state with React hooks (`useState`, `useReducer` for complex logic)
-- GraphQL cache managed by Apollo Client
-- Use functional state updates: `setState(prev => prev + 1)`
+## 5. Internacionalização (PT-BR) — tradução de VERDADE
 
-### Backend Architecture
-- **NestJS modules** for feature organization
-- **TypeORM** for database ORM with PostgreSQL
-- **GraphQL** API with code-first approach
-- **Redis** for caching and session management
-- **BullMQ** for background job processing
+Trocar o locale default **não** traduz nada por si só. Uma tela só está traduzida quando **todas**
+as fontes de texto abaixo estão em PT-BR:
 
-### Database & Upgrade Commands
-- **PostgreSQL** as primary database
-- **Redis** for caching and sessions
-- **ClickHouse** for analytics (when enabled)
-- When changing entity files, generate an **instance command** (`database:migrate:generate --name <name> --type <fast|slow>`)
-- **Fast** instance commands handle schema changes; **slow** ones add a `runDataMigration` step for data backfills
-- **Workspace commands** iterate over all active/suspended workspaces for per-workspace upgrades
-- Commands use `@RegisteredInstanceCommand` and `@RegisteredWorkspaceCommand` decorators for automatic discovery
-- Include both `up` and `down` logic in instance commands
-- Never delete or rewrite committed instance command `up`/`down` logic
-- See `packages/twenty-server/docs/UPGRADE_COMMANDS.md` for full documentation
+1. **Strings de UI (Lingui).** Botões e rótulos como *New, Filter, Sort, Options, By Stage,
+   New Opportunity, New chat* vêm de mensagens i18n. Processo correto:
+   - `yarn lingui extract` para colher as mensagens.
+   - Traduzir o catálogo **pt-BR** (`.po`) — sem deixar `msgstr` vazio (vazio = cai no inglês).
+   - `yarn lingui compile`.
+   - Garantir locale ativo pt-BR (`initialI18nActivate.ts`) **e** que o catálogo pt-BR é carregado.
+2. **Labels de objetos STANDARD** (Companies, People, Opportunities, Tasks, Notes, Workflows…):
+   são definidos com i18n no metadata padrão do Twenty. Traduza via os `msg`/labels de origem,
+   não renomeando no banco. (Companies→Empresas, People→Contatos, Opportunities→Leads, Tasks→
+   Tarefas, Notes→Notas, etc. — alinhar ao glossário do projeto.)
+3. **Labels de objetos CUSTOM** (no print: Pets, Survey results, Employment Histories, Pet Care
+   Agreements): são **dados de metadata por workspace**, não i18n. Renomeie/ajuste via **migration
+   de seed do metadata** (ou remova os de exemplo que não pertencem ao Voka). Nunca deixe rótulo
+   custom em inglês "porque é i18n" — não é.
+4. **Enumerações/labels de opção** (etapas, fontes, tipos de tarefa): traduzir os valores de
+   exibição na configuração/seed.
 
-### Utility Helpers
-Use existing helpers from `twenty-shared` instead of manual type guards:
-- `isDefined()`, `isNonEmptyString()`, `isNonEmptyArray()`
+> Definition of Done de i18n: abrir a tela e **não encontrar uma única palavra em inglês** —
+> nem em botões, nem em nomes de objeto na sidebar, nem em menus (Filter/Sort/Options), nem em
+> tooltips. Se achar inglês, **não está pronto**.
 
-## Development Workflow
+---
 
-IMPORTANT: Use Context7 for code generation, setup or configuration steps, or library/API documentation. Automatically use the Context7 MCP tools to resolve library IDs and get library docs without waiting for explicit requests.
+## 6. Definition of Done (por PR/fase)
 
-### Before Making Changes
-1. Always run linting (`lint:diff-with-main`) and type checking after code changes
-2. Test changes with relevant test suites (prefer single-file test runs)
-3. Ensure instance commands are generated for entity changes (`database:migrate:generate`)
-4. Check that GraphQL schema changes are backward compatible
-5. Run `graphql:generate` after any GraphQL schema changes
+Um PR só está "pronto" quando **todos** os itens valem:
 
-### Code Style Notes
-- Use **Linaria** for styling with zero-runtime CSS-in-JS (styled-components pattern)
-- Follow **Nx** workspace conventions for imports
-- Use **Lingui** for internationalization
-- Apply security first, then formatting (sanitize before format)
+- [ ] Mudança feita **na origem do token/config**, não por override. **Zero `!important`** novo.
+- [ ] **Nenhum** arquivo em `dist/`/`build/` editado à mão.
+- [ ] **Nenhum** hex/fonte hardcodado em componente; tudo via token.
+- [ ] Tela em **PT-BR integral** (UI + objetos + menus), sem palavra em inglês.
+- [ ] Aparência converge para o alvo Kommo (claro, fonte Plus Jakarta Sans, faixas/pills nas cores
+      corretas, ícones unificados Lucide/Simple-Icons, **sem cara de Twenty**).
+- [ ] `yarn build` / `yarn lint` / `typecheck` passam limpos. Sem warnings novos relevantes.
+- [ ] PR pequeno e descrito: o que muda, **arquivos tocados**, **antes/depois (screenshot)**,
+      **riscos**, **como testar**.
 
-### Testing Strategy
-- **Test behavior, not implementation** — focus on user perspective
-- **Test pyramid**: 70% unit, 20% integration, 10% E2E
-- Query by user-visible elements (text, roles, labels) over test IDs
-- Use `@testing-library/user-event` for realistic interactions
-- Descriptive test names: "should [behavior] when [condition]"
-- Clear mocks between tests with `jest.clearAllMocks()`
+---
 
-## Dev Environment Setup
+## 7. Processo de trabalho
 
-All dev environments (Claude Code web, Cursor, local) use one script:
+- **Uma fase por PR.** Não misturar fases. Não avançar de fase **sem meu OK explícito**.
+- **Investigação primeiro:** todo PR que mexe em tema/i18n/metadata começa com um parágrafo
+  "onde está a fonte de verdade" (resultado do grep/leitura) antes do diff.
+- **Stack:** React/TS + Recoil + `@emotion` (front); NestJS + GraphQL + PostgreSQL (back). Reusar
+  o **metadata engine** e o **multi-tenant** do Twenty; não reinventar.
+- **Ícones:** um único set — `lucide-react` + `simple-icons` (logos de canal). Remover Tabler das
+  telas que refizemos. Não misturar bibliotecas.
+- **Migrations** sempre reversíveis; jamais quebrar dados existentes.
+- **Upstream-friendly:** preferir mudanças que não dificultem futuros merges com o Twenty.
+  Quando precisar divergir, isolar e documentar o porquê.
 
-```bash
-bash packages/twenty-utils/setup-dev-env.sh
-```
+---
 
-This handles everything: starts Postgres + Redis (auto-detects local services vs Docker), creates databases, copies `.env` files, and initializes the database schema (runs migrations) on a fresh database. Idempotent — safe to run multiple times.
+## 8. Checklist anti-gambiarra (rodar mentalmente ANTES de abrir o PR)
 
-- `--docker` — force Docker mode (uses `packages/twenty-docker/docker-compose.dev.yml`)
-- `--down` — stop services
-- `--reset` — wipe data and restart fresh
-- **Skip the setup script** for tasks that only read code — architecture questions, code review, documentation, etc.
+1. Usei `!important` para tema/marca? → **Reverter.** Mude o token na origem.
+2. Editei algo em `dist/`/`build/`? → **Reverter.** Edite a fonte e rode o build.
+3. Coloquei `<link>`/`<style>` global no `index.html` para forçar fonte/cor? → **Reverter.**
+4. Hardcodei um hex/fonte num componente? → Trocar por token.
+5. "Traduzi" só mudando o locale? → Completar catálogo + compile + labels de metadata.
+6. A faixa/pill de etapa tem hex fixo no componente? → Ler a cor da **opção** da etapa.
+7. Sobrou alguma palavra em inglês na tela? → Não está pronto.
+8. Minha mudança vai estourar no próximo `yarn build` limpo? → Refazer direito.
 
-**Note:** CI workflows (GitHub Actions) manage services via Actions service containers and run setup steps individually — they don't use this script.
+---
 
-## Important Files
-- `nx.json` - Nx workspace configuration with task definitions
-- `tsconfig.base.json` - Base TypeScript configuration
-- `package.json` - Root package with workspace definitions
-- `.cursor/rules/` - Detailed development guidelines and best practices
+## 9. Estado atual / dívida a sanar (Fase 0)
+
+A primeira execução da Fase 0 **violou** este contrato (uso de `!important`, edição de `dist/` e
+override no `index.html`). Antes de seguir, a Fase 0 deve ser **refeita corretamente**:
+
+1. **Reverter** os `!important` e os overrides globais em `theme-light.css`, `theme-dark.css` e
+   `index.html`; **reverter** edições em `dist/`.
+2. Carregar a fonte via `@fontsource-variable/plus-jakarta-sans` (import no entry) e definir a
+   família **no token** (`FontCommon.ts` + CSS var `--t-font-family` na fonte `src/theme-constants`),
+   como valor nativo — sem forçar.
+3. Aplicar a paleta clara do Kommo (Seção 4) nos tokens semânticos, tema **claro como padrão**.
+4. Tradução de verdade (Seção 5): catálogo pt-BR completo + compile + labels de objetos
+   (standard via i18n, custom via metadata). Zero inglês na tela.
+5. Faixa de etapa lendo a cor da **opção** (Seção 3.2), sem hex fixo.
+
+Só considere a Fase 0 concluída quando passar **integralmente** na Definition of Done (Seção 6).
+
+---
+
+## 10. Glossário PT-BR (rótulos canônicos)
+
+Companies→Empresas · People→Contatos · Opportunities→Leads · Tasks→Tarefas · Notes→Notas ·
+Dashboards→Painéis · Workflows→Automações · Settings→Configurações · Search→Buscar ·
+New→Novo · Filter→Filtrar · Sort→Ordenar · Options→Opções · By Stage→Por etapa ·
+New Opportunity→Novo Lead · New chat→Nova conversa · Pipeline→Funil de vendas ·
+Inbox→Caixa de Entrada · Stage→Etapa · Lead stage→Etapa do lead · Sale/Value→Valor ·
+Responsible user→Responsável · Today→Hoje · No tasks→Sem tarefas · Tags→Etiquetas ·
+Incoming/Unsorted leads→Leads não classificados · Won/Lost→Ganho/Perdido.
+Moeda **R$** (1.234,56) · datas **DD/MM/AAAA**.

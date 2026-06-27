@@ -1,6 +1,7 @@
 import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
 
 import {
+  ChannelType,
   WhatsappMessageDirection,
   WhatsappMessageStatus,
   WhatsappMessageType,
@@ -9,6 +10,7 @@ import {
 registerEnumType(WhatsappMessageDirection, { name: 'WhatsappMessageDirection' });
 registerEnumType(WhatsappMessageType, { name: 'WhatsappMessageType' });
 registerEnumType(WhatsappMessageStatus, { name: 'WhatsappMessageStatus' });
+registerEnumType(ChannelType, { name: 'ChannelType' });
 
 @ObjectType('WhatsappMessage')
 export class WhatsappMessageDTO {
@@ -41,4 +43,7 @@ export class WhatsappMessageDTO {
 
   @Field(() => Date)
   createdAt: Date;
+
+  @Field(() => ChannelType)
+  channelType: ChannelType;
 }

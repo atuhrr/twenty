@@ -5051,62 +5051,62 @@ msgstr ""
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-company-standard-flat-field-metadata.util.ts
 #: src/engine/metadata-modules/page-layout-widget/constants/standard-page-layout-widget-titles.ts
 msgid "Opportunities"
-msgstr ""
+msgstr "Leads"
 
 #. js-lingui-id: vTpjG9
 #: src/engine/metadata-modules/page-layout-widget/constants/standard-page-layout-widget-titles.ts
 msgid "Opportunities by Owner"
-msgstr ""
+msgstr "Leads por Responsável"
 
 #. js-lingui-id: 5QgKbT
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-company-standard-flat-field-metadata.util.ts
 msgid "Opportunities linked to the company."
-msgstr ""
+msgstr "Leads vinculados à empresa."
 
 #. js-lingui-id: zvf8hK
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-workspace-member-standard-flat-field-metadata.util.ts
 msgid "Opportunities owned by the workspace member"
-msgstr ""
+msgstr "Leads de responsabilidade do membro"
 
 #. js-lingui-id: SV/iis
 #: src/engine/workspace-manager/twenty-standard-application/utils/object-metadata/create-standard-flat-object-metadata.util.ts
 msgid "Opportunity"
-msgstr ""
+msgstr "Lead"
 
 #. js-lingui-id: WnMlKn
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity amount"
-msgstr ""
+msgstr "Valor do lead"
 
 #. js-lingui-id: aj3fnv
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity close date"
-msgstr ""
+msgstr "Data de fechamento"
 
 #. js-lingui-id: 3NYczb
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity company"
-msgstr ""
+msgstr "Empresa do lead"
 
 #. js-lingui-id: r3rEzW
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity owner"
-msgstr ""
+msgstr "Responsável"
 
 #. js-lingui-id: as45IN
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity point of contact"
-msgstr ""
+msgstr "Contato principal"
 
 #. js-lingui-id: Q1dzBp
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity record position"
-msgstr ""
+msgstr "Posição do lead"
 
 #. js-lingui-id: 5ugYS3
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Opportunity stage"
-msgstr ""
+msgstr "Etapa do lead"
 
 #. js-lingui-id: 2mFkfl
 #: src/engine/metadata-modules/flat-field-metadata/validators/utils/validate-enum-flat-field-metadata.util.ts
@@ -6304,7 +6304,7 @@ msgstr "O SSO está desativado."
 #. js-lingui-id: 3PRxO3
 #: src/engine/workspace-manager/twenty-standard-application/utils/field-metadata/compute-opportunity-standard-flat-field-metadata.util.ts
 msgid "Stage"
-msgstr ""
+msgstr "Etapa"
 
 #. js-lingui-id: 7XNKWU
 #: src/engine/metadata-modules/ai/ai.exception.ts

@@ -11,6 +11,7 @@ import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/use
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { ChatTab } from '@/whatsapp/components/chat/ChatTab';
 import { useWhatsappContactWindow } from '@/whatsapp/hooks/useWhatsappContactWindow';
+import { TeamChatPanel } from '@/team-chat/components/TeamChatPanel';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -150,7 +151,7 @@ const formatWindowCountdown = (
 };
 
 export const SidePanelRecordPageWithWhatsappTabs = () => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'details'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'details' | 'team'>('chat');
 
   const viewableRecordId = useAtomComponentStateValue(
     viewableRecordIdComponentState,
@@ -198,6 +199,13 @@ export const SidePanelRecordPageWithWhatsappTabs = () => {
           active={activeTab === 'details'}
           onClick={() => setActiveTab('details')}
         />
+        {/* FORK: Voka CRM — Fase 10: team chat tab */}
+        <TabButton
+          id="team"
+          title="Equipe"
+          active={activeTab === 'team'}
+          onClick={() => setActiveTab('team')}
+        />
       </StyledTabBar>
 
       <StyledActiveTab>
@@ -222,6 +230,8 @@ export const SidePanelRecordPageWithWhatsappTabs = () => {
               originLabel={originLabel ?? null}
             />
           </>
+        ) : activeTab === 'team' ? (
+          <TeamChatPanel relatedRecordId={viewableRecordId ?? null} />
         ) : (
           <SidePanelRecordPage />
         )}

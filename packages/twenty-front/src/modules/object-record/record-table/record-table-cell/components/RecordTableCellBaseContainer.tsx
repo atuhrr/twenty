@@ -4,6 +4,7 @@ import { useContext, type ReactNode } from 'react';
 import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 import { isFieldIdentifierDisplay } from '@/object-record/record-field/ui/meta-types/display/utils/isFieldIdentifierDisplay';
 import { RECORD_CHIP_CLICK_OUTSIDE_ID } from '@/object-record/record-table/constants/RecordChipClickOutsideId';
+import { RECORD_TABLE_ROW_HEIGHT } from '@/object-record/record-table/constants/RecordTableRowHeight';
 import { RecordTableCellContext } from '@/object-record/record-table/contexts/RecordTableCellContext';
 import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
 import { useOpenRecordTableCellFromCell } from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCellFromCell';
@@ -20,7 +21,8 @@ const StyledBaseContainer = styled.div<{
   box-sizing: border-box;
   cursor: ${({ isReadOnly }) => (isReadOnly ? 'default' : 'pointer')};
   display: flex;
-  height: 32px;
+  /* FORK: Voka CRM — row height via shared constant (was hardcoded 32px) */
+  height: ${RECORD_TABLE_ROW_HEIGHT}px;
   position: relative;
 
   user-select: none;

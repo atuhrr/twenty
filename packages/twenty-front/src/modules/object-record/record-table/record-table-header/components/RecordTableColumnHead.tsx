@@ -18,7 +18,8 @@ const StyledTitle = styled.div<{ hideTitle?: boolean }>`
   align-items: center;
   display: flex;
   flex-direction: row;
-  font-weight: ${themeCssVariables.font.weight.medium};
+  /* FORK: Voka CRM — semiBold (600) to match Kommo header font-weight */
+  font-weight: ${themeCssVariables.font.weight.semiBold};
   gap: ${themeCssVariables.spacing[1]};
   height: ${themeCssVariables.spacing[8]};
   padding-left: ${themeCssVariables.spacing[2]};
@@ -40,6 +41,9 @@ const StyledIcon = styled.div`
 `;
 
 const StyledText = styled.span`
+  /* FORK: Voka CRM — 11px + 0.5px letter-spacing to match Kommo column headers */
+  font-size: 11px;
+  letter-spacing: 0.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

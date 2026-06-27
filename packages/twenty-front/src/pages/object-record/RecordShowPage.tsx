@@ -1,5 +1,7 @@
 import { useParams } from 'react-router-dom';
 
+// FORK: Voka CRM — Fase 6: Ganho/Perdido buttons in Lead show page header
+import { LeadGanhoPerdidoButtons } from '@/leads/components/LeadGanhoPerdidoButtons';
 import { SidePanelToggleButton } from '@/side-panel/components/SidePanelToggleButton';
 import { RecordShowCommandMenu } from '@/command-menu-item/components/RecordShowCommandMenu';
 import { CommandMenuComponentInstanceContext } from '@/command-menu/states/contexts/CommandMenuComponentInstanceContext';
@@ -55,6 +57,10 @@ export const RecordShowPage = () => {
                 objectNameSingular={objectNameSingular}
                 objectRecordId={objectRecordId}
               >
+                {/* FORK: Voka CRM — Fase 6: Ganho/Perdido only on Lead (Opportunity) */}
+                {objectNameSingular === 'opportunity' && (
+                  <LeadGanhoPerdidoButtons objectRecordId={objectRecordId} />
+                )}
                 <RecordShowCommandMenu />
                 {!isLayoutCustomizationModeEnabled && <SidePanelToggleButton />}
               </RecordShowPageHeader>

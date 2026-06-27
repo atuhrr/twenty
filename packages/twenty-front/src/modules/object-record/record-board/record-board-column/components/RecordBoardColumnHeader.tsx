@@ -72,15 +72,30 @@ const StyledColumn = styled.div`
     ${RECORD_BOARD_COLUMN_WIDTH}px
   );
 
-  padding: ${themeCssVariables.spacing[2]};
+  /* FORK: Voka CRM — top padding removed; StyledFaixa occupies the top edge */
+  padding: 0 ${themeCssVariables.spacing[2]} ${themeCssVariables.spacing[2]};
 
   position: relative;
 `;
 
+/* FORK: Voka CRM — 4px stage color stripe (Kommo style). Background set via inline
+   style using var(--t-color-<colorName>) so the color reads from DATA (option metadata),
+   never hardcoded. */
+const StyledFaixa = styled.div`
+  border-radius: 3px 3px 0 0;
+  height: 4px;
+  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-left: -${themeCssVariables.spacing[2]};
+  margin-right: -${themeCssVariables.spacing[2]};
+`;
+
 const StyledTagContainer = styled.div`
+  /* FORK: Voka CRM — column labels in CAPS, matching Kommo alvo visual */
+  letter-spacing: 0.5px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
+  text-transform: uppercase;
 `;
 
 const StyledDropdownContainer = styled.div`
@@ -134,8 +149,21 @@ export const RecordBoardColumnHeader = () => {
     });
   };
 
+  const faixaColor =
+    columnDefinition.type === RecordGroupDefinitionType.Value
+      ? columnDefinition.color
+      : null;
+
   return (
     <StyledColumn>
+      {/* FORK: Voka CRM — 4px stage stripe, color read from SELECT option metadata */}
+      <StyledFaixa
+        style={
+          faixaColor
+            ? { background: `var(--t-color-${faixaColor})` }
+            : undefined
+        }
+      />
       <StyledHeader
         onMouseEnter={() => setIsHeaderHovered(true)}
         onMouseLeave={() => setIsHeaderHovered(false)}

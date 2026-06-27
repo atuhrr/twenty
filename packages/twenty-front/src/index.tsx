@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from '@/app/components/App';
 import { migrateTokenPairCookieToLocalStorage } from '@/auth/utils/migrateTokenPairCookieToLocalStorage';
 import { hydrateMetadataStore } from '@/metadata-store/storage/metadataStoreStorage';
+import '@fontsource-variable/plus-jakarta-sans';
 import 'react-loading-skeleton/dist/skeleton.css';
 import 'twenty-ui/style.css';
 import 'twenty-ui/theme-light.css';

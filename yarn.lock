@@ -7201,6 +7201,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource-variable/plus-jakarta-sans@npm:^5.2.8":
+  version: 5.2.8
+  resolution: "@fontsource-variable/plus-jakarta-sans@npm:5.2.8"
+  checksum: 10c0/33fcffdf8ca3f2822f9b495c7f172bfd0b6fe69832082e033924ad88cddcefb54b22d9114c641a6603782094e578a83e7d10b25086c5c2f586be51b407dbc246
+  languageName: node
+  linkType: hard
+
 "@gar/promise-retry@npm:^1.0.0, @gar/promise-retry@npm:^1.0.2":
   version: 1.0.3
   resolution: "@gar/promise-retry@npm:1.0.3"
@@ -53898,6 +53905,7 @@ __metadata:
     "@dnd-kit/react": "npm:^0.3.2"
     "@dr.pogodin/react-helmet": "npm:^3.2.2"
     "@floating-ui/react": "npm:^0.24.3"
+    "@fontsource-variable/plus-jakarta-sans": "npm:^5.2.8"
     "@graphiql/plugin-explorer": "npm:^5.1.2"
     "@graphiql/react": "npm:^0.37.6"
     "@graphql-codegen/cli": "npm:^6.3.1"

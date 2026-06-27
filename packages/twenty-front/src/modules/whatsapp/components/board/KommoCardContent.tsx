@@ -64,7 +64,8 @@ const StyledNameBlock = styled.div`
 `;
 
 const StyledLeadName = styled.span`
-  color: ${themeCssVariables.font.color.primary};
+  /* FORK: Voka CRM — lead title in Kommo link-blue #2E90FA (Kommo semantic color = alvo-visual --link) */
+  color: #2E90FA;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.3;

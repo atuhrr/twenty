@@ -6,18 +6,15 @@ import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
 export const initialI18nActivate = () => {
   const urlLocale = fromUrl('locale');
   const storageLocale = fromStorage('locale');
-  const navigatorLocale = fromNavigator();
 
-  let locale: keyof typeof APP_LOCALES = APP_LOCALES.en;
+  // Voka CRM: always default to pt-BR — do not use browser/navigator language
+  let locale: keyof typeof APP_LOCALES = APP_LOCALES['pt-BR'];
 
   const normalizedUrlLocale = isDefined(urlLocale)
     ? normalizeLocale(urlLocale)
     : null;
   const normalizedStorageLocale = isDefined(storageLocale)
     ? normalizeLocale(storageLocale)
-    : null;
-  const normalizedNavigatorLocale = isDefined(navigatorLocale)
-    ? normalizeLocale(navigatorLocale)
     : null;
 
   if (isDefined(normalizedUrlLocale) && isValidLocale(normalizedUrlLocale)) {
@@ -33,11 +30,13 @@ export const initialI18nActivate = () => {
     isValidLocale(normalizedStorageLocale)
   ) {
     locale = normalizedStorageLocale;
-  } else if (
-    isDefined(normalizedNavigatorLocale) &&
-    isValidLocale(normalizedNavigatorLocale)
-  ) {
-    locale = normalizedNavigatorLocale;
+  } else {
+    // Persist pt-BR so subsequent loads don't re-evaluate
+    try {
+      localStorage.setItem('locale', APP_LOCALES['pt-BR']);
+    } catch {
+      // ignore
+    }
   }
 
   dynamicActivate(locale);

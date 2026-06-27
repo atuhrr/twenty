@@ -30,6 +30,14 @@ export enum WhatsappMessageStatus {
   FAILED = 'FAILED',
 }
 
+// FORK: Voka CRM — Fase 10: source channel for omni-channel routing
+export enum ChannelType {
+  WHATSAPP = 'WHATSAPP',
+  INSTAGRAM = 'INSTAGRAM',
+  MESSENGER = 'MESSENGER',
+  TELEGRAM = 'TELEGRAM',
+}
+
 @Entity({ name: 'whatsappMessage', schema: 'core' })
 @Unique('IDX_WHATSAPP_MESSAGE_EXTERNAL_ID_UNIQUE', ['externalMessageId'])
 @Index('IDX_WHATSAPP_MESSAGE_WORKSPACE_CONTACT', ['workspaceId', 'contactId'])
@@ -72,6 +80,15 @@ export class WhatsappMessageEntity extends WorkspaceRelatedEntity {
     default: WhatsappMessageStatus.SENT,
   })
   status: WhatsappMessageStatus;
+
+  // FORK: Voka CRM — Fase 10: origin channel (added via migration, defaults to WHATSAPP)
+  @Column({
+    nullable: false,
+    type: 'enum',
+    enum: ChannelType,
+    default: ChannelType.WHATSAPP,
+  })
+  channelType: ChannelType;
 
   @Column({ nullable: false, type: 'timestamptz' })
   timestamp: Date;
