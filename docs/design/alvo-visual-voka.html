@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voka CRM — Alvo Visual (clone Kommo, PT-BR)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.5.0/dist/tabler-icons.min.css">
+<style>
+  :root{
+    /* ===== TOKENS — cores extraídas pixel a pixel das telas do Kommo ===== */
+    --etapa-1:#FFE247;        /* Leads Recebidos  (amarelo)  */
+    --etapa-2:#AE47FF;        /* Tomada de Decisão (roxo)    */
+    --etapa-3:#9AED6B;        /* Negociação        (verde)   */
+    --etapa-4:#3174FF;        /* Decisão Final     (azul)    */
+    --pill-azul-bg:#99CCFF;   --pill-azul-tx:#1E40AF;
+    --pill-amar-bg:#FFFF99;   --pill-amar-tx:#92700A;
+    --pill-rosa-bg:#FFCCCC;   --pill-rosa-tx:#B42318;
+    --link:#2E90FA;
+    --ativo:#437EDD;
+    --app:#F2F4F7;
+    --card:#FFFFFF;
+    --borda:#EAECF0;
+    --txt:#101828;
+    --muted:#667085;
+    --inbox-dark:#203D49;
+    --bubble:#2E90FA;
+    --dot-atrasada:#F04438;
+    --dot-hoje:#12B76A;
+    --dot-sem:#F79009;
+    --tag-bg:#F2F4F7; --tag-tx:#475467;
+    --voka-roxo:#7C3AED; --voka-dourado:#D4AF37;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#E5E7EB;font-family:'Plus Jakarta Sans',sans-serif;color:var(--txt);padding:28px;}
+  .tela{background:var(--app);border-radius:14px;padding:16px;margin:0 auto 34px;max-width:980px;box-shadow:0 1px 3px rgba(16,24,40,.06);}
+  .legenda{max-width:980px;margin:0 auto 8px;font-size:13px;color:#475467;font-weight:600;letter-spacing:.3px;}
+  /* topbar */
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .logo{font-weight:700;font-size:16px;color:var(--voka-roxo);letter-spacing:1px;}
+  .toggle{color:#98A2B3;display:flex;gap:6px;}
+  .busca{flex:1;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--borda);border-radius:8px;padding:7px 12px;color:#98A2B3;font-size:13px;}
+  .total{font-size:13px;color:#475467;}
+  .total b{color:var(--txt);}
+  .btn-auto{background:#fff;border:1px solid var(--borda);border-radius:8px;padding:7px 12px;font-size:13px;color:#B54708;}
+  .btn-auto .ti{color:var(--dot-sem);}
+  .btn-new{background:var(--link);color:#fff;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;}
+  /* kanban */
+  .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .col-h{font-size:12px;font-weight:600;color:#475467;letter-spacing:.5px;padding:0 2px 7px;}
+  .faixa{height:4px;border-radius:3px 3px 0 0;margin-bottom:12px;}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:12px;margin-bottom:10px;}
+  .card-top{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+  .av{position:relative;width:32px;height:32px;flex:none;}
+  .av .ini{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;}
+  .badge{position:absolute;right:-3px;bottom:-3px;width:17px;height:17px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;}
+  .badge .ti{font-size:9px;color:#fff;}
+  .nome{font-size:13px;font-weight:600;flex:1;}
+  .data{font-size:11px;color:#98A2B3;}
+  .titulo{font-size:13px;color:var(--link);font-weight:600;margin-bottom:7px;}
+  .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:9px;}
+  .valor{font-size:12px;color:#475467;}
+  .tag{font-size:11px;background:var(--tag-bg);border:1px solid var(--borda);color:var(--tag-tx);padding:1px 7px;border-radius:5px;}
+  .status{text-align:right;font-size:11px;}
+  .dot{font-size:14px;line-height:0;vertical-align:middle;}
+  /* avatar palettes */
+  .p1{background:#EEEDFE;color:#534AB7;} .p2{background:#FAEEDA;color:#854F0B;}
+  .p3{background:#E1F5EE;color:#0F6E56;} .p4{background:#FCEBEB;color:#A32D2D;}
+  .p5{background:#FBEAF0;color:#993556;} .p6{background:#E6F1FB;color:#185FA5;}
+  .p7{background:#F1EFE8;color:#444441;}
+  .wa{background:#25D366;} .ig{background:#E1306C;} .tg{background:#229ED9;}
+  .gg{background:#EA4335;} .ms{background:#0084FF;}
+  /* lista */
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--borda);border-radius:10px;overflow:hidden;}
+  thead th{text-align:left;font-size:11px;font-weight:600;color:#98A2B3;letter-spacing:.5px;padding:12px 16px;border-bottom:1px solid var(--borda);}
+  thead th.r,td.r{text-align:right;}
+  tbody td{padding:13px 16px;font-size:13px;border-bottom:1px solid #F2F4F7;}
+  tbody tr:last-child td{border-bottom:none;}
+  td .lk{color:var(--link);font-weight:600;}
+  td .ct{text-decoration:underline;color:#344054;}
+  .pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;}
+  /* inbox */
+  .inbox{display:grid;grid-template-columns:260px 270px 1fr;gap:0;background:#fff;border:1px solid var(--borda);border-radius:12px;overflow:hidden;min-height:430px;}
+  .conv-list{border-right:1px solid var(--borda);}
+  .conv-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;}
+  .conv-h .ti{color:#98A2B3;}
+  .inbox-label{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;font-size:11px;font-weight:700;color:#667085;letter-spacing:.5px;}
+  .cnt{background:#E6F1FB;color:#185FA5;font-size:10px;font-weight:700;padding:1px 7px;border-radius:8px;}
+  .conv{display:flex;gap:9px;padding:10px 14px;border-top:1px solid #F2F4F7;align-items:center;}
+  .conv.sel{background:#EEF4FF;border-left:3px solid var(--ativo);}
+  .conv .body{flex:1;min-width:0;}
+  .conv .nm{font-size:12.5px;font-weight:600;}
+  .conv .pv{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .conv .tm{font-size:10.5px;color:#98A2B3;}
+  /* painel escuro */
+  .contato{background:var(--inbox-dark);color:#E6EDF0;padding:16px;}
+  .contato .nome-g{font-size:16px;font-weight:700;margin-bottom:8px;color:#fff;}
+  .add-tag{font-size:10px;border:1px dashed #4A6470;color:#9FB6C0;border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:12px;}
+  .funil-sel{background:#19303A;border-radius:8px;padding:8px 11px;font-size:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .funil-sel small{display:block;color:#7C97A2;font-size:10px;}
+  .abas{display:flex;gap:14px;font-size:12px;border-bottom:1px solid #2C4A56;padding-bottom:8px;margin-bottom:12px;}
+  .abas .on{color:#fff;font-weight:600;border-bottom:2px solid var(--etapa-1);padding-bottom:8px;}
+  .abas .off{color:#7C97A2;}
+  .kv{font-size:12px;margin-bottom:9px;}
+  .kv .k{color:#7C97A2;}
+  .kv .v{color:#fff;}
+  /* conversa */
+  .chat{display:flex;flex-direction:column;padding:14px;gap:10px;background:#fff;}
+  .dia{text-align:center;font-size:10.5px;color:#98A2B3;}
+  .msg{max-width:72%;padding:8px 11px;border-radius:12px;font-size:12.5px;line-height:1.4;}
+  .in{background:#F2F4F7;color:#344054;align-self:flex-start;border-bottom-left-radius:4px;}
+  .out{background:var(--bubble);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+  .tcard{border:1px solid var(--borda);border-radius:8px;padding:9px 11px;font-size:12px;color:#344054;display:flex;gap:8px;align-items:flex-start;}
+  .tcard .ti{color:var(--dot-hoje);font-size:15px;}
+  .compositor{margin-top:auto;border-top:1px solid var(--borda);padding-top:10px;}
+  .cmp-tabs{font-size:12px;margin-bottom:8px;color:#475467;}
+  .cmp-tabs b{color:var(--txt);}
+  .cmp-input{display:flex;align-items:center;gap:8px;border:1px solid var(--borda);border-radius:10px;padding:8px 11px;color:#98A2B3;font-size:12.5px;}
+  .cmp-actions{display:flex;gap:8px;margin-top:10px;}
+  .send{background:#D0D5DD;color:#fff;border-radius:8px;padding:6px 16px;font-size:12px;font-weight:600;}
+  .cancel{color:#667085;font-size:12px;padding:6px 4px;}
+</style>
+</head>
+<body>
+
+<!-- ============ TELA 1: FUNIL KANBAN ============ -->
+<div class="legenda">TELA 1 — Funil de Vendas (Kanban)</div>
+<div class="tela">
+  <div class="topbar">
+    <span class="logo">VOKA</span>
+    <span class="toggle"><i class="ti ti-layout-kanban"></i><i class="ti ti-list"></i></span>
+    <div class="busca"><i class="ti ti-search"></i> Buscar e filtrar</div>
+    <span class="total">48 leads: <b>R$ 32.000</b></span>
+    <span class="btn-auto"><i class="ti ti-bolt"></i> Automatizar</span>
+    <span class="btn-new"><i class="ti ti-plus"></i> Novo Lead</span>
+  </div>
+  <div class="cols">
+
+    <div>
+      <div class="col-h">LEADS RECEBIDOS</div><div class="faixa" style="background:var(--etapa-1)"></div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p1">MC</div><span class="badge wa"><i class="ti ti-brand-whatsapp"></i></span></div><span class="nome">Mariana Costa</span><span class="data">10/09</span></div>
+        <div class="titulo">Consultoria de marketing</div>
+        <div class="meta"><span class="valor">R$ 450</span><span class="tag">Urgente</span><span class="tag">Fácil</span></div>
+        <div class="status" style="color:var(--dot-atrasada)">2d <span class="dot">●</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p2">BH</div><span class="badge ig"><i class="ti ti-brand-instagram"></i></span></div><span class="nome">Bruno Hauer</span><span class="data">10/09</span></div>
+        <div class="titulo">Sessão de estratégia</div>
+        <div class="meta"><span class="valor">R$ 450</span><span class="tag">VIP</span></div>
+        <div class="status" style="color:var(--dot-hoje)">Hoje <span class="dot">●</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-h">TOMADA DE DECISÃO</div><div class="faixa" style="background:var(--etapa-2)"></div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p3">LR</div><span class="badge tg"><i class="ti ti-brand-telegram"></i></span></div><span class="nome">Lívia Ramos</span><span class="data">10/09</span></div>
+        <div class="titulo">Consultoria de PR</div>
+        <div class="meta"><span class="valor">R$ 450</span><span class="tag">Demo</span></div>
+        <div class="status" style="color:var(--dot-sem)">Sem tarefas <span class="dot">●</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p4">OH</div><span class="badge wa"><i class="ti ti-brand-whatsapp"></i></span></div><span class="nome">Otávio Horta</span><span class="data">12/09</span></div>
+        <div class="titulo">Reformulação de redes</div>
+        <div class="meta"><span class="valor">R$ 5.000</span><span class="tag">Upsell</span></div>
+        <div class="status" style="color:var(--dot-hoje)">Hoje <span class="dot">●</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-h">NEGOCIAÇÃO</div><div class="faixa" style="background:var(--etapa-3)"></div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p5">AR</div><span class="badge gg"><i class="ti ti-brand-google"></i></span></div><span class="nome">Aline Reis</span><span class="data">09/09</span></div>
+        <div class="titulo">Reformulação de redes</div>
+        <div class="meta"><span class="valor">R$ 5.000</span><span class="tag">Upsell</span></div>
+        <div class="status" style="color:var(--dot-sem)">Sem tarefas <span class="dot">●</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p6">TB</div><span class="badge ms"><i class="ti ti-brand-messenger"></i></span></div><span class="nome">Tiago Bastos</span><span class="data">09/09</span></div>
+        <div class="titulo">Consultoria de marketing</div>
+        <div class="meta"><span class="valor">R$ 5.000</span><span class="tag">Urgente</span></div>
+        <div class="status" style="color:var(--dot-hoje)">Hoje <span class="dot">●</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-h">DECISÃO FINAL</div><div class="faixa" style="background:var(--etapa-4)"></div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p7">AM</div><span class="badge wa"><i class="ti ti-brand-whatsapp"></i></span></div><span class="nome">Ana Mendes</span><span class="data">10/09</span></div>
+        <div class="titulo">Consultoria de redes</div>
+        <div class="meta"><span class="valor">R$ 5.000</span><span class="tag">Upsell</span></div>
+        <div class="status" style="color:var(--dot-hoje)">Hoje <span class="dot">●</span></div>
+      </div>
+      <div class="card">
+        <div class="card-top"><div class="av"><div class="ini p1">TD</div><span class="badge tg"><i class="ti ti-brand-telegram"></i></span></div><span class="nome">Téo Dias</span><span class="data">10/09</span></div>
+        <div class="titulo">Consultoria de marketing</div>
+        <div class="meta"><span class="valor">R$ 900</span><span class="tag">Urgente</span></div>
+        <div class="status" style="color:var(--dot-atrasada)">2d <span class="dot">●</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ TELA 2: FUNIL LISTA ============ -->
+<div class="legenda">TELA 2 — Funil de Vendas (Lista)</div>
+<div class="tela">
+  <div class="topbar">
+    <span class="logo">VOKA</span>
+    <span class="toggle"><i class="ti ti-layout-kanban"></i><i class="ti ti-list" style="color:#475467"></i></span>
+    <div class="busca"><i class="ti ti-search"></i> Buscar e filtrar</div>
+    <span class="total">48 leads: <b>R$ 32.000</b></span>
+    <span class="btn-auto"><i class="ti ti-bolt"></i> Automatizar</span>
+    <span class="btn-new"><i class="ti ti-plus"></i> Novo Lead</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th>TÍTULO DO LEAD</th><th>CONTATO PRINCIPAL</th><th>EMPRESA DO CONTATO</th><th>ETAPA DO LEAD</th><th class="r">VALOR (R$)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><span class="lk">Consultoria de redes</span></td><td><span class="ct">Jéssica Iron</span></td><td></td><td><span class="pill" style="background:var(--pill-azul-bg);color:var(--pill-azul-tx)">Primeiro contato</span></td><td class="r">5.000</td></tr>
+      <tr><td><span class="lk">Projeto de vídeo</span></td><td><span class="ct">Virgínia Antônio</span></td><td></td><td><span class="pill" style="background:var(--pill-azul-bg);color:var(--pill-azul-tx)">Primeiro contato</span></td><td class="r">450</td></tr>
+      <tr><td><span class="lk">Sessão de estratégia</span></td><td><span class="ct">Raiana Góes</span></td><td></td><td><span class="pill" style="background:var(--pill-amar-bg);color:var(--pill-amar-tx)">Em negociação</span></td><td class="r">2.000</td></tr>
+      <tr><td><span class="lk">Consultoria de PR</span></td><td><span class="ct">José Aço</span></td><td>Deep Breath, Ltda</td><td><span class="pill" style="background:var(--pill-azul-bg);color:var(--pill-azul-tx)">Primeiro contato</span></td><td class="r">750</td></tr>
+      <tr><td><span class="lk">Consultoria de redes</span></td><td><span class="ct">Sara Norton</span></td><td></td><td><span class="pill" style="background:var(--pill-rosa-bg);color:var(--pill-rosa-tx)">Discussão de contrato</span></td><td class="r">500</td></tr>
+      <tr><td><span class="lk">Consultoria de redes</span></td><td><span class="ct">Beatriz Black</span></td><td>Cherry Pie Company</td><td><span class="pill" style="background:var(--pill-amar-bg);color:var(--pill-amar-tx)">Em negociação</span></td><td class="r">1.000</td></tr>
+      <tr><td><span class="lk">Consultoria de marketing</span></td><td><span class="ct">Alexa Park</span></td><td></td><td><span class="pill" style="background:var(--pill-azul-bg);color:var(--pill-azul-tx)">Primeiro contato</span></td><td class="r">2.000</td></tr>
+      <tr><td><span class="lk">Projeto secreto</span></td><td><span class="ct">Inês L.</span></td><td>Weekend Everyday</td><td><span class="pill" style="background:var(--pill-azul-bg);color:var(--pill-azul-tx)">Primeiro contato</span></td><td class="r">450</td></tr>
+      <tr><td><span class="lk">Sessão de estratégia</span></td><td><span class="ct">Júlio Jung</span></td><td></td><td><span class="pill" style="background:var(--pill-amar-bg);color:var(--pill-amar-tx)">Em negociação</span></td><td class="r">3.500</td></tr>
+      <tr><td><span class="lk">Análises</span></td><td><span class="ct">Ella Volga</span></td><td></td><td><span class="pill" style="background:var(--pill-amar-bg);color:var(--pill-amar-tx)">Em negociação</span></td><td class="r">7.000</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ TELA 3: CAIXA DE ENTRADA ============ -->
+<div class="legenda">TELA 3 — Caixa de Entrada (Inbox multicanal)</div>
+<div class="tela">
+  <div class="inbox">
+
+    <div class="conv-list">
+      <div class="conv-h"><div class="busca" style="border:none;padding:0;flex:none"><i class="ti ti-search"></i> Buscar</div><i class="ti ti-settings"></i></div>
+      <div class="inbox-label">CAIXA DE ENTRADA <span class="cnt">180</span></div>
+      <div class="inbox-label" style="font-weight:500;color:#98A2B3"><span><i class="ti ti-filter"></i> Filtrar</span><i class="ti ti-dots"></i></div>
+      <div class="conv sel"><div class="av"><div class="ini p3" style="width:34px;height:34px">MK</div><span class="badge wa"><i class="ti ti-brand-whatsapp"></i></span></div><div class="body"><div class="nm">Mary Kim</div><div class="pv">Consigo um desconto na próxima…</div></div><div style="text-align:right"><div class="tm">13:06</div><i class="ti ti-star" style="color:#FBBF24;font-size:13px"></i></div></div>
+      <div class="conv"><div class="av"><div class="ini p6" style="width:34px;height:34px">JH</div><span class="badge ms"><i class="ti ti-brand-messenger"></i></span></div><div class="body"><div class="nm">João Henrique</div><div class="pv">Oi, tenho uma dúvida</div></div><div class="tm">17:45</div></div>
+      <div class="conv"><div class="av"><div class="ini p2" style="width:34px;height:34px">SE</div><span class="badge ig"><i class="ti ti-brand-instagram"></i></span></div><div class="body"><div class="nm">Sônia Esteves</div><div class="pv">Você acha que…</div></div><div class="tm">12:45</div></div>
+      <div class="conv"><div class="av"><div class="ini p4" style="width:34px;height:34px">MG</div><span class="badge tg"><i class="ti ti-brand-telegram"></i></span></div><div class="body"><div class="nm">Melina Greco</div><div class="pv">Mal posso esperar!</div></div><div class="tm">11:56</div></div>
+      <div class="conv"><div class="av"><div class="ini p5" style="width:34px;height:34px">BM</div><span class="badge wa"><i class="ti ti-brand-whatsapp"></i></span></div><div class="body"><div class="nm">Bruna Marini</div><div class="pv">Oi de novo :P</div></div><div class="tm">11:45</div></div>
+      <div class="conv"><div class="av"><div class="ini p1" style="width:34px;height:34px">EB</div><span class="badge gg"><i class="ti ti-brand-google"></i></span></div><div class="body"><div class="nm">Eloá Blanco</div><div class="pv">Vocês gravam…</div></div><div class="tm">09:49</div></div>
+      <div class="inbox-label" style="border-top:1px solid var(--borda);margin-top:6px">MENÇÕES E CHAT DA EQUIPE</div>
+    </div>
+
+    <div class="contato">
+      <div class="nome-g">Mary Kim</div>
+      <span class="add-tag">+ ADICIONAR TAGS</span>
+      <div class="funil-sel"><div><small>Funil de vendas</small>Leads Recebidos</div><i class="ti ti-chevron-down"></i></div>
+      <div class="abas"><span class="on">Principal</span><span class="off">Estatísticas</span><span class="off">Configuração</span></div>
+      <div class="kv"><span class="k">Responsável</span><br><span class="v">Ariel</span></div>
+      <div class="kv"><span class="k">Valor</span><br><span class="v" style="font-size:15px;font-weight:700">R$ 1.200</span></div>
+      <div style="border-top:1px solid #2C4A56;margin:12px 0;padding-top:12px">
+        <div class="kv"><span class="k">Telefone</span><br><span class="v">+55 (81) 3345-6789</span></div>
+        <div class="kv"><span class="k">E-mail</span><br><span class="v">marykim@gmail.com</span></div>
+        <div class="kv"><span class="k">Cargo</span><br><span class="v">Compradora regional</span></div>
+      </div>
+      <div style="color:#7C97A2;font-size:12px">+ Adicionar contato</div>
+    </div>
+
+    <div class="chat">
+      <div class="dia">Hoje</div>
+      <div class="msg out">Ficamos felizes em saber! Volte sempre!</div>
+      <div class="msg in">Consigo um desconto na próxima compra? 😊</div>
+      <div class="dia">Hoje</div>
+      <div class="tcard"><i class="ti ti-circle-check"></i><div><b>Acompanhar:</b> verificar satisfação do cliente</div></div>
+      <div class="tcard"><i class="ti ti-file" style="color:#98A2B3"></i><div>Cliente fez uma grande compra e quer desconto na próxima</div></div>
+      <div class="compositor">
+        <div class="cmp-tabs"><b>Chat</b> com <u>Téo</u></div>
+        <div class="cmp-input"><i class="ti ti-mood-smile"></i> Escreva uma mensagem… <i class="ti ti-paperclip" style="margin-left:auto"></i></div>
+        <div class="cmp-actions"><span class="send">Enviar</span><span class="cancel">Cancelar</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
