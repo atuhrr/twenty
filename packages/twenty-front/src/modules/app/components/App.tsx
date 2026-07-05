@@ -1,5 +1,6 @@
 import { AppRouter } from '@/app/components/AppRouter';
 import { ApolloDevLogEffect } from '@/debug/components/ApolloDevLogEffect';
+import { ThemeProvider } from '@/modules/tailadmin/context/ThemeContext';
 import { AppErrorBoundary } from '@/error-handler/components/AppErrorBoundary';
 import { AppRootErrorFallback } from '@/error-handler/components/AppRootErrorFallback';
 import { ExceptionHandlerProvider } from '@/error-handler/components/ExceptionHandlerProvider';
@@ -17,6 +18,7 @@ initialI18nActivate();
 
 export const App = () => {
   return (
+    <ThemeProvider>
     <JotaiProvider store={jotaiStore}>
       <AppErrorBoundary
         resetOnLocationChange={false}
@@ -42,5 +44,6 @@ export const App = () => {
         </I18nProvider>
       </AppErrorBoundary>
     </JotaiProvider>
+    </ThemeProvider>
   );
 };
