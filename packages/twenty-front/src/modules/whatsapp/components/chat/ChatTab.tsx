@@ -1,4 +1,5 @@
 /* oxlint-disable twenty/no-hardcoded-colors */
+import { useState } from 'react';
 import { styled } from '@linaria/react';
 
 import { ChatInput } from '@/whatsapp/components/chat/ChatInput';
@@ -44,6 +45,15 @@ const StyledCampaignLine = styled.span`
   opacity: 0.8;
 `;
 
+const StyledSendError = styled.div`
+  background: #fef2f2;
+  border-top: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 11px;
+  padding: 5px 14px;
+  text-align: center;
+`;
+
 export const ChatTab = ({
   contactId,
   phoneNumber,
@@ -56,6 +66,15 @@ export const ChatTab = ({
     contactId,
     phoneNumber ?? '',
   );
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  const handleSend = async (text: string) => {
+    setSendError(null);
+    const result = await send(text);
+    if (result.errorMessage) {
+      setSendError(result.errorMessage);
+    }
+  };
 
   return (
     <StyledContainer>
@@ -68,10 +87,14 @@ export const ChatTab = ({
         </StyledOriginBanner>
       )}
       <ChatMessageList messages={messages} loading={loading} />
+      {sendError && <StyledSendError>⚠ {sendError}</StyledSendError>}
       <ChatInput
-        onSend={send}
-        disabled={!phoneNumber || !isWindowOpen}
+        onSend={handleSend}
+        disabled={!phoneNumber}
+        windowClosed={!isWindowOpen}
         sending={sending}
+        contactId={contactId}
+        phoneNumber={phoneNumber ?? undefined}
       />
     </StyledContainer>
   );

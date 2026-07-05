@@ -12,6 +12,14 @@ import {
   WhatsappQuickReplyDTO,
 } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-quick-reply.dto';
 import { SendWhatsappMessageInput } from 'src/engine/core-modules/whatsapp/dtos/send-whatsapp-message.input';
+import {
+  SendWhatsappTemplateInput,
+  WhatsappTemplateDTO,
+} from 'src/engine/core-modules/whatsapp/dtos/whatsapp-template.dto';
+import {
+  UpdateWhatsappPhoneNumberInput,
+  WhatsappPhoneNumberDTO,
+} from 'src/engine/core-modules/whatsapp/dtos/whatsapp-phone-number.dto';
 import { WhatsappConnectionStatusDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-connection-status.dto';
 import { WhatsappContactWindowDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-contact-window.dto';
 import { WhatsappMessageDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-message.dto';
@@ -170,6 +178,104 @@ export class WhatsappResolver {
       direction: WhatsappMessageDirection.OUTBOUND,
       type: WhatsappMessageType.TEXT,
       content: input.text,
+      mediaUrl: null,
+      externalMessageId: externalId,
+      status: WhatsappMessageStatus.SENT,
+      timestamp: now,
+      createdAt: now,
+    };
+  }
+
+  // FORK: Voka CRM — Fase 11: multi-number management
+  @Query(() => [WhatsappPhoneNumberDTO])
+  async whatsappPhoneNumbers(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<WhatsappPhoneNumberDTO[]> {
+    const instances = await this.whatsappService.listInstances(workspace.id);
+
+    return instances.map((i) => ({
+      id: i.id,
+      wabaId: i.wabaId,
+      phoneNumberId: i.phoneNumberId,
+      displayPhoneNumber: i.displayPhoneNumber,
+      label: i.label ?? null,
+      isDefault: i.isDefault,
+      connectionStatus: i.connectionStatus,
+      createdAt: i.createdAt.toISOString(),
+    }));
+  }
+
+  @Mutation(() => Boolean)
+  async setDefaultWhatsappPhoneNumber(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('instanceId') instanceId: string,
+  ): Promise<boolean> {
+    return this.whatsappService.setDefaultInstance(workspace.id, instanceId);
+  }
+
+  @Mutation(() => Boolean)
+  async deleteWhatsappPhoneNumber(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('instanceId') instanceId: string,
+  ): Promise<boolean> {
+    return this.whatsappService.deleteInstance(workspace.id, instanceId);
+  }
+
+  @Mutation(() => Boolean)
+  async updateWhatsappPhoneNumberLabel(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: UpdateWhatsappPhoneNumberInput,
+  ): Promise<boolean> {
+    return this.whatsappService.updateInstanceLabel(
+      workspace.id,
+      input.instanceId,
+      input.label ?? '',
+    );
+  }
+
+  // FORK: Voka CRM — Fase 11: list approved WhatsApp templates from Meta
+  @Query(() => [WhatsappTemplateDTO])
+  async whatsappTemplates(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<WhatsappTemplateDTO[]> {
+    return this.whatsappService.listTemplates(workspace.id);
+  }
+
+  // FORK: Voka CRM — Fase 11: send approved template (for closed 24h window)
+  @Mutation(() => WhatsappMessageDTO)
+  async sendWhatsappTemplate(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: SendWhatsappTemplateInput,
+  ): Promise<WhatsappMessageDTO> {
+    const normalizedPhone = normalizeBrPhone(input.phoneNumber);
+    const externalId = await this.whatsappService.sendTemplateMessage(
+      workspace.id,
+      normalizedPhone,
+      input.templateName,
+      input.languageCode,
+      input.components ?? [],
+    );
+
+    const message = await this.whatsappService.dedupeAndSaveMessage({
+      workspaceId: workspace.id,
+      contactId: input.contactId,
+      direction: WhatsappMessageDirection.OUTBOUND,
+      type: WhatsappMessageType.TEMPLATE,
+      content: `[Template] ${input.templateName}`,
+      mediaUrl: null,
+      externalMessageId: externalId || `local_${Date.now()}`,
+      status: WhatsappMessageStatus.SENT,
+      timestamp: new Date(),
+    });
+
+    const now = new Date();
+
+    return {
+      id: message?.id ?? '',
+      contactId: input.contactId,
+      direction: WhatsappMessageDirection.OUTBOUND,
+      type: WhatsappMessageType.TEMPLATE,
+      content: `[Template] ${input.templateName}`,
       mediaUrl: null,
       externalMessageId: externalId,
       status: WhatsappMessageStatus.SENT,

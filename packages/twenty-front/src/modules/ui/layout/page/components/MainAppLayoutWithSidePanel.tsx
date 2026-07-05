@@ -36,6 +36,7 @@ const StyledContent = styled.div`
 const StyledContentTransitionContainer = styled.div`
   display: grid;
   flex: 1 1 0;
+  grid-auto-rows: 1fr;
   min-height: 0;
   min-width: 0;
   overflow: hidden;

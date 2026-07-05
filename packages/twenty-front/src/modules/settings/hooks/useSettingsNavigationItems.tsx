@@ -154,13 +154,30 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           Icon: IconApi,
           isHidden: !permissionMap[PermissionFlagType.API_KEYS_AND_WEBHOOKS],
         },
-        // TODO: Re-enable when integrations page is ready
-        // {
-        //   label: t`Integrations`,
-        //   path: SettingsPath.Integrations,
-        //   Icon: IconApps,
-        //   isHidden: !permissionMap[PermissionFlagType.API_KEYS_AND_WEBHOOKS],
-        // },
+        {
+          label: t`Integrações`,
+          path: SettingsPath.Integrations,
+          Icon: IconPlug,
+          isHidden: !permissionMap[PermissionFlagType.API_KEYS_AND_WEBHOOKS],
+        },
+        {
+          label: t`Equipes`,
+          path: SettingsPath.Equipes,
+          Icon: IconUsers,
+          isHidden: !permissionMap[PermissionFlagType.WORKSPACE_MEMBERS],
+        },
+        {
+          label: t`Motivos de perda`,
+          path: SettingsPath.MotivosDePerca,
+          Icon: IconSettings,
+          isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
+        },
+        {
+          label: t`Canais conectados`,
+          path: SettingsPath.CanaisConectados,
+          Icon: IconMessage,
+          isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
+        },
         {
           label: t`Apps`,
           path: SettingsPath.Applications,
@@ -180,9 +197,9 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           Icon: IconMessage,
           isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
         },
-        // FORK: Voka CRM — Fase 12: broadcast
+        // FORK: Voka CRM — Fase 12: broadcast (redirect para tab principal)
         {
-          label: t`Broadcast`,
+          label: t`Campanhas`,
           path: SettingsPath.Broadcast,
           Icon: IconSend,
           isHidden: !permissionMap[PermissionFlagType.WORKSPACE],

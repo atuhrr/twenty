@@ -126,7 +126,7 @@ export const QuickReplyComposer = ({
   sending,
 }: {
   placeholder: string;
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string) => void | Promise<unknown>;
   disabled?: boolean;
   sending?: boolean;
 }) => {

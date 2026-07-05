@@ -296,6 +296,40 @@ const StyledConvScroll = styled.div`
   overflow-y: auto;
 `;
 
+const StyledChannelTabs = styled.div`
+  border-bottom: 1px solid ${C.borda};
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding: 0 8px;
+`;
+
+const StyledChannelTab = styled.button<{ active: boolean }>`
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid ${({ active }) => (active ? C.active : 'transparent')};
+  color: ${({ active }) => (active ? C.active : C.muted)};
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: ${({ active }) => (active ? '600' : '500')};
+  padding: 6px 10px;
+  white-space: nowrap;
+
+  &:hover { color: ${C.active}; }
+`;
+
+const StyledComingSoon = styled.div`
+  align-items: center;
+  color: ${C.muted};
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 6px;
+  justify-content: center;
+  padding: 32px 14px;
+  text-align: center;
+`;
+
 const StyledConvItem = styled.div<{ selected: boolean }>`
   align-items: center;
   background: ${({ selected }) => (selected ? C.activeBg : 'transparent')};
@@ -794,6 +828,17 @@ type RealThread = {
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+type ChannelFilter = 'todos' | 'whatsapp' | 'instagram' | 'messenger' | 'telegram' | 'email';
+
+const CHANNEL_TABS: { key: ChannelFilter; label: string; implemented: boolean }[] = [
+  { key: 'todos', label: 'Todos', implemented: true },
+  { key: 'whatsapp', label: 'WhatsApp', implemented: true },
+  { key: 'instagram', label: 'Instagram', implemented: false },
+  { key: 'messenger', label: 'Messenger', implemented: false },
+  { key: 'telegram', label: 'Telegram', implemented: false },
+  { key: 'email', label: 'E-mail', implemented: false },
+];
+
 const RealConversationList = ({
   threads,
   selectedId,
@@ -802,79 +847,114 @@ const RealConversationList = ({
   threads: RealThread[];
   selectedId: string;
   onSelect: (id: string) => void;
-}) => (
-  <StyledConvList>
-    <StyledConvHeader>
-      <StyledSearchBar>
-        <IconSearch size={14} />
-        Buscar
-      </StyledSearchBar>
-      <IconSettings size={16} color={C.gray} />
-    </StyledConvHeader>
+}) => {
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>('todos');
 
-    <StyledInboxLabel>
-      CAIXA DE ENTRADA{' '}
-      <StyledCntBadge>{threads.length}</StyledCntBadge>
-    </StyledInboxLabel>
+  const visibleThreads =
+    channelFilter === 'todos'
+      ? threads
+      : threads.filter(
+          (t) => (t.channelType ?? 'whatsapp').toLowerCase() === channelFilter,
+        );
 
-    <StyledFilterRow>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <IconFilter size={13} />
-        Filtrar
-      </span>
-      <IconDotsVertical size={16} />
-    </StyledFilterRow>
+  const activeTab = CHANNEL_TABS.find((t) => t.key === channelFilter);
+  const isComingSoon = !activeTab?.implemented;
 
-    <StyledConvScroll>
-      {threads.length === 0 ? (
-        <div style={{ color: C.muted, fontSize: 12, padding: '14px 14px' }}>
-          Nenhuma conversa ainda.
-        </div>
-      ) : (
-        threads.map((t, idx) => {
-          const initials = t.phoneNumber
-            ? t.phoneNumber.replace(/\D/g, '').slice(-4, -2)
-            : (t.channelType ?? 'WA').slice(0, 2);
-          const palette = PALETTES[idx % PALETTES.length];
-          const ch = CHANNELS[(t.channelType ?? 'whatsapp').toLowerCase()] ?? CHANNELS.whatsapp;
-          return (
-            <StyledConvItem
-              key={t.contactId}
-              selected={t.contactId === selectedId}
-              onClick={() => onSelect(t.contactId)}
-            >
-              <StyledAvWrapper>
-                <StyledAvInitials style={{ background: palette.bg, color: palette.tx }}>
-                  {initials}
-                </StyledAvInitials>
-                <StyledChannelBadge style={{ background: ch.bg }}>
-                  {ch.abbr}
-                </StyledChannelBadge>
-              </StyledAvWrapper>
-              <StyledConvBody>
-                <StyledConvName>
-                  {t.phoneNumber ?? `Contato #${idx + 1}`}
-                </StyledConvName>
-                <StyledConvPreview>
-                  {t.lastMessage.content ?? '📎 Mídia'}
-                </StyledConvPreview>
-              </StyledConvBody>
-              <StyledConvMeta>
-                <StyledConvTime>{formatTime(t.lastMessage.timestamp)}</StyledConvTime>
-                {t.unreadCount > 0 && (
-                  <StyledCntBadge>{t.unreadCount}</StyledCntBadge>
-                )}
-              </StyledConvMeta>
-            </StyledConvItem>
-          );
-        })
-      )}
-    </StyledConvScroll>
+  return (
+    <StyledConvList>
+      <StyledConvHeader>
+        <StyledSearchBar>
+          <IconSearch size={14} />
+          Buscar
+        </StyledSearchBar>
+        <IconSettings size={16} color={C.gray} />
+      </StyledConvHeader>
 
-    {/* FORK: Voka CRM — Fase 10: real team chat in sidebar */}
-    <TeamChatPanel relatedRecordId={null} placeholder="Mensagem para a equipe…" />
-  </StyledConvList>
-);
+      <StyledInboxLabel>
+        CAIXA DE ENTRADA{' '}
+        <StyledCntBadge>{visibleThreads.length}</StyledCntBadge>
+      </StyledInboxLabel>
+
+      {/* FORK: Voka CRM — Fase 10: channel filter tabs */}
+      <StyledChannelTabs>
+        {CHANNEL_TABS.map((tab) => (
+          <StyledChannelTab
+            key={tab.key}
+            active={channelFilter === tab.key}
+            onClick={() => setChannelFilter(tab.key)}
+          >
+            {tab.label}
+          </StyledChannelTab>
+        ))}
+      </StyledChannelTabs>
+
+      <StyledFilterRow>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <IconFilter size={13} />
+          Filtrar
+        </span>
+        <IconDotsVertical size={16} />
+      </StyledFilterRow>
+
+      <StyledConvScroll>
+        {isComingSoon ? (
+          <StyledComingSoon>
+            🚧
+            <span>
+              Canal <strong>{activeTab?.label}</strong> em breve.
+            </span>
+            <span style={{ fontSize: 11 }}>Integração em desenvolvimento.</span>
+          </StyledComingSoon>
+        ) : visibleThreads.length === 0 ? (
+          <div style={{ color: C.muted, fontSize: 12, padding: '14px 14px' }}>
+            Nenhuma conversa ainda.
+          </div>
+        ) : (
+          visibleThreads.map((t, idx) => {
+            const initials = t.phoneNumber
+              ? t.phoneNumber.replace(/\D/g, '').slice(-4, -2)
+              : (t.channelType ?? 'WA').slice(0, 2);
+            const palette = PALETTES[idx % PALETTES.length];
+            const ch = CHANNELS[(t.channelType ?? 'whatsapp').toLowerCase()] ?? CHANNELS.whatsapp;
+            return (
+              <StyledConvItem
+                key={t.contactId}
+                selected={t.contactId === selectedId}
+                onClick={() => onSelect(t.contactId)}
+              >
+                <StyledAvWrapper>
+                  <StyledAvInitials style={{ background: palette.bg, color: palette.tx }}>
+                    {initials}
+                  </StyledAvInitials>
+                  <StyledChannelBadge style={{ background: ch.bg }}>
+                    {ch.abbr}
+                  </StyledChannelBadge>
+                </StyledAvWrapper>
+                <StyledConvBody>
+                  <StyledConvName>
+                    {t.phoneNumber ?? `Contato #${idx + 1}`}
+                  </StyledConvName>
+                  <StyledConvPreview>
+                    {t.lastMessage.content ?? '📎 Mídia'}
+                  </StyledConvPreview>
+                </StyledConvBody>
+                <StyledConvMeta>
+                  <StyledConvTime>{formatTime(t.lastMessage.timestamp)}</StyledConvTime>
+                  {t.unreadCount > 0 && (
+                    <StyledCntBadge>{t.unreadCount}</StyledCntBadge>
+                  )}
+                </StyledConvMeta>
+              </StyledConvItem>
+            );
+          })
+        )}
+      </StyledConvScroll>
+
+      {/* FORK: Voka CRM — Fase 10: real team chat in sidebar */}
+      <TeamChatPanel relatedRecordId={null} placeholder="Mensagem para a equipe…" />
+    </StyledConvList>
+  );
+};
 
 const RealContactPanel = ({
   contactId,

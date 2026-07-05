@@ -2,7 +2,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import axios from 'axios';
+
+import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 
 import {
   BroadcastCampaignEntity,
@@ -18,9 +19,6 @@ import {
   CreateBroadcastCampaignInput,
 } from './dtos/broadcast-campaign.dto';
 
-const WHATSAPP_API_VERSION = 'v21.0';
-const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID ?? '';
-const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN ?? '';
 const SEND_DELAY_MS = 1000; // 1 msg/s to avoid rate limits
 
 @Injectable()
@@ -32,6 +30,7 @@ export class BroadcastService {
     private readonly campaignRepo: Repository<BroadcastCampaignEntity>,
     @InjectRepository(BroadcastRecipientEntity)
     private readonly recipientRepo: Repository<BroadcastRecipientEntity>,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   private toDTO(c: BroadcastCampaignEntity): BroadcastCampaignDTO {
@@ -176,7 +175,7 @@ export class BroadcastService {
     });
 
     // Run async — no await so resolver returns fast
-    void this.processRecipients(campaign);
+    void this.processRecipients(workspaceId, campaign);
 
     const updated = await this.campaignRepo.findOneOrFail({
       where: { id: campaignId },
@@ -186,6 +185,7 @@ export class BroadcastService {
   }
 
   private async processRecipients(
+    workspaceId: string,
     campaign: BroadcastCampaignEntity,
   ): Promise<void> {
     const recipients = await this.recipientRepo.find({
@@ -199,11 +199,18 @@ export class BroadcastService {
     let failed = 0;
 
     for (const recipient of recipients) {
+      // Check if campaign was cancelled between sends
+      const current = await this.campaignRepo.findOne({ where: { id: campaign.id } });
+
+      if (current?.status === BroadcastCampaignStatus.CANCELLED) break;
+
       try {
-        await this.sendTemplate(
+        await this.whatsappService.sendTemplateMessage(
+          workspaceId,
           recipient.phoneNumber,
           campaign.templateName!,
           campaign.languageCode,
+          [],
         );
         await this.recipientRepo.update(recipient.id, {
           status: BroadcastRecipientStatus.SENT,
@@ -221,40 +228,20 @@ export class BroadcastService {
         failed++;
       }
 
-      // Rate-limit: 1 msg/s
+      // Rate-limit: 1 msg/s to stay within Meta limits
       await new Promise((r) => setTimeout(r, SEND_DELAY_MS));
     }
 
-    await this.campaignRepo.update(campaign.id, {
-      status: BroadcastCampaignStatus.COMPLETED,
-      completedAt: new Date(),
-      sentCount: sent,
-      failedCount: failed,
-    });
-  }
+    // Only mark completed if not already cancelled
+    const finalStatus = await this.campaignRepo.findOne({ where: { id: campaign.id } });
 
-  private async sendTemplate(
-    to: string,
-    templateName: string,
-    languageCode: string,
-  ): Promise<void> {
-    const url = `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
-
-    await axios.post(
-      url,
-      {
-        messaging_product: 'whatsapp',
-        to,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: { code: languageCode },
-        },
-      },
-      {
-        headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
-        timeout: 10_000,
-      },
-    );
+    if (finalStatus?.status !== BroadcastCampaignStatus.CANCELLED) {
+      await this.campaignRepo.update(campaign.id, {
+        status: BroadcastCampaignStatus.COMPLETED,
+        completedAt: new Date(),
+        sentCount: sent,
+        failedCount: failed,
+      });
+    }
   }
 }

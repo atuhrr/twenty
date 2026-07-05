@@ -43,26 +43,35 @@ export const useSendWhatsappMessage = (
     { update: buildCacheUpdate(contactId) },
   );
 
-  const send = async (text: string): Promise<void> => {
+  const send = async (text: string): Promise<{ errorMessage?: string }> => {
     const now = new Date().toISOString();
 
-    await sendMutation({
-      variables: { input: { contactId, phoneNumber, text } },
-      optimisticResponse: {
-        sendWhatsappMessage: {
-          id: `optimistic_${Date.now()}`,
-          contactId,
-          direction: 'OUTBOUND' as WhatsappMessageDirection,
-          type: 'TEXT' as WhatsappMessageType,
-          content: text,
-          mediaUrl: null,
-          externalMessageId: `optimistic_${Date.now()}`,
-          status: 'SENT' as WhatsappMessageStatus,
-          timestamp: now,
-          createdAt: now,
+    try {
+      await sendMutation({
+        variables: { input: { contactId, phoneNumber, text } },
+        optimisticResponse: {
+          sendWhatsappMessage: {
+            id: `optimistic_${Date.now()}`,
+            contactId,
+            direction: 'OUTBOUND' as WhatsappMessageDirection,
+            type: 'TEXT' as WhatsappMessageType,
+            content: text,
+            mediaUrl: null,
+            externalMessageId: `optimistic_${Date.now()}`,
+            status: 'SENT' as WhatsappMessageStatus,
+            timestamp: now,
+            createdAt: now,
+          },
         },
-      },
-    });
+      });
+      return {};
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? '';
+      if (msg.includes('WINDOW_EXPIRED')) {
+        return { errorMessage: 'Janela de 24h encerrada. Use um template para retomar a conversa.' };
+      }
+      return { errorMessage: 'Erro ao enviar mensagem. Tente novamente.' };
+    }
   };
 
   return { send, loading, error };

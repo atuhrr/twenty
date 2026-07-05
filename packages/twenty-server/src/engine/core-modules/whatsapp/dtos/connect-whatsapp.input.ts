@@ -16,4 +16,10 @@ export class ConnectWhatsappInput {
 
   @Field(() => String, { nullable: true })
   displayPhoneNumber?: string;
+
+  @Field(() => String, { nullable: true })
+  label?: string;
+
+  @Field(() => String, { nullable: true })
+  instanceId?: string;
 }

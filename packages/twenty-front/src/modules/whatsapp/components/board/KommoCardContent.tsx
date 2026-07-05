@@ -13,6 +13,7 @@ import { useAtomComponentFamilyState } from '@/ui/utilities/state/jotai/hooks/us
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useLastWhatsappMessage } from '@/whatsapp/hooks/useLastWhatsappMessage';
 import { useWhatsappContactWindow } from '@/whatsapp/hooks/useWhatsappContactWindow';
+import { useNextTaskStatus } from '@/leads/hooks/useNextTaskStatus';
 import { IS_WHATSAPP_MOCK } from '@/whatsapp/mocks/whatsappMockData';
 import {
   formatBRL,
@@ -148,6 +149,20 @@ const StyledBottomRow = styled.div`
   padding: 7px 12px 10px;
 `;
 
+const TASK_DOT_COLORS: Record<string, string> = {
+  overdue: '#F04438',
+  today:   '#12B76A',
+  none:    '#F79009',
+};
+
+const StyledTaskDot = styled.span<{ status: string }>`
+  background: ${({ status }) => TASK_DOT_COLORS[status] ?? TASK_DOT_COLORS.none};
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
+`;
+
 const StyledValue = styled.span`
   color: ${themeCssVariables.font.color.primary};
   font-size: 12px;
@@ -254,6 +269,7 @@ export const KommoCardContent = () => {
 
   const { message } = useLastWhatsappMessage(recordId);
   const { isWindowOpen } = useWhatsappContactWindow(recordId);
+  const taskDotStatus = useNextTaskStatus(recordId);
 
   const { checkIfLastUnselectAndCloseDropdown } =
     useRecordBoardSelection(recordBoardId);
@@ -360,10 +376,15 @@ export const KommoCardContent = () => {
         </>
       )}
 
-      {/* ── Bottom: value + needs-reply badge ── */}
+      {/* ── Bottom: value + task dot + needs-reply badge ── */}
       <StyledDivider />
       <StyledBottomRow>
         {dealValue ? <StyledValue>{dealValue}</StyledValue> : <span />}
+        <StyledTaskDot status={taskDotStatus} title={
+          taskDotStatus === 'overdue' ? 'Tarefa atrasada' :
+          taskDotStatus === 'today'   ? 'Tarefa vence hoje' :
+          'Sem tarefa pendente'
+        } />
         {needsReply && (
           <StyledNeedsReplyBadge>● Responder</StyledNeedsReplyBadge>
         )}

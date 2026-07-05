@@ -17,6 +17,7 @@ export enum OnboardingStepKeys {
   ONBOARDING_CONNECT_ACCOUNT_PENDING = 'ONBOARDING_CONNECT_ACCOUNT_PENDING',
   ONBOARDING_INVITE_TEAM_PENDING = 'ONBOARDING_INVITE_TEAM_PENDING',
   ONBOARDING_CREATE_PROFILE_PENDING = 'ONBOARDING_CREATE_PROFILE_PENDING',
+  ONBOARDING_CONNECT_WHATSAPP_PENDING = 'ONBOARDING_CONNECT_WHATSAPP_PENDING',
   ONBOARDING_BOOK_ONBOARDING_PENDING = 'ONBOARDING_BOOK_ONBOARDING_PENDING',
 }
 
@@ -24,6 +25,7 @@ export type OnboardingKeyValueTypeMap = {
   [OnboardingStepKeys.ONBOARDING_CONNECT_ACCOUNT_PENDING]: boolean;
   [OnboardingStepKeys.ONBOARDING_INVITE_TEAM_PENDING]: boolean;
   [OnboardingStepKeys.ONBOARDING_CREATE_PROFILE_PENDING]: boolean;
+  [OnboardingStepKeys.ONBOARDING_CONNECT_WHATSAPP_PENDING]: boolean;
   [OnboardingStepKeys.ONBOARDING_BOOK_ONBOARDING_PENDING]: boolean;
 };
 
@@ -92,6 +94,10 @@ export class OnboardingService {
     const isInviteTeamPending =
       userVars.get(OnboardingStepKeys.ONBOARDING_INVITE_TEAM_PENDING) === true;
 
+    const isConnectWhatsAppPending =
+      userVars.get(OnboardingStepKeys.ONBOARDING_CONNECT_WHATSAPP_PENDING) ===
+      true;
+
     const isBookOnboardingPending =
       userVars.get(OnboardingStepKeys.ONBOARDING_BOOK_ONBOARDING_PENDING) ===
       true;
@@ -106,6 +112,10 @@ export class OnboardingService {
 
     if (isInviteTeamPending) {
       return OnboardingStatus.INVITE_TEAM;
+    }
+
+    if (isConnectWhatsAppPending) {
+      return OnboardingStatus.CONNECT_WHATSAPP;
     }
 
     if (isBookOnboardingPending) {
@@ -262,6 +272,38 @@ export class OnboardingService {
       workspaceId,
       value: false,
     });
+  }
+
+  async setOnboardingConnectWhatsAppPending(
+    {
+      workspaceId,
+      value,
+    }: {
+      workspaceId: string;
+      value: boolean;
+    },
+    queryRunner?: QueryRunner,
+  ) {
+    if (!value) {
+      await this.userVarsService.delete(
+        {
+          workspaceId,
+          key: OnboardingStepKeys.ONBOARDING_CONNECT_WHATSAPP_PENDING,
+        },
+        queryRunner,
+      );
+
+      return;
+    }
+
+    await this.userVarsService.set(
+      {
+        workspaceId,
+        key: OnboardingStepKeys.ONBOARDING_CONNECT_WHATSAPP_PENDING,
+        value: true,
+      },
+      queryRunner,
+    );
   }
 
   async setOnboardingBookOnboardingPending({

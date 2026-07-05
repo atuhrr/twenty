@@ -83,6 +83,17 @@ import { AddAssignmentToContactWindowFastInstanceCommand } from './2-16/2-16-ins
 import { CreateQuickReplyTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782604800000-create-quick-reply-table';
 import { CreateBroadcastTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782691200000-create-broadcast-tables';
 import { TranslateStandardObjectLabelsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782777600000-translate-standard-object-labels';
+import { CreateAutomationTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782864000000-create-automation-tables';
+import { CreateSalesbotTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782950400000-create-salesbot-tables';
+import { CreateWebFormTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783036800000-create-web-form-tables';
+import { CreateIntegrationTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783123200000-create-integration-tables';
+import { MigrateSalesbotToGraphFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783209600000-migrate-salesbot-to-graph';
+import { FixSalesbotNullGraphFastInstanceCommand } from './2-16/2-16-instance-command-fast-1751068800000-fix-salesbot-null-graph';
+import { CreateRoiRelatorioTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783382400000-create-roi-relatorio-table';
+import { CreateVokaCrmObjectsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783468800000-create-voka-crm-objects';
+import { AddMultiNumberToWhatsappInstanceFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783555200000-add-multi-number-to-whatsapp-instance';
+import { CreateTeamsLossReasonsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783641600000-create-teams-loss-reasons-tables';
+import { TranslateStandardFieldLabelsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783728000000-translate-standard-field-labels';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -168,4 +179,15 @@ export const INSTANCE_COMMANDS = [
   CreateQuickReplyTableFastInstanceCommand,
   CreateBroadcastTablesFastInstanceCommand,
   TranslateStandardObjectLabelsFastInstanceCommand,
+  CreateAutomationTablesFastInstanceCommand,
+  CreateSalesbotTablesFastInstanceCommand,
+  CreateWebFormTablesFastInstanceCommand,
+  CreateIntegrationTablesFastInstanceCommand,
+  MigrateSalesbotToGraphFastInstanceCommand,
+  FixSalesbotNullGraphFastInstanceCommand,
+  CreateRoiRelatorioTableFastInstanceCommand,
+  CreateVokaCrmObjectsFastInstanceCommand,
+  AddMultiNumberToWhatsappInstanceFastInstanceCommand,
+  CreateTeamsLossReasonsFastInstanceCommand,
+  TranslateStandardFieldLabelsFastInstanceCommand,
 ];

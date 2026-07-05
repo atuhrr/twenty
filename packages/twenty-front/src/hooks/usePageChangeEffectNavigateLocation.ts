@@ -147,6 +147,13 @@ export const usePageChangeEffectNavigateLocation = () => {
   }
 
   if (
+    onboardingStatus === OnboardingStatus.CONNECT_WHATSAPP &&
+    !isMatchingLocation(location, AppPath.ConnectWhatsApp)
+  ) {
+    return AppPath.ConnectWhatsApp;
+  }
+
+  if (
     onboardingStatus === OnboardingStatus.BOOK_ONBOARDING &&
     !someMatchingLocationOf([AppPath.BookCallDecision, AppPath.BookCall])
   ) {

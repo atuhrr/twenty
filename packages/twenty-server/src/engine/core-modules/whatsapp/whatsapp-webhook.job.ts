@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
@@ -15,8 +16,16 @@ import {
   WhatsappMessageStatus,
   WhatsappMessageType,
 } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
+import { SalesbotExecutorService } from 'src/engine/core-modules/salesbot/salesbot-executor.service';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { normalizeBrPhone } from 'src/engine/core-modules/whatsapp/utils/normalize-br-phone.util';
+
+export type WhatsappMessageReceivedEvent = {
+  workspaceId: string;
+  contactId: string;
+  phone: string;
+  text: string;
+};
 
 // Deterministic UUID namespace for deriving contactId from phone+workspace
 const WHATSAPP_CONTACT_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
@@ -59,6 +68,8 @@ export class WhatsappWebhookJob {
 
   constructor(
     private readonly whatsappService: WhatsappService,
+    private readonly salesbotExecutorService: SalesbotExecutorService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectRepository(WhatsappContactWindowEntity)
     private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
   ) {}
@@ -127,6 +138,25 @@ export class WhatsappWebhookJob {
 
     // FORK: Voka CRM — Fase 9: store phone for thread display
     await this.upsertContactWindow(workspaceId, contactId, timestamp, normalizedPhone);
+
+    // FORK: Voka CRM — Fase 14: trigger Salesbot if message is text
+    if (msg.type === 'text' && content) {
+      this.salesbotExecutorService
+        .handleInboundMessage(workspaceId, normalizedPhone, content)
+        .catch((err) => {
+          this.logger.warn(
+            `Salesbot error for ${normalizedPhone}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+
+      // FORK: Voka CRM — Fase 13: fire MESSAGE_RECEIVED automation rules
+      this.eventEmitter.emit('whatsapp.message.received', {
+        workspaceId,
+        contactId,
+        phone: normalizedPhone,
+        text: content,
+      } satisfies WhatsappMessageReceivedEvent);
+    }
   }
 
   private async processStatusUpdate(status: MetaStatus): Promise<void> {

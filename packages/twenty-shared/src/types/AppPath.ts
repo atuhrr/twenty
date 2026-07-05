@@ -11,6 +11,7 @@ export enum AppPath {
   CreateProfile = '/create/profile',
   SyncEmails = '/sync/emails',
   InviteTeam = '/invite-team',
+  ConnectWhatsApp = '/connect-whatsapp',
   PlanRequired = '/plan-required',
   PlanRequiredSuccess = '/plan-required/payment-success',
   BookCallDecision = '/book-call-decision',

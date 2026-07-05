@@ -1,8 +1,10 @@
-// FORK: Voka CRM — Fase 9: thread list for the 3-panel Inbox
+// FORK: Voka CRM — Fase 9: thread list — SSE real-time (no polling)
+import { useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 
 import { IS_WHATSAPP_MOCK } from '@/whatsapp/mocks/whatsappMockData';
 import { GET_WHATSAPP_THREADS } from '@/whatsapp/graphql/queries/getWhatsappThreads';
+import { useWhatsappSSE } from '@/whatsapp/hooks/useWhatsappSSE';
 import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 
 export type WhatsappThread = {
@@ -15,14 +17,23 @@ export type WhatsappThread = {
   assignedUserName: string | null;
 };
 
-const MOCK_THREADS: WhatsappThread[] = []; // mock mode threads come from InboxPage hardcoded data
+const MOCK_THREADS: WhatsappThread[] = [];
 
 export const useWhatsappThreads = () => {
   const { data, loading, refetch } = useQuery<{
     whatsappThreads: WhatsappThread[];
   }>(GET_WHATSAPP_THREADS, {
     fetchPolicy: 'cache-and-network',
-    pollInterval: 15_000, // poll every 15s until SSE is wired up
+    skip: IS_WHATSAPP_MOCK,
+  });
+
+  const handleSSEMessage = useCallback(() => {
+    // A new message arrived — refresh the thread list so unread counts and previews update
+    void refetch();
+  }, [refetch]);
+
+  useWhatsappSSE({
+    onMessage: handleSSEMessage,
     skip: IS_WHATSAPP_MOCK,
   });
 

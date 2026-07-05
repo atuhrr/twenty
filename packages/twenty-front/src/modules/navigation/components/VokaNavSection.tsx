@@ -10,20 +10,30 @@ import { useNavigationSection } from '@/ui/navigation/navigation-drawer/hooks/us
 import { isNavigationSectionOpenFamilyState } from '@/ui/navigation/navigation-drawer/states/isNavigationSectionOpenFamilyState';
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import {
+  IconBolt,
   IconBox,
   IconBuildingSkyscraper,
   IconChartBar,
+  IconFileText,
   IconFlag,
   IconInbox,
+  IconLayoutList,
   IconListCheck,
   IconMail,
+  IconRobot,
+  IconSearch,
+  IconSend,
   IconSettings,
   IconTargetArrow,
+  IconTrendingUp,
   IconUser,
   IconUsers,
 } from 'twenty-ui/icon';
+import { useOpenRecordsSearchPageInSidePanel } from '@/side-panel/hooks/useOpenRecordsSearchPageInSidePanel';
 
 const LISTAS_SECTION_ID = 'voka-listas';
+const AUTOMACOES_SECTION_ID = 'voka-automacoes';
+const ESTATISTICAS_SECTION_ID = 'voka-estatisticas';
 
 const StyledCountBadge = styled.span`
   /* FORK: Voka CRM — incoming leads counter badge */
@@ -46,10 +56,23 @@ const CountBadge = ({ count }: { count: number }) =>
   ) : null;
 
 export const VokaNavSection = () => {
-  const { toggleNavigationSection } = useNavigationSection(LISTAS_SECTION_ID);
-  const isNavigationSectionOpen = useAtomFamilyStateValue(
+  const { openRecordsSearchPage } = useOpenRecordsSearchPageInSidePanel();
+  const { toggleNavigationSection: toggleListas } = useNavigationSection(LISTAS_SECTION_ID);
+  const isListasOpen = useAtomFamilyStateValue(
     isNavigationSectionOpenFamilyState,
     LISTAS_SECTION_ID,
+  );
+
+  const { toggleNavigationSection: toggleAutomacoes } = useNavigationSection(AUTOMACOES_SECTION_ID);
+  const isAutomacoesOpen = useAtomFamilyStateValue(
+    isNavigationSectionOpenFamilyState,
+    AUTOMACOES_SECTION_ID,
+  );
+
+  const { toggleNavigationSection: toggleEstatisticas } = useNavigationSection(ESTATISTICAS_SECTION_ID);
+  const isEstatisticasOpen = useAtomFamilyStateValue(
+    isNavigationSectionOpenFamilyState,
+    ESTATISTICAS_SECTION_ID,
   );
 
   const unclassifiedCount = useLeadsNaoClassificadosCount();
@@ -57,6 +80,13 @@ export const VokaNavSection = () => {
   return (
     <>
       <NavigationDrawerSection>
+        {/* FORK: Voka CRM — Fase 1: busca global */}
+        <NavigationDrawerItem
+          label="Buscar"
+          onClick={openRecordsSearchPage}
+          Icon={IconSearch}
+          modifier={{ keyboard: ['⌘', 'K'] }}
+        />
         <NavigationDrawerItem
           label="Funil de Vendas"
           to="/objects/opportunities"
@@ -77,7 +107,7 @@ export const VokaNavSection = () => {
         />
         <NavigationDrawerItem
           label="Tarefas"
-          to="/objects/tasks"
+          to="/tarefas"
           Icon={IconListCheck}
         />
       </NavigationDrawerSection>
@@ -86,12 +116,12 @@ export const VokaNavSection = () => {
         <NavigationDrawerAnimatedCollapseWrapper>
           <NavigationDrawerSectionTitle
             label="Listas"
-            onClick={toggleNavigationSection}
-            isOpen={isNavigationSectionOpen}
+            onClick={toggleListas}
+            isOpen={isListasOpen}
           />
         </NavigationDrawerAnimatedCollapseWrapper>
 
-        {isNavigationSectionOpen && (
+        {isListasOpen && (
           <>
             <NavigationDrawerItem
               label="Contatos"
@@ -108,13 +138,13 @@ export const VokaNavSection = () => {
             {/* FORK: Voka CRM — Fase 7: custom objects activated */}
             <NavigationDrawerItem
               label="Clientes"
-              to="/objects/clientes"
+              to="/clientes"
               Icon={IconUsers}
               indentationLevel={2}
             />
             <NavigationDrawerItem
               label="Catálogo"
-              to="/objects/produtos"
+              to="/catalogo"
               Icon={IconBox}
               indentationLevel={2}
             />
@@ -124,15 +154,125 @@ export const VokaNavSection = () => {
 
       <NavigationDrawerSection>
         <NavigationDrawerItem
+          label="Formulários"
+          to="/formularios"
+          Icon={IconFileText}
+        />
+
+        {/* Seção colapsável Automações */}
+        <NavigationDrawerAnimatedCollapseWrapper>
+          <NavigationDrawerSectionTitle
+            label="Automações"
+            onClick={toggleAutomacoes}
+            isOpen={isAutomacoesOpen}
+          />
+        </NavigationDrawerAnimatedCollapseWrapper>
+
+        {isAutomacoesOpen && (
+          <>
+            <NavigationDrawerItem
+              label="Salesbot"
+              to="/salesbot"
+              Icon={IconRobot}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Templates"
+              to="/templates"
+              Icon={IconLayoutList}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Fluxos"
+              to="/automacoes"
+              Icon={IconBolt}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Campanhas"
+              to="/campanhas"
+              Icon={IconSend}
+              indentationLevel={2}
+            />
+          </>
+        )}
+        <NavigationDrawerItem
           label="Mail"
           to="/mail"
           Icon={IconMail}
         />
-        <NavigationDrawerItem
-          label="Estatísticas"
-          to="/objects/dashboards"
-          Icon={IconChartBar}
-        />
+        {/* Seção colapsável Estatísticas */}
+        <NavigationDrawerAnimatedCollapseWrapper>
+          <NavigationDrawerSectionTitle
+            label="Estatísticas"
+            onClick={toggleEstatisticas}
+            isOpen={isEstatisticasOpen}
+          />
+        </NavigationDrawerAnimatedCollapseWrapper>
+
+        {isEstatisticasOpen && (
+          <>
+            <NavigationDrawerItem
+              label="Painel"
+              to="/estatisticas/dashboard"
+              Icon={IconChartBar}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="ROI"
+              to="/estatisticas/roi"
+              Icon={IconTrendingUp}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Análise Ganho-Perda"
+              to="/estatisticas/analise-ganho-perda"
+              Icon={IconLayoutList}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Relatório Consolidado"
+              to="/estatisticas/relatorio-consolidado"
+              Icon={IconFileText}
+              indentationLevel={2}
+            />
+            <NavigationDrawerItem
+              label="Rel. por Atividades"
+              to="/estatisticas/atividades"
+              Icon={IconListCheck}
+              indentationLevel={2}
+              modifier="soon"
+            />
+            <NavigationDrawerItem
+              label="Log de Atividades"
+              to="/estatisticas/log"
+              Icon={IconBolt}
+              indentationLevel={2}
+              modifier="soon"
+            />
+            <NavigationDrawerItem
+              label="Rel. de Chamadas"
+              to="/estatisticas/chamadas"
+              Icon={IconInbox}
+              indentationLevel={2}
+              modifier="soon"
+            />
+            <NavigationDrawerItem
+              label="Rel. de Metas"
+              to="/estatisticas/metas"
+              Icon={IconTargetArrow}
+              indentationLevel={2}
+              modifier="soon"
+            />
+            <NavigationDrawerItem
+              label="WhatsApp Business"
+              to="/estatisticas/whatsapp"
+              Icon={IconUsers}
+              indentationLevel={2}
+              modifier="soon"
+            />
+          </>
+        )}
         <NavigationDrawerItem
           label="Configurações"
           to="/settings"

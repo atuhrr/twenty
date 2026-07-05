@@ -37,9 +37,12 @@ const getNextOnboardingStatus = ({
   if (currentUser?.onboardingStatus === OnboardingStatus.PROFILE_CREATION) {
     return currentWorkspace?.workspaceMembersCount === 1
       ? OnboardingStatus.INVITE_TEAM
-      : OnboardingStatus.COMPLETED;
+      : OnboardingStatus.CONNECT_WHATSAPP;
   }
   if (currentUser?.onboardingStatus === OnboardingStatus.INVITE_TEAM) {
+    return OnboardingStatus.CONNECT_WHATSAPP;
+  }
+  if (currentUser?.onboardingStatus === OnboardingStatus.CONNECT_WHATSAPP) {
     return isDefined(calendarBookingPageId)
       ? OnboardingStatus.BOOK_ONBOARDING
       : OnboardingStatus.COMPLETED;

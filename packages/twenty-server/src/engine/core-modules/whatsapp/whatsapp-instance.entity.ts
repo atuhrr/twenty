@@ -42,6 +42,12 @@ export class WhatsappInstanceEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   displayPhoneNumber: string | null;
 
+  @Column({ nullable: true, type: 'text' })
+  label: string | null;
+
+  @Column({ nullable: false, type: 'boolean', default: true })
+  isDefault: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

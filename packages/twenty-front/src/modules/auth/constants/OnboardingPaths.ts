@@ -5,6 +5,7 @@ export const ONBOARDING_PATHS = [
   AppPath.CreateProfile,
   AppPath.SyncEmails,
   AppPath.InviteTeam,
+  AppPath.ConnectWhatsApp,
   AppPath.PlanRequired,
   AppPath.PlanRequiredSuccess,
   AppPath.BookCallDecision,

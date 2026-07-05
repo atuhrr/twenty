@@ -5,11 +5,15 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { styled } from '@linaria/react';
 
 import { useWhatsappQuickReplies } from '@/whatsapp/hooks/useWhatsappQuickReplies';
+import { TemplatePickerButton } from '@/whatsapp/components/chat/TemplatePickerButton';
 
 type ChatInputProps = {
-  onSend: (text: string) => void;
+  onSend: (text: string) => void | Promise<unknown>;
   disabled: boolean;
   sending: boolean;
+  windowClosed?: boolean;
+  contactId?: string;
+  phoneNumber?: string;
 };
 
 const StyledInputBar = styled.div`
@@ -79,13 +83,12 @@ const StyledSendBtn = styled.button<{ disabled: boolean }>`
   }
 `;
 
-const StyledWindowWarning = styled.div`
-  background: #fff6da;
-  border-radius: 0 0 0 0;
-  border-top: 1px solid #e8e9ef;
-  color: #b7891a;
-  font-size: 12px;
-  padding: 8px 16px;
+const StyledWindowInfo = styled.div`
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 11px;
+  padding: 5px 14px;
   text-align: center;
 `;
 
@@ -145,7 +148,7 @@ const StyledInputBarWrapper = styled.div`
   position: relative;
 `;
 
-export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
+export const ChatInput = ({ onSend, disabled, sending, windowClosed, contactId, phoneNumber }: ChatInputProps) => {
   const [text, setText] = useState('');
   const [showQr, setShowQr] = useState(false);
   const [qrFilter, setQrFilter] = useState('');
@@ -227,10 +230,10 @@ export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
 
   return (
     <>
-      {disabled && (
-        <StyledWindowWarning>
-          Janela de 24h encerrada. Use um template para retomar a conversa.
-        </StyledWindowWarning>
+      {windowClosed && !disabled && (
+        <StyledWindowInfo>
+          ⏰ Janela de 24h possivelmente encerrada — a Meta pode rejeitar mensagens de texto livre.
+        </StyledWindowInfo>
       )}
       <StyledInputBarWrapper data-chat-input>
         {showQr && filtered.length > 0 && (
@@ -265,6 +268,12 @@ export const ChatInput = ({ onSend, disabled, sending }: ChatInputProps) => {
             disabled={disabled}
             rows={1}
           />
+          {windowClosed && !disabled && contactId && phoneNumber && (
+            <TemplatePickerButton
+              contactId={contactId}
+              phoneNumber={phoneNumber}
+            />
+          )}
           <StyledSendBtn
             disabled={disabled || !text.trim() || sending}
             onClick={handleSend}

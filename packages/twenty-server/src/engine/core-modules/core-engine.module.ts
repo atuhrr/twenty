@@ -79,6 +79,15 @@ import { WhatsappModule } from 'src/engine/core-modules/whatsapp/whatsapp.module
 import { OmniChannelModule } from 'src/engine/core-modules/omni-channel/omni-channel.module';
 import { TeamChatModule } from 'src/engine/core-modules/team-chat/team-chat.module';
 import { BroadcastModule } from 'src/engine/core-modules/broadcast/broadcast.module';
+import { AutomationModule } from 'src/engine/core-modules/automation/automation.module';
+import { SalesbotModule } from 'src/engine/core-modules/salesbot/salesbot.module';
+import { WebFormModule } from 'src/engine/core-modules/web-form/web-form.module';
+import { IntegrationMarketplaceModule } from 'src/engine/core-modules/integration-marketplace/integration-marketplace.module';
+import { TeamsModule } from 'src/engine/core-modules/teams/teams.module';
+import { LossReasonsModule } from 'src/engine/core-modules/loss-reasons/loss-reasons.module';
+import { TemplateModule } from 'src/engine/core-modules/template/template.module';
+import { AnalyticsModule } from 'src/engine/core-modules/analytics/analytics.module';
+import { VokaCrmModule } from 'src/engine/core-modules/voka-crm/voka-crm.module';
 import { ClientConfigModule } from './client-config/client-config.module';
 import { EventLogsViewerModule } from './event-logs/event-logs-viewer.module';
 import { FileModule } from './file/file.module';
@@ -170,6 +179,15 @@ import { FileModule } from './file/file.module';
     OmniChannelModule,
     TeamChatModule,
     BroadcastModule,
+    AutomationModule,
+    SalesbotModule,
+    WebFormModule,
+    IntegrationMarketplaceModule,
+    TeamsModule,
+    LossReasonsModule,
+    TemplateModule,
+    AnalyticsModule,
+    VokaCrmModule,
   ],
   providers: [
     {

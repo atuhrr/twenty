@@ -22,6 +22,34 @@ const SettingsBroadcast = lazy(() =>
   })),
 );
 
+// FORK: Voka CRM — Fase 16: Integration Marketplace
+const SettingsIntegrations = lazy(() =>
+  import('~/pages/settings/integrations/SettingsIntegrations').then(
+    (module) => ({ default: module.SettingsIntegrations }),
+  ),
+);
+
+// FORK: Voka CRM — Fase 18: Equipes
+const SettingsEquipes = lazy(() =>
+  import('~/pages/settings/teams/SettingsEquipes').then(
+    (module) => ({ default: module.SettingsEquipes }),
+  ),
+);
+
+// FORK: Voka CRM — Fase 18/19: Motivos de perda
+const SettingsMotivosDePerdaPage = lazy(() =>
+  import('~/pages/settings/loss-reasons/SettingsMotivosDePerdaPage').then(
+    (module) => ({ default: module.SettingsMotivosDePerdaPage }),
+  ),
+);
+
+// FORK: Voka CRM — Fase 19: Canais conectados
+const SettingsCanaisConectados = lazy(() =>
+  import('~/pages/settings/channels/SettingsCanaisConectados').then(
+    (module) => ({ default: module.SettingsCanaisConectados }),
+  ),
+);
+
 const SettingsGraphQLPlayground = lazy(() =>
   import('~/pages/settings/developers/playground/SettingsGraphQLPlayground').then(
     (module) => ({
@@ -700,6 +728,12 @@ export const SettingsRoutes = ({ isAdminPageEnabled }: SettingsRoutesProps) => (
         <Route path={SettingsPath.Whatsapp} element={<SettingsWhatsapp />} />
         {/* FORK: Voka CRM — Fase 12: broadcast */}
         <Route path={SettingsPath.Broadcast} element={<SettingsBroadcast />} />
+        {/* FORK: Voka CRM — Fase 16: Integration Marketplace */}
+        <Route path={SettingsPath.Integrations} element={<SettingsIntegrations />} />
+        {/* FORK: Voka CRM — Fase 18/19 */}
+        <Route path={SettingsPath.Equipes} element={<SettingsEquipes />} />
+        <Route path={SettingsPath.MotivosDePerca} element={<SettingsMotivosDePerdaPage />} />
+        <Route path={SettingsPath.CanaisConectados} element={<SettingsCanaisConectados />} />
       </Route>
       <Route
         element={

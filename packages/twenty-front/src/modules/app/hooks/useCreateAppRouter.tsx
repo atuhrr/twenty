@@ -72,6 +72,12 @@ const InviteTeam = lazy(() =>
   })),
 );
 
+const ConnectWhatsApp = lazy(() =>
+  import('~/pages/onboarding/ConnectWhatsApp').then((module) => ({
+    default: module.ConnectWhatsApp,
+  })),
+);
+
 const ChooseYourPlan = lazy(() =>
   import('~/pages/onboarding/ChooseYourPlan').then((module) => ({
     default: module.ChooseYourPlan,
@@ -125,6 +131,84 @@ const MailPage = lazy(() =>
 const LeadsNaoClassificadosPage = lazy(() =>
   import('~/pages/leads/LeadsNaoClassificadosPage').then((module) => ({
     default: module.LeadsNaoClassificadosPage,
+  })),
+);
+
+const BroadcastPage = lazy(() =>
+  import('~/pages/broadcast/BroadcastPage').then((module) => ({
+    default: module.BroadcastPage,
+  })),
+);
+
+const AutomacoesPage = lazy(() =>
+  import('~/pages/automation/AutomacoesPage').then((module) => ({
+    default: module.AutomacoesPage,
+  })),
+);
+
+const SalesbotPage = lazy(() =>
+  import('~/pages/salesbot/SalesbotPage').then((module) => ({
+    default: module.SalesbotPage,
+  })),
+);
+
+const SalesbotEditorPage = lazy(() =>
+  import('~/pages/salesbot/SalesbotEditorPage').then((module) => ({
+    default: module.SalesbotEditorPage,
+  })),
+);
+
+const WebFormsPage = lazy(() =>
+  import('~/pages/web-forms/WebFormsPage').then((module) => ({
+    default: module.WebFormsPage,
+  })),
+);
+
+// FORK: Voka CRM — Fase 17: Tarefas (lista + calendário)
+const TarefasPage = lazy(() =>
+  import('~/pages/tarefas/TarefasPage').then((module) => ({
+    default: module.TarefasPage,
+  })),
+);
+
+const TemplatesPage = lazy(() =>
+  import('~/pages/templates/TemplatesPage').then((module) => ({
+    default: module.TemplatesPage,
+  })),
+);
+
+// FORK: Voka CRM — Fase 2: Clientes Recorrentes + Catálogo
+const ClientesPage = lazy(() =>
+  import('~/pages/clientes/ClientesPage').then((module) => ({
+    default: module.ClientesPage,
+  })),
+);
+
+const CatalogoPage = lazy(() =>
+  import('~/pages/catalogo/CatalogoPage').then((module) => ({
+    default: module.CatalogoPage,
+  })),
+);
+
+// FORK: Voka CRM — Fase 20: Estatísticas
+const DashboardPage = lazy(() =>
+  import('~/pages/estatisticas/DashboardPage').then((module) => ({
+    default: module.DashboardPage,
+  })),
+);
+const RoiPage = lazy(() =>
+  import('~/pages/estatisticas/RoiPage').then((module) => ({
+    default: module.RoiPage,
+  })),
+);
+const AnaliseGanhoPerdaPage = lazy(() =>
+  import('~/pages/estatisticas/AnaliseGanhoPerdaPage').then((module) => ({
+    default: module.AnaliseGanhoPerdaPage,
+  })),
+);
+const RelatorioConsolidadoPage = lazy(() =>
+  import('~/pages/estatisticas/RelatorioConsolidadoPage').then((module) => ({
+    default: module.RelatorioConsolidadoPage,
   })),
 );
 
@@ -196,6 +280,14 @@ export const useCreateAppRouter = (
             element={
               <LazyRoute fallback={null}>
                 <InviteTeam />
+              </LazyRoute>
+            }
+          />
+          <Route
+            path={AppPath.ConnectWhatsApp}
+            element={
+              <LazyRoute fallback={null}>
+                <ConnectWhatsApp />
               </LazyRoute>
             }
           />
@@ -283,12 +375,125 @@ export const useCreateAppRouter = (
                 </LazyRoute>
               }
             />
+            {/* FORK: Voka CRM — Fase 2: Clientes Recorrentes + Catálogo */}
+            <Route
+              path="/clientes"
+              element={
+                <LazyRoute>
+                  <ClientesPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/catalogo"
+              element={
+                <LazyRoute>
+                  <CatalogoPage />
+                </LazyRoute>
+              }
+            />
             {/* FORK: Voka CRM — Fase 5: leads incoming queue */}
             <Route
               path="/leads-nao-classificados"
               element={
                 <LazyRoute>
                   <LeadsNaoClassificadosPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Campanhas de Disparo em Massa */}
+            <Route
+              path="/campanhas"
+              element={
+                <LazyRoute>
+                  <BroadcastPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 17: Tarefas */}
+            <Route
+              path="/tarefas"
+              element={
+                <LazyRoute>
+                  <TarefasPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 15: Formulários Web */}
+            <Route
+              path="/formularios"
+              element={
+                <LazyRoute>
+                  <WebFormsPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 14: Salesbot lista */}
+            <Route
+              path="/salesbot"
+              element={
+                <LazyRoute>
+                  <SalesbotPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 14.2: editor visual (placeholder na 14.1) */}
+            <Route
+              path="/salesbot/:id"
+              element={
+                <LazyRoute>
+                  <SalesbotEditorPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 13: Automações */}
+            <Route
+              path="/automacoes"
+              element={
+                <LazyRoute>
+                  <AutomacoesPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — B2.1: Templates de chat e e-mail */}
+            <Route
+              path="/templates"
+              element={
+                <LazyRoute>
+                  <TemplatesPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — Fase 20: Estatísticas */}
+            <Route
+              path="/estatisticas/dashboard"
+              element={
+                <LazyRoute>
+                  <DashboardPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/estatisticas/roi"
+              element={
+                <LazyRoute>
+                  <RoiPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/estatisticas/analise-ganho-perda"
+              element={
+                <LazyRoute>
+                  <AnaliseGanhoPerdaPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/estatisticas/relatorio-consolidado"
+              element={
+                <LazyRoute>
+                  <RelatorioConsolidadoPage />
                 </LazyRoute>
               }
             />

@@ -1,10 +1,34 @@
 {
-  "short_name": "Twenty",
-  "name": "Twenty",
-  "start_url": ".",
+  "short_name": "Voka CRM",
+  "name": "Voka CRM — CRM com WhatsApp Integrado",
+  "description": "Seu CRM completo com WhatsApp, automações e pipeline de vendas.",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "theme_color": "#7C3AED",
+  "background_color": "#F2F4F7",
+  "lang": "pt-BR",
+  "shortcuts": [
+    {
+      "name": "Funil de Vendas",
+      "short_name": "Funil",
+      "url": "/objects/opportunities",
+      "icons": [{ "src": "images/icons/android/android-launchericon-96-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Caixa de Entrada",
+      "short_name": "Inbox",
+      "url": "/inbox",
+      "icons": [{ "src": "images/icons/android/android-launchericon-96-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Tarefas",
+      "short_name": "Tarefas",
+      "url": "/tarefas",
+      "icons": [{ "src": "images/icons/android/android-launchericon-96-96.png", "sizes": "96x96" }]
+    }
+  ],
   "icons": [
     {
       "src": "images/icons/windows11/SmallTile.scale-100.png",

@@ -105,19 +105,28 @@ describe('useSetNextOnboardingStatus', () => {
     expect(nextOnboardingStatus).toEqual(OnboardingStatus.INVITE_TEAM);
   });
 
-  it('should complete after profile creation when more than 1 workspaceMember exist', () => {
+  it('should connect whatsapp after profile creation when more than 1 workspaceMember exist', () => {
     const nextOnboardingStatus = renderHooks(
       OnboardingStatus.PROFILE_CREATION,
       false,
       false,
     );
-    expect(nextOnboardingStatus).toEqual(OnboardingStatus.COMPLETED);
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.CONNECT_WHATSAPP);
   });
 
-  it('should set next onboarding status for Completed', () => {
+  it('should connect whatsapp after inviting team', () => {
     const nextOnboardingStatus = renderHooks(
       OnboardingStatus.INVITE_TEAM,
       true,
+      true,
+    );
+    expect(nextOnboardingStatus).toEqual(OnboardingStatus.CONNECT_WHATSAPP);
+  });
+
+  it('should complete after connecting whatsapp (no calendar booking configured)', () => {
+    const nextOnboardingStatus = renderHooks(
+      OnboardingStatus.CONNECT_WHATSAPP,
+      false,
       true,
     );
     expect(nextOnboardingStatus).toEqual(OnboardingStatus.COMPLETED);

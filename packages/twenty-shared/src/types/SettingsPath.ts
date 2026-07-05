@@ -98,4 +98,8 @@ export enum SettingsPath {
   Whatsapp = 'whatsapp',
   // FORK: Voka CRM — Fase 12
   Broadcast = 'broadcast',
+  // FORK: Voka CRM — Fase 18/19
+  Equipes = 'equipes',
+  MotivosDePerca = 'motivos-de-perda',
+  CanaisConectados = 'canais-conectados',
 }

@@ -1,7 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios, { type AxiosInstance } from 'axios';
+import { EventEmitter } from 'events';
+import { Observable } from 'rxjs';
 import { Repository } from 'typeorm';
 
 import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-thread-summary.dto';
@@ -30,6 +32,7 @@ const MAX_RETRIES = 3;
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
+  private readonly messageEmitter = new EventEmitter();
 
   constructor(
     @InjectRepository(WhatsappInstanceEntity)
@@ -103,15 +106,24 @@ export class WhatsappService {
       input.appSecret,
     );
 
-    let instance = await this.instanceRepo.findOne({ where: { workspaceId } });
+    // If caller passes an explicit instanceId, update that specific one; otherwise create new
+    const existing = input.instanceId
+      ? await this.instanceRepo.findOne({ where: { id: input.instanceId, workspaceId } })
+      : null;
 
-    if (instance) {
-      instance.wabaId = input.wabaId;
-      instance.phoneNumberId = input.phoneNumberId;
-      instance.accessTokenEncrypted = accessTokenEncrypted;
-      instance.appSecretEncrypted = appSecretEncrypted;
-      instance.displayPhoneNumber = input.displayPhoneNumber ?? null;
+    let instance: WhatsappInstanceEntity;
+
+    if (existing) {
+      existing.wabaId = input.wabaId;
+      existing.phoneNumberId = input.phoneNumberId;
+      existing.accessTokenEncrypted = accessTokenEncrypted;
+      existing.appSecretEncrypted = appSecretEncrypted;
+      existing.displayPhoneNumber = input.displayPhoneNumber ?? null;
+      if (input.label !== undefined) existing.label = input.label ?? null;
+      instance = existing;
     } else {
+      const existingCount = await this.instanceRepo.count({ where: { workspaceId } });
+
       instance = this.instanceRepo.create({
         workspaceId,
         wabaId: input.wabaId,
@@ -119,6 +131,8 @@ export class WhatsappService {
         accessTokenEncrypted,
         appSecretEncrypted,
         displayPhoneNumber: input.displayPhoneNumber ?? null,
+        label: input.label ?? null,
+        isDefault: existingCount === 0, // first number is default
         connectionStatus: WhatsappConnectionStatus.PENDING,
       });
     }
@@ -131,7 +145,7 @@ export class WhatsappService {
       input.accessToken,
     );
 
-    await this.instanceRepo.update({ workspaceId }, { connectionStatus: status });
+    await this.instanceRepo.update({ id: saved.id }, { connectionStatus: status });
     saved.connectionStatus = status;
 
     return saved;
@@ -146,18 +160,31 @@ export class WhatsappService {
       await this.getInstanceCredentials(workspaceId);
     const client = this.getMetaClient(accessToken);
 
-    const { data } = await this.callWithRetry(() =>
-      client.post(`/${phoneNumberId}/messages`, {
-        messaging_product: 'whatsapp',
-        to: phoneNumber,
-        type: 'text',
-        text: { body: text },
-      }),
-    );
+    try {
+      const { data } = await this.callWithRetry(() =>
+        client.post(`/${phoneNumberId}/messages`, {
+          messaging_product: 'whatsapp',
+          to: phoneNumber,
+          type: 'text',
+          text: { body: text },
+        }),
+      );
 
-    return (
-      (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ?? ''
-    );
+      return (
+        (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ?? ''
+      );
+    } catch (err: unknown) {
+      // Meta error 131047: re-engagement message (24h window expired)
+      const metaCode = (err as { response?: { data?: { error?: { code?: number } } } })
+        ?.response?.data?.error?.code;
+
+      if (metaCode === 131047) {
+        throw new BadRequestException(
+          'WINDOW_EXPIRED: A janela de 24h está encerrada. Use um template para retomar a conversa.',
+        );
+      }
+      throw err;
+    }
   }
 
   async sendTemplateMessage(
@@ -267,7 +294,26 @@ export class WhatsappService {
       channelType: params.channelType ?? ChannelType.WHATSAPP,
     });
 
-    return this.messageRepo.save(entity);
+    const saved = await this.messageRepo.save(entity);
+
+    // Notify SSE subscribers for this workspace
+    this.messageEmitter.emit(`msg:${params.workspaceId}`, saved);
+
+    return saved;
+  }
+
+  subscribeToWorkspaceMessages(workspaceId: string): Observable<{ data: string }> {
+    return new Observable((subscriber) => {
+      const handler = (msg: WhatsappMessageEntity) => {
+        subscriber.next({ data: JSON.stringify(msg) });
+      };
+
+      this.messageEmitter.on(`msg:${workspaceId}`, handler);
+
+      return () => {
+        this.messageEmitter.off(`msg:${workspaceId}`, handler);
+      };
+    });
   }
 
   async updateMessageStatus(
@@ -290,7 +336,61 @@ export class WhatsappService {
   async getInstance(
     workspaceId: string,
   ): Promise<WhatsappInstanceEntity | null> {
-    return this.instanceRepo.findOne({ where: { workspaceId } });
+    return (
+      (await this.instanceRepo.findOne({ where: { workspaceId, isDefault: true } })) ??
+      (await this.instanceRepo.findOne({ where: { workspaceId } }))
+    );
+  }
+
+  // FORK: Voka CRM — Fase 11: multi-number management
+  async listInstances(workspaceId: string): Promise<WhatsappInstanceEntity[]> {
+    return this.instanceRepo.find({
+      where: { workspaceId },
+      order: { isDefault: 'DESC', createdAt: 'ASC' },
+    });
+  }
+
+  async setDefaultInstance(workspaceId: string, instanceId: string): Promise<boolean> {
+    await this.instanceRepo.update({ workspaceId }, { isDefault: false });
+    const result = await this.instanceRepo.update({ id: instanceId, workspaceId }, { isDefault: true });
+
+    return (result.affected ?? 0) > 0;
+  }
+
+  async deleteInstance(workspaceId: string, instanceId: string): Promise<boolean> {
+    const instances = await this.instanceRepo.find({ where: { workspaceId } });
+
+    if (instances.length <= 1) {
+      throw new BadRequestException('Não é possível remover o único número conectado.');
+    }
+
+    const target = instances.find((i) => i.id === instanceId);
+
+    if (!target) return false;
+
+    await this.instanceRepo.delete({ id: instanceId, workspaceId });
+
+    if (target.isDefault) {
+      const remaining = instances.filter((i) => i.id !== instanceId);
+      const next = remaining[0];
+
+      if (next) await this.instanceRepo.update({ id: next.id }, { isDefault: true });
+    }
+
+    return true;
+  }
+
+  async updateInstanceLabel(
+    workspaceId: string,
+    instanceId: string,
+    label: string,
+  ): Promise<boolean> {
+    const result = await this.instanceRepo.update(
+      { id: instanceId, workspaceId },
+      { label },
+    );
+
+    return (result.affected ?? 0) > 0;
   }
 
   // FORK: Voka CRM — Fase 9: returns one thread (latest msg) per contactId for the Inbox
@@ -438,6 +538,55 @@ export class WhatsappService {
       { workspaceId, contactId },
       { assignedUserId, assignedUserName },
     );
+  }
+
+  async listTemplates(workspaceId: string): Promise<{
+    id: string;
+    name: string;
+    status: string;
+    language: string;
+    category: string | null;
+    components: { type: string; text: string | null }[];
+  }[]> {
+    const instance = await this.instanceRepo.findOne({ where: { workspaceId } });
+
+    if (!instance) return [];
+
+    const accessToken = this.secretEncryptionService.decrypt(instance.accessTokenEncrypted);
+    const client = this.getMetaClient(accessToken);
+
+    try {
+      const { data } = await client.get(`/${instance.wabaId}/message_templates`, {
+        params: { fields: 'id,name,status,language,category,components', limit: 100 },
+      });
+
+      type MetaTemplate = {
+        id: string;
+        name: string;
+        status: string;
+        language: string;
+        category?: string;
+        components?: { type: string; text?: string }[];
+      };
+
+      const raw = data as { data?: MetaTemplate[] };
+
+      return (raw.data ?? [])
+        .filter((t) => t.status === 'APPROVED')
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          status: t.status,
+          language: t.language,
+          category: t.category ?? null,
+          components: (t.components ?? []).map((c) => ({
+            type: c.type,
+            text: c.text ?? null,
+          })),
+        }));
+    } catch {
+      return [];
+    }
   }
 
   private async callWithRetry<T>(

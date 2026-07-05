@@ -23,3 +23,12 @@ const renderApp = () => {
 };
 
 hydrateMetadataStore().then(renderApp, renderApp);
+
+// FORK: Voka CRM — Fase 22: register service worker for PWA + push
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .catch((err) => console.warn('[SW] Registration failed:', err));
+  });
+}

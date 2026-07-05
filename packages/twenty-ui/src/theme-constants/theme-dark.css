@@ -1012,4 +1012,80 @@
   --t-brand-voka-gold-hover: #b45309;
   --t-brand-whatsapp-green: #25D366;
   --t-brand-whatsapp-green-hover: #1DAA52;
+  /* FORK: Canvas editor tokens — always dark regardless of app theme */
+  --t-canvas-bg:                   #141c28;
+  --t-canvas-topbar-bg:            #0d1117;
+  --t-canvas-topbar-border:        #1c2a3a;
+  --t-canvas-card-bg:              #1a2535;
+  --t-canvas-card-border:          #2d4561;
+  --t-canvas-start-border:         #22c55e;
+  --t-canvas-text-primary:         #e2e8f0;
+  --t-canvas-text-muted:           #94a3b8;
+  --t-canvas-dot-color:            rgba(255,255,255,0.08);
+  --t-canvas-edge:                 rgba(255,255,255,0.25);
+  --t-canvas-save-bg:              #2563eb;
+  --t-canvas-save-bg-hover:        #1d4ed8;
+  --t-canvas-node-bg:              #1c3052;
+  --t-canvas-node-border:          #2a4570;
+  --t-canvas-node-border-selected: #60a5fa;
+  --t-canvas-node-header-border:   #243a5e;
+  --t-canvas-node-num-color:       #4b6284;
+  --t-canvas-node-type-color:      #94a3b8;
+  --t-canvas-node-body-text:       #cbd5e1;
+  --t-canvas-node-placeholder:     #4b6284;
+  --t-canvas-text-inverted:        #ffffff;
+  --t-canvas-overlay-xs:           rgba(255,255,255,0.05);
+  --t-canvas-overlay-sm:           rgba(255,255,255,0.06);
+  --t-canvas-overlay-md:           rgba(255,255,255,0.08);
+  --t-canvas-overlay-hover:        rgba(255,255,255,0.10);
+  --t-canvas-overlay-lg:           rgba(255,255,255,0.12);
+  --t-canvas-overlay-hover-lg:     rgba(255,255,255,0.15);
+  --t-canvas-overlay-border:       rgba(255,255,255,0.20);
+  --t-canvas-shadow:               rgba(0,0,0,0.50);
+  --t-canvas-modal-overlay:        rgba(0,0,0,0.45);
+  --t-canvas-modal-shadow:         rgba(0,0,0,0.20);
+  /* Canvas preview panel — WhatsApp dark UI mock */
+  --t-canvas-preview-bg:           #0b141a;
+  --t-canvas-preview-topbar-bg:    #1f2c34;
+  --t-canvas-preview-border:       #2a3942;
+  --t-canvas-preview-text:         #e9edef;
+  --t-canvas-preview-text-muted:   #aebac1;
+  --t-canvas-preview-bubble-bot:   #202c33;
+  --t-canvas-preview-bubble-user:  #005c4b;
+  --t-canvas-preview-input-bg:     #2a3942;
+  --t-canvas-preview-btn-bg:       #00a884;
+  --t-canvas-preview-btn-hover:    #00c99f;
+  --t-canvas-preview-btn-disabled: #2a3942;
+  --t-canvas-preview-placeholder:  #667681;
+
+  /* ── Estatísticas / Analytics ─────────────────────────────────────────── */
+  --stats-bg-gradient:        linear-gradient(135deg, #0f2a4a 0%, #1a6b8a 100%);
+  --stats-card-bg:            rgba(255,255,255,0.08);
+  --stats-card-border:        rgba(255,255,255,0.12);
+  --stats-card-shadow:        0 2px 8px rgba(0,0,0,0.15);
+  --stats-card-shadow-hover:  0 8px 24px rgba(0,0,0,0.25);
+  --stats-metric-primary:     #12B76A;
+  --stats-metric-secondary:   #7C3AED;
+  --stats-metric-warning:     #F79009;
+  --stats-chart-line:         #2E90FA;
+  --stats-chart-won:          #9AED6B;
+  --stats-chart-lost:         #F04438;
+
+  /* ── Animações ──────────────────────────────────────────────────────────── */
+  --anim-duration-fast:     150ms;
+  --anim-duration-normal:   300ms;
+  --anim-duration-slow:     600ms;
+  --anim-duration-counter:  1200ms;
+  --anim-ease-out:          cubic-bezier(0.16, 1, 0.3, 1);
+  --anim-ease-in-out:       cubic-bezier(0.4, 0, 0.2, 1);
+  --anim-ease-bounce:       cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dark {
+    --anim-duration-fast:     0ms;
+    --anim-duration-normal:   0ms;
+    --anim-duration-slow:     0ms;
+    --anim-duration-counter:  0ms;
+  }
 }
