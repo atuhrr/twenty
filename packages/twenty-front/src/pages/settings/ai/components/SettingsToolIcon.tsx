@@ -15,7 +15,7 @@ import {
   useIcons,
   type IconComponent,
 } from 'twenty-ui/icon';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 
 type ApplicationInfo = {
   name: string;
@@ -73,7 +73,7 @@ const StyledMainIconWrapper = styled.div<{
 
 const StyledOperationOverlay = styled.div`
   align-items: center;
-  background-color: ${themeCssVariables.grayScale.gray4};
+  background-color: var(--t-gray-scale-gray4);
   border-radius: 4px;
   bottom: -5px;
   display: flex;

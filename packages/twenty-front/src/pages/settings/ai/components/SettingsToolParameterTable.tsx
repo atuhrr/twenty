@@ -51,18 +51,18 @@ const TYPE_ICON_MAP: Record<string, ComponentType<{ size?: number }>> = {
 };
 
 const StyledTableHeaderRow = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 const StyledFieldsContainer = styled.div`
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  border-bottom: 1px solid var(--t-border-color-light);
+  padding-bottom: var(--t-spacing-2);
 `;
 
 const StyledFooter = styled.div`
   display: flex;
   justify-content: flex-end;
-  padding: ${themeCssVariables.spacing[2]} 0;
+  padding: var(--t-spacing-2) 0;
 `;
 
 const StyledInfoIconContainer = styled.div`

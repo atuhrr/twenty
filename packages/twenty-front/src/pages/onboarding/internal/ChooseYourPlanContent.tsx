@@ -18,15 +18,14 @@ import { isDefined } from 'twenty-shared/utils';
 import { Loader } from 'twenty-ui/feedback';
 import { CardPicker, MainButton } from 'twenty-ui/input';
 import { CAL_LINK, ClickToActionLink } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type Billing } from '~/generated-metadata/graphql';
 
 const StyledChooseTrialContainer = styled.div`
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[2]};
-  margin-bottom: ${themeCssVariables.spacing[4]};
-  margin-top: ${themeCssVariables.spacing[8]};
+  gap: var(--t-spacing-2);
+  margin-bottom: var(--t-spacing-4);
+  margin-top: var(--t-spacing-8);
   width: 100%;
 
   > * {
@@ -39,12 +38,12 @@ const StyledLinkGroup = styled.div`
   align-items: center;
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
   justify-content: center;
-  margin-top: ${themeCssVariables.spacing[4]};
+  margin-top: var(--t-spacing-4);
 
   > span {
-    background-color: ${themeCssVariables.font.color.light};
+    background-color: var(--t-font-color-light);
     border-radius: 50%;
     height: 2px;
     width: 2px;

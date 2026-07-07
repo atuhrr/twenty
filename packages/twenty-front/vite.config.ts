@@ -88,6 +88,8 @@ export default defineConfig(({ mode }) => {
         wyw({
           include: [path.resolve(__dirname, 'src') + '/**/*.{ts,tsx}'],
           exclude: [
+            '**/tailadmin/**',
+            '**/funil/**',
             '**/generated-metadata/**',
             '**/generated-admin/**',
             '**/testing/mock-data/**',
@@ -151,6 +153,8 @@ export default defineConfig(({ mode }) => {
         'react-dom/client',
         'react/jsx-runtime',
         'react/jsx-dev-runtime',
+        'apexcharts',
+        'react-apexcharts',
         '@nivo/core',
         '@nivo/pie',
         '@nivo/line',

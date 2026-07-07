@@ -1,4 +1,3 @@
-import { AuthModal } from '@/auth/components/AuthModal';
 import { AppErrorBoundary } from '@/error-handler/components/AppErrorBoundary';
 import { AppFullScreenErrorFallback } from '@/error-handler/components/AppFullScreenErrorFallback';
 import { AppPageErrorFallback } from '@/error-handler/components/AppPageErrorFallback';
@@ -8,22 +7,9 @@ import { InformationBannerIsImpersonating } from '@/information-banner/component
 import { InformationBannerWhatsappDisconnected } from '@/settings/whatsapp/components/InformationBannerWhatsappDisconnected';
 import { KeyboardShortcutMenu } from '@/keyboard-shortcut-menu/components/KeyboardShortcutMenu';
 import { LayoutCustomizationBar } from '@/layout-customization/components/LayoutCustomizationBar';
-import { AppNavigationDrawer } from '@/navigation/components/AppNavigationDrawer';
-import { MobileNavigationBar } from '@/navigation/components/MobileNavigationBar';
 import { PageDragDropProvider } from '@/navigation-menu-item/display/dnd/providers/PageDragDropProvider';
-import { BackgroundMockNavigationDrawer } from '@/sign-in-background-mock/components/BackgroundMockNavigationDrawer';
-import { Suspense, lazy } from 'react';
-
-const BackgroundMockPage = lazy(() =>
-  import('@/sign-in-background-mock/components/BackgroundMockPage').then(
-    (module) => ({ default: module.BackgroundMockPage }),
-  ),
-);
-import { useShowFullscreen } from '@/ui/layout/fullscreen/hooks/useShowFullscreen';
 import { useShowAuthModal } from '@/ui/layout/hooks/useShowAuthModal';
-import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { styled } from '@linaria/react';
-import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Outlet } from 'react-router-dom';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 const StyledLayout = styled.div`
@@ -49,10 +35,6 @@ const StyledPageContainer = styled.div`
   min-width: 0;
 `;
 
-const StyledNavigationDrawerWrapper = styled.div`
-  flex-shrink: 0;
-`;
-
 const StyledMainContainer = styled.div`
   display: flex;
   flex: 0 1 100%;
@@ -61,9 +43,7 @@ const StyledMainContainer = styled.div`
 `;
 
 export const DefaultLayout = () => {
-  const isMobile = useIsMobile();
   const showAuthModal = useShowAuthModal();
-  const useShowFullScreen = useShowFullscreen();
 
   return (
     <>
@@ -76,41 +56,18 @@ export const DefaultLayout = () => {
             <LayoutCustomizationBar />
             <StyledPageContainer>
               <PageDragDropProvider>
+                {/* FORK: Voka CRM — T-13: auth renderiza fullscreen no
+                    AuthTailLayout; o mock de fundo do Twenty (em inglês) e o
+                    AuthModal foram removidos. */}
                 {!showAuthModal && <KeyboardShortcutMenu />}
-                {showAuthModal ? (
-                  <StyledNavigationDrawerWrapper>
-                    <BackgroundMockNavigationDrawer />
-                  </StyledNavigationDrawerWrapper>
-                ) : useShowFullScreen ? null : (
-                  <StyledNavigationDrawerWrapper>
-                    <AppNavigationDrawer />
-                  </StyledNavigationDrawerWrapper>
-                )}
-                {showAuthModal ? (
-                  <>
-                    <StyledMainContainer>
-                      <Suspense fallback={null}>
-                        <BackgroundMockPage />
-                      </Suspense>
-                    </StyledMainContainer>
-                    <AnimatePresence mode="wait">
-                      <LayoutGroup>
-                        <AuthModal>
-                          <Outlet />
-                        </AuthModal>
-                      </LayoutGroup>
-                    </AnimatePresence>
-                  </>
-                ) : (
-                  <StyledMainContainer>
-                    <AppErrorBoundary FallbackComponent={AppPageErrorFallback}>
-                      <Outlet />
-                    </AppErrorBoundary>
-                  </StyledMainContainer>
-                )}
+                <StyledMainContainer>
+                  <AppErrorBoundary FallbackComponent={AppPageErrorFallback}>
+                    <Outlet />
+                  </AppErrorBoundary>
+                </StyledMainContainer>
               </PageDragDropProvider>
             </StyledPageContainer>
-            {isMobile && !showAuthModal && <MobileNavigationBar />}
+
           </AppErrorBoundary>
         </StyledLayout>
       </FileUploadProvider>

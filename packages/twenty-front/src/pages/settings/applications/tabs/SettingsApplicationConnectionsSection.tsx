@@ -36,12 +36,12 @@ const CONNECTION_TABLE_ROW_GRID_TEMPLATE_COLUMNS =
 const StyledFooter = styled.div`
   display: flex;
   justify-content: flex-start;
-  margin-top: ${themeCssVariables.spacing[2]};
+  margin-top: var(--t-spacing-2);
 `;
 
 const StyledTableRowsContainer = styled.div`
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
-  padding: ${themeCssVariables.spacing[2]} 0;
+  border-bottom: 1px solid var(--t-border-color-light);
+  padding: var(--t-spacing-2) 0;
 `;
 
 const AddConnectionDropdown = ({
@@ -192,7 +192,7 @@ export const SettingsApplicationConnectionsSection = ({
                       <TableCell
                         align="right"
                         color={themeCssVariables.font.color.tertiary}
-                        padding={`0 ${themeCssVariables.spacing[2]} 0 0`}
+                        padding={`0 var(--t-spacing-2) 0 0`}
                       >
                         <IconChevronRight
                           size={theme.icon.size.md}

@@ -43,11 +43,11 @@ import type { SettingsObjectTableItem } from '~/pages/settings/data-model/types/
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 const StyledIconChevronRightContainer = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
 `;
 
 const StyledSearchInputContainer = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
 `;
 
 const StyledScrollWrapper = styled.div`

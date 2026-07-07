@@ -24,7 +24,7 @@ import {
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { MOBILE_VIEWPORT, themeCssVariables } from 'twenty-ui/theme-constants';
+import { MOBILE_VIEWPORT } from 'twenty-ui/theme-constants';
 import { SETTINGS_API_WEBHOOKS_TABS } from '~/pages/settings/api-webhooks/constants/SettingsApiWebhooksTabs';
 
 type TabKey =
@@ -35,23 +35,23 @@ const SETTINGS_API_HERO_INSTANCE_ID_PREFIX = 'settings-api-hero';
 const StyledButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
-  padding-top: ${themeCssVariables.spacing[2]};
+  padding-top: var(--t-spacing-2);
   @media (max-width: ${MOBILE_VIEWPORT}px) {
-    padding-top: ${themeCssVariables.spacing[5]};
+    padding-top: var(--t-spacing-5);
   }
 `;
 
 const StyledTabContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[10]};
-  padding-top: ${themeCssVariables.spacing[6]};
+  gap: var(--t-spacing-10);
+  padding-top: var(--t-spacing-6);
 `;
 
 const StyledTableContainer = styled.div<{ isMobile?: boolean }>`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
   overflow: ${({ isMobile }) => (isMobile ? 'hidden' : 'visible')};
 `;
 

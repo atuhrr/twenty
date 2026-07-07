@@ -85,6 +85,7 @@ import { CreateBroadcastTablesFastInstanceCommand } from './2-16/2-16-instance-c
 import { TranslateStandardObjectLabelsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782777600000-translate-standard-object-labels';
 import { CreateAutomationTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782864000000-create-automation-tables';
 import { CreateSalesbotTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1782950400000-create-salesbot-tables';
+import { CreateNotificationsTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783900800000-create-notifications-table';
 import { CreateWebFormTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783036800000-create-web-form-tables';
 import { CreateIntegrationTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783123200000-create-integration-tables';
 import { MigrateSalesbotToGraphFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783209600000-migrate-salesbot-to-graph';
@@ -181,6 +182,7 @@ export const INSTANCE_COMMANDS = [
   TranslateStandardObjectLabelsFastInstanceCommand,
   CreateAutomationTablesFastInstanceCommand,
   CreateSalesbotTablesFastInstanceCommand,
+  CreateNotificationsTableFastInstanceCommand,
   CreateWebFormTablesFastInstanceCommand,
   CreateIntegrationTablesFastInstanceCommand,
   MigrateSalesbotToGraphFastInstanceCommand,

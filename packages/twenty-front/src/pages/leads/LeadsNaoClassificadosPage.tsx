@@ -2,7 +2,6 @@
 /* oxlint-disable twenty/no-hardcoded-colors */
 import { styled } from '@linaria/react';
 import { useCallback } from 'react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
@@ -18,22 +17,22 @@ const StyledPage = styled.div`
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  padding: ${themeCssVariables.spacing[6]};
+  padding: var(--t-spacing-6);
 `;
 
 const StyledHeader = styled.div`
   align-items: center;
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
+  border-bottom: 1px solid var(--t-border-color-light);
   display: flex;
-  gap: ${themeCssVariables.spacing[3]};
-  margin-bottom: ${themeCssVariables.spacing[6]};
-  padding-bottom: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-3);
+  margin-bottom: var(--t-spacing-6);
+  padding-bottom: var(--t-spacing-4);
 `;
 
 const StyledTitle = styled.h1`
-  color: ${themeCssVariables.font.color.primary};
-  font-size: ${themeCssVariables.font.size.xl};
-  font-weight: ${themeCssVariables.font.weight.semiBold};
+  color: var(--t-font-color-primary);
+  font-size: var(--t-font-size-xl);
+  font-weight: var(--t-font-weight-semi-bold);
   margin: 0;
 `;
 
@@ -49,38 +48,38 @@ const StyledCount = styled.span`
 `;
 
 const StyledSubtitle = styled.p`
-  color: ${themeCssVariables.font.color.secondary};
-  font-size: ${themeCssVariables.font.size.sm};
+  color: var(--t-font-color-secondary);
+  font-size: var(--t-font-size-sm);
   margin: 0;
 `;
 
 const StyledList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[3]};
+  gap: var(--t-spacing-3);
   max-width: 800px;
 `;
 
 const StyledCard = styled.div`
-  background: ${themeCssVariables.background.primary};
-  border: 1px solid ${themeCssVariables.border.color.light};
-  border-radius: ${themeCssVariables.border.radius.md};
+  background: var(--t-background-primary);
+  border: 1px solid var(--t-border-color-light);
+  border-radius: var(--t-border-radius-md);
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[2]};
-  padding: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-2);
+  padding: var(--t-spacing-4);
 `;
 
 const StyledCardTop = styled.div`
   align-items: flex-start;
   display: flex;
-  gap: ${themeCssVariables.spacing[3]};
+  gap: var(--t-spacing-3);
 `;
 
 const StyledChannelBadge = styled.span`
-  background: ${themeCssVariables.background.tertiary};
-  border-radius: ${themeCssVariables.border.radius.sm};
-  color: ${themeCssVariables.font.color.secondary};
+  background: var(--t-background-tertiary);
+  border-radius: var(--t-border-radius-sm);
+  color: var(--t-font-color-secondary);
   flex-shrink: 0;
   font-size: 10px;
   font-weight: 600;
@@ -104,13 +103,13 @@ const StyledLeadName = styled.div`
 `;
 
 const StyledLeadMeta = styled.div`
-  color: ${themeCssVariables.font.color.secondary};
+  color: var(--t-font-color-secondary);
   font-size: 12px;
   margin-top: 2px;
 `;
 
 const StyledPreview = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
   font-size: 13px;
   font-style: italic;
   overflow: hidden;
@@ -121,13 +120,13 @@ const StyledPreview = styled.div`
 const StyledActions = styled.div`
   display: flex;
   flex-shrink: 0;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 const StyledAcceptBtn = styled.button`
   background: #12B76A;
   border: none;
-  border-radius: ${themeCssVariables.border.radius.sm};
+  border-radius: var(--t-border-radius-sm);
   color: #fff;
   cursor: pointer;
   font-size: 12px;
@@ -141,9 +140,9 @@ const StyledAcceptBtn = styled.button`
 
 const StyledRejectBtn = styled.button`
   background: transparent;
-  border: 1px solid ${themeCssVariables.border.color.medium};
-  border-radius: ${themeCssVariables.border.radius.sm};
-  color: ${themeCssVariables.font.color.secondary};
+  border: 1px solid var(--t-border-color-medium);
+  border-radius: var(--t-border-radius-sm);
+  color: var(--t-font-color-secondary);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -158,12 +157,12 @@ const StyledRejectBtn = styled.button`
 
 const StyledEmpty = styled.div`
   align-items: center;
-  color: ${themeCssVariables.font.color.light};
+  color: var(--t-font-color-light);
   display: flex;
   flex-direction: column;
-  font-size: ${themeCssVariables.font.size.md};
-  gap: ${themeCssVariables.spacing[4]};
-  margin-top: ${themeCssVariables.spacing[16]};
+  font-size: var(--t-font-size-md);
+  gap: var(--t-spacing-4);
+  margin-top: var(--t-spacing-16);
   text-align: center;
 `;
 

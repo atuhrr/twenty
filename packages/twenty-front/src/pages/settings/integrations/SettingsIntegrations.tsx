@@ -154,13 +154,11 @@ const Btn = styled.button<{ variant?: 'primary' | 'ghost' | 'danger' }>`
   font-weight: 500;
   cursor: pointer;
   border: 1px solid;
-  ${({ variant }) => {
-    if (variant === 'primary')
-      return `background:#7c3aed;color:#fff;border-color:#7c3aed;`;
-    if (variant === 'danger')
-      return `background:#fff;color:#f04438;border-color:#f04438;`;
-    return `background:#fff;color:#344054;border-color:#eaecf0;`;
-  }}
+  background: ${({ variant }) => (variant === 'primary' ? '#7c3aed' : '#fff')};
+  color: ${({ variant }) =>
+    variant === 'primary' ? '#fff' : variant === 'danger' ? '#f04438' : '#344054'};
+  border-color: ${({ variant }) =>
+    variant === 'primary' ? '#7c3aed' : variant === 'danger' ? '#f04438' : '#eaecf0'};
   &:hover { opacity: 0.88; }
 `;
 

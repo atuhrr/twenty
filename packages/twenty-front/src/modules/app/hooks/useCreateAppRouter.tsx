@@ -1,6 +1,8 @@
 import { AppRouterProviders } from '@/app/components/AppRouterProviders';
 import { LazyRoute } from '@/app/components/LazyRoute';
 import { SettingsRoutes } from '@/app/components/SettingsRoutes';
+import { SettingsTailLayout } from '@/tailadmin/layout/SettingsTailLayout';
+import { AuthTailLayout } from '@/tailadmin/layout/AuthTailLayout';
 import { VerifyLoginTokenEffect } from '@/auth/components/VerifyLoginTokenEffect';
 
 import { VerifyEmailEffect } from '@/auth/components/VerifyEmailEffect';
@@ -8,15 +10,26 @@ import indexAppPath from '@/navigation/utils/indexAppPath';
 import { RecordIndexSkeletonLoader } from '@/object-record/record-index/components/RecordIndexSkeletonLoader';
 import { BlankLayout } from '@/ui/layout/page/components/BlankLayout';
 import { DefaultLayout } from '@/ui/layout/page/components/DefaultLayout';
-import { MainAppLayoutWithSidePanel } from '@/ui/layout/page/components/MainAppLayoutWithSidePanel';
 import { AppPath } from 'twenty-shared/types';
 
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
   createRoutesFromElements,
   Route,
 } from 'react-router-dom';
+
+const VokaAppLayout = lazy(() =>
+  import('@/tailadmin/layout/VokaAppLayout').then((module) => ({
+    default: module.VokaAppLayout,
+  })),
+);
+
+const VokaDashboardPage = lazy(() =>
+  import('~/pages/dashboard/VokaDashboardPage').then((module) => ({
+    default: module.VokaDashboardPage,
+  })),
+);
 
 const RecordIndexPage = lazy(() =>
   import('~/pages/object-record/RecordIndexPage').then((module) => ({
@@ -108,6 +121,27 @@ const StandalonePageLayoutPage = lazy(() =>
   })),
 );
 
+// FORK: Voka CRM — Fase A: telas de auth fiéis ao design TailAdmin
+const VokaSignInPage = lazy(() =>
+  import('~/pages/auth/VokaSignInPage').then((m) => ({
+    default: m.VokaSignInPage,
+  })),
+);
+const VokaSignUpPage = lazy(() =>
+  import('~/pages/auth/VokaSignUpPage').then((m) => ({
+    default: m.VokaSignUpPage,
+  })),
+);
+const VokaForgotPasswordPage = lazy(() =>
+  import('~/pages/auth/VokaForgotPasswordPage').then((m) => ({
+    default: m.VokaForgotPasswordPage,
+  })),
+);
+const VokaTwoStepPage = lazy(() =>
+  import('~/pages/auth/VokaTwoStepPage').then((m) => ({
+    default: m.VokaTwoStepPage,
+  })),
+);
 const NotFound = lazy(() =>
   import('~/pages/not-found/NotFound').then((module) => ({
     default: module.NotFound,
@@ -177,6 +211,48 @@ const TemplatesPage = lazy(() =>
   })),
 );
 
+// FORK: Voka CRM — T-4: Funil Kanban
+const FunilKanbanPage = lazy(() =>
+  import('~/pages/funil/FunilKanbanPage').then((module) => ({
+    default: module.FunilKanbanPage,
+  })),
+);
+
+// FORK: Voka CRM — T-3: Listas de Leads, Contatos e Empresas
+// FORK: Voka CRM — T-12: páginas de detalhe TailAdmin
+const LeadDetailPage = lazy(() =>
+  import('~/pages/leads/LeadDetailPage').then((module) => ({
+    default: module.LeadDetailPage,
+  })),
+);
+const ContatoDetailPage = lazy(() =>
+  import('~/pages/contatos/ContatoDetailPage').then((module) => ({
+    default: module.ContatoDetailPage,
+  })),
+);
+const EmpresaDetailPage = lazy(() =>
+  import('~/pages/empresas/EmpresaDetailPage').then((module) => ({
+    default: module.EmpresaDetailPage,
+  })),
+);
+const LeadsListPage = lazy(() =>
+  import('~/pages/leads/LeadsListPage').then((module) => ({
+    default: module.LeadsListPage,
+  })),
+);
+
+const ContatosListPage = lazy(() =>
+  import('~/pages/contatos/ContatosListPage').then((module) => ({
+    default: module.ContatosListPage,
+  })),
+);
+
+const EmpresasListPage = lazy(() =>
+  import('~/pages/empresas/EmpresasListPage').then((module) => ({
+    default: module.EmpresasListPage,
+  })),
+);
+
 // FORK: Voka CRM — Fase 2: Clientes Recorrentes + Catálogo
 const ClientesPage = lazy(() =>
   import('~/pages/clientes/ClientesPage').then((module) => ({
@@ -191,6 +267,12 @@ const CatalogoPage = lazy(() =>
 );
 
 // FORK: Voka CRM — Fase 20: Estatísticas
+// FORK: Voka CRM — T-7: página unificada de Estatísticas (TailAdmin)
+const EstatisticasPage = lazy(() =>
+  import('~/pages/estatisticas/EstatisticasPage').then((module) => ({
+    default: module.EstatisticasPage,
+  })),
+);
 const DashboardPage = lazy(() =>
   import('~/pages/estatisticas/DashboardPage').then((module) => ({
     default: module.DashboardPage,
@@ -227,70 +309,105 @@ export const useCreateAppRouter = (
         <Route element={<DefaultLayout />}>
           <Route path={AppPath.Verify} element={<VerifyLoginTokenEffect />} />
           <Route path={AppPath.VerifyEmail} element={<VerifyEmailEffect />} />
-          <Route
-            path={AppPath.SignInUp}
-            element={
-              <LazyRoute fallback={null}>
-                <SignInUp />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.Invite}
-            element={
-              <LazyRoute fallback={null}>
-                <SignInUp />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.ResetPassword}
-            element={
-              <LazyRoute fallback={null}>
-                <PasswordReset />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.WorkspaceActivation}
-            element={
-              <LazyRoute fallback={null}>
-                <WorkspaceActivation />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.CreateProfile}
-            element={
-              <LazyRoute fallback={null}>
-                <CreateProfile />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.SyncEmails}
-            element={
-              <LazyRoute fallback={null}>
-                <SyncEmails />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.InviteTeam}
-            element={
-              <LazyRoute fallback={null}>
-                <InviteTeam />
-              </LazyRoute>
-            }
-          />
-          <Route
-            path={AppPath.ConnectWhatsApp}
-            element={
-              <LazyRoute fallback={null}>
-                <ConnectWhatsApp />
-              </LazyRoute>
-            }
-          />
+          {/* FORK: Voka CRM — T-11: shell TailAdmin (painel de marca + stepper) */}
+          <Route element={<AuthTailLayout />}>
+            <Route
+              path="/entrar"
+              element={
+                <LazyRoute fallback={null}>
+                  <VokaSignInPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/cadastro"
+              element={
+                <LazyRoute fallback={null}>
+                  <VokaSignUpPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/recuperar-senha"
+              element={
+                <LazyRoute fallback={null}>
+                  <VokaForgotPasswordPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/verificacao"
+              element={
+                <LazyRoute fallback={null}>
+                  <VokaTwoStepPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.SignInUp}
+              element={
+                <LazyRoute fallback={null}>
+                  <SignInUp />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.Invite}
+              element={
+                <LazyRoute fallback={null}>
+                  <SignInUp />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.ResetPassword}
+              element={
+                <LazyRoute fallback={null}>
+                  <PasswordReset />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.WorkspaceActivation}
+              element={
+                <LazyRoute fallback={null}>
+                  <WorkspaceActivation />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.CreateProfile}
+              element={
+                <LazyRoute fallback={null}>
+                  <CreateProfile />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.SyncEmails}
+              element={
+                <LazyRoute fallback={null}>
+                  <SyncEmails />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.InviteTeam}
+              element={
+                <LazyRoute fallback={null}>
+                  <InviteTeam />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path={AppPath.ConnectWhatsApp}
+              element={
+                <LazyRoute fallback={null}>
+                  <ConnectWhatsApp />
+                </LazyRoute>
+              }
+            />
+          </Route>
           <Route
             path={AppPath.PlanRequired}
             element={
@@ -323,8 +440,17 @@ export const useCreateAppRouter = (
               </LazyRoute>
             }
           />
-          <Route element={<MainAppLayoutWithSidePanel />}>
-            <Route path={indexAppPath.getIndexAppPath()} element={<></>} />
+          <Route element={<Suspense fallback={null}><VokaAppLayout /></Suspense>}>
+            <Route
+              path={indexAppPath.getIndexAppPath()}
+              element={
+                <LazyRoute fallback={null}>
+                  <VokaDashboardPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — T-13: redirects /objects/* → páginas Voka vivem
+                em usePageChangeEffectNavigateLocation (fonte única). */}
             <Route
               path={AppPath.RecordIndexPage}
               element={
@@ -349,13 +475,16 @@ export const useCreateAppRouter = (
                 </LazyRoute>
               }
             />
+            {/* FORK: Voka CRM — T-10: sidebar interna TailAdmin nas configurações */}
             <Route
               path={AppPath.SettingsCatchAll}
               element={
-                <SettingsRoutes
-                  isFunctionSettingsEnabled={isFunctionSettingsEnabled}
-                  isAdminPageEnabled={isAdminPageEnabled}
-                />
+                <SettingsTailLayout>
+                  <SettingsRoutes
+                    isFunctionSettingsEnabled={isFunctionSettingsEnabled}
+                    isAdminPageEnabled={isAdminPageEnabled}
+                  />
+                </SettingsTailLayout>
               }
             />
             {/* FORK: Voka CRM — module placeholder routes */}
@@ -372,6 +501,65 @@ export const useCreateAppRouter = (
               element={
                 <LazyRoute>
                   <MailPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — T-4: Funil Kanban */}
+            <Route
+              path="/funil"
+              element={
+                <LazyRoute>
+                  <FunilKanbanPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — T-3: listas dedicadas */}
+            <Route
+              path="/leads"
+              element={
+                <LazyRoute>
+                  <LeadsListPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/contatos"
+              element={
+                <LazyRoute>
+                  <ContatosListPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/empresas"
+              element={
+                <LazyRoute>
+                  <EmpresasListPage />
+                </LazyRoute>
+              }
+            />
+            {/* FORK: Voka CRM — T-12: páginas de detalhe TailAdmin */}
+            <Route
+              path="/leads/:id"
+              element={
+                <LazyRoute>
+                  <LeadDetailPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/contatos/:id"
+              element={
+                <LazyRoute>
+                  <ContatoDetailPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/empresas/:id"
+              element={
+                <LazyRoute>
+                  <EmpresaDetailPage />
                 </LazyRoute>
               }
             />
@@ -465,6 +653,15 @@ export const useCreateAppRouter = (
               }
             />
             {/* FORK: Voka CRM — Fase 20: Estatísticas */}
+            {/* FORK: Voka CRM — T-7: página unificada */}
+            <Route
+              path="/estatisticas"
+              element={
+                <LazyRoute>
+                  <EstatisticasPage />
+                </LazyRoute>
+              }
+            />
             <Route
               path="/estatisticas/dashboard"
               element={

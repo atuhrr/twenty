@@ -1,3 +1,4 @@
+import { NotificationsModule } from 'src/engine/core-modules/notifications/notifications.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -21,6 +22,8 @@ import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/
 
 @Module({
   imports: [
+    // FORK: Voka CRM — Fase C: notificações de mensagens recebidas
+    NotificationsModule,
     TypeOrmModule.forFeature([
       WhatsappInstanceEntity,
       WhatsappMessageEntity,

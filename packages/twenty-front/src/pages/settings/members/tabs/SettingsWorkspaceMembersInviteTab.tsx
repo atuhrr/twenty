@@ -26,7 +26,7 @@ import { AppTooltip, TooltipDelay } from 'twenty-ui/surfaces';
 import { H2Title } from 'twenty-ui/typography';
 import { IconButton } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { GetWorkspaceInvitationsDocument } from '~/generated-metadata/graphql';
 import { dateLocaleState } from '~/localization/states/dateLocaleState';
 
@@ -35,8 +35,8 @@ const StyledButtonContainer = styled.div`
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
-  gap: ${themeCssVariables.spacing[1]};
-  margin-left: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-1);
+  margin-left: var(--t-spacing-2);
 `;
 
 const StyledExpiresInHeader = styled.span`
@@ -45,14 +45,14 @@ const StyledExpiresInHeader = styled.span`
 
 const StyledTableContainer = styled.div`
   > div {
-    border-bottom: 1px solid ${themeCssVariables.border.color.light};
+    border-bottom: 1px solid var(--t-border-color-light);
   }
 `;
 
 const StyledIconWrapper = styled.div`
   align-items: center;
   display: flex;
-  margin-right: ${themeCssVariables.spacing[2]};
+  margin-right: var(--t-spacing-2);
 `;
 
 const StyledTextContainerWithEllipsis = styled.div`
@@ -62,8 +62,8 @@ const StyledTextContainerWithEllipsis = styled.div`
 `;
 
 const StyledTableRows = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
-  padding-top: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
+  padding-top: var(--t-spacing-2);
 `;
 
 export const SettingsWorkspaceMembersInviteTab = () => {

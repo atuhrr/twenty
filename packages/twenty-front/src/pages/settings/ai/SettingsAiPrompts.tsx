@@ -11,21 +11,20 @@ import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import { H2Title, H3Title } from 'twenty-ui/typography';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { GetAiSystemPromptPreviewDocument } from '~/generated-metadata/graphql';
 import { formatNumber } from '~/utils/format/formatNumber';
 
 const StyledFormContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 const StyledTitleContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[4]};
-  margin-top: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-4);
+  margin-top: var(--t-spacing-2);
 `;
 
 export const SettingsAiPrompts = () => {

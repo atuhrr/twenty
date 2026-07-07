@@ -18,7 +18,6 @@ import { VokaCrmService } from './voka-crm.service';
         ClienteRecorrenteEntity,
         VokaNotificationEntity,
       ],
-      'core',
     ),
   ],
   providers: [VokaCrmService, VokaCrmResolver],

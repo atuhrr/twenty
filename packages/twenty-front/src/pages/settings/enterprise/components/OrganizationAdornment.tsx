@@ -1,18 +1,17 @@
 import { IconLock } from 'twenty-ui/icon';
 import { t } from '@lingui/core/macro';
 import { styled } from '@linaria/react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledPillContainer = styled.span`
   align-items: center;
-  background: ${themeCssVariables.background.secondary};
-  border: 1px solid ${themeCssVariables.border.color.light};
+  background: var(--t-background-secondary);
+  border: 1px solid var(--t-border-color-light);
   border-radius: 40px;
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
   display: inline-flex;
-  font-weight: ${themeCssVariables.font.weight.medium};
-  gap: ${themeCssVariables.spacing[1]};
-  padding: ${themeCssVariables.spacing[1]} ${themeCssVariables.spacing[2]};
+  font-weight: var(--t-font-weight-medium);
+  gap: var(--t-spacing-1);
+  padding: var(--t-spacing-1) var(--t-spacing-2);
 `;
 
 export const OrganizationAdornment = () => (

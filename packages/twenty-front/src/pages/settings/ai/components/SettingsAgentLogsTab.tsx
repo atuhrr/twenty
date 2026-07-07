@@ -28,11 +28,11 @@ import {
 } from '~/generated-metadata/graphql';
 
 const StyledTableContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[3]};
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledTableHeaderRowContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 type SettingsAgentLogsTabProps = {
@@ -236,7 +236,7 @@ export const SettingsAgentLogsTab = ({
               </TableCell>
               <TableCell
                 align="right"
-                padding={`0 ${themeCssVariables.spacing[2]} 0 0`}
+                padding={`0 var(--t-spacing-2) 0 0`}
               >
                 {latestEvaluation && (
                   <UndecoratedLink

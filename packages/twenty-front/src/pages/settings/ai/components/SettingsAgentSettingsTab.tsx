@@ -17,7 +17,6 @@ import { IconTrash } from 'twenty-ui/icon';
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type Agent } from '~/generated-metadata/graphql';
 import { SettingsAgentDeleteConfirmationModal } from '~/pages/settings/ai/components/SettingsAgentDeleteConfirmationModal';
 import { SettingsAgentResponseFormat } from '~/pages/settings/ai/components/SettingsAgentResponseFormat';
@@ -28,13 +27,13 @@ import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomState
 const StyledFormContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 const StyledIconNameRow = styled.div`
   align-items: flex-start;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 const StyledNameContainer = styled.div`
@@ -42,9 +41,9 @@ const StyledNameContainer = styled.div`
 `;
 
 const StyledErrorMessage = styled.div`
-  color: ${themeCssVariables.color.red};
-  font-size: ${themeCssVariables.font.size.sm};
-  margin-top: ${themeCssVariables.spacing[1]};
+  color: var(--t-color-red);
+  font-size: var(--t-font-size-sm);
+  margin-top: var(--t-spacing-1);
 `;
 
 const DELETE_AGENT_MODAL_ID = 'delete-agent-modal';

@@ -24,9 +24,9 @@ type SettingsApplicationCommandMenuItemSettingsTabProps = {
 };
 
 const StyledMonoText = styled.span`
-  color: ${themeCssVariables.font.color.primary};
-  font-family: ${themeCssVariables.code.font.family}, monospace;
-  font-size: ${themeCssVariables.font.size.sm};
+  color: var(--t-font-color-primary);
+  font-family: var(--t-code-font-family), monospace;
+  font-size: var(--t-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

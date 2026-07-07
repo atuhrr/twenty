@@ -11,7 +11,6 @@ import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import { IconPlus } from 'twenty-ui/icon';
 import { H2Title } from 'twenty-ui/typography';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { ADD_MODEL_TO_PROVIDER } from '@/settings/admin-panel/ai/graphql/mutations/addModelToProvider';
@@ -30,7 +29,7 @@ import { Checkbox, Toggle } from 'twenty-ui/input';
 const StyledComboInputContainer = styled.div`
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 const MODALITY_OPTIONS = [
@@ -44,8 +43,8 @@ const StyledCheckboxRow = styled.div`
   align-items: center;
   cursor: pointer;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  padding: ${themeCssVariables.spacing[1]} 0;
+  gap: var(--t-spacing-2);
+  padding: var(--t-spacing-1) 0;
 `;
 
 const StyledModalitiesContainer = styled.div`

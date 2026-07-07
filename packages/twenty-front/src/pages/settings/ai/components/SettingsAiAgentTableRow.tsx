@@ -19,7 +19,7 @@ export const AI_AGENT_TABLE_ROW_GRID_TEMPLATE_COLUMNS = '1fr 120px 36px';
 
 const StyledIconContainer = styled.div`
   flex-shrink: 0;
-  height: ${themeCssVariables.spacing[4]};
+  height: var(--t-spacing-4);
 `;
 
 export const SettingsAiAgentTableRow = ({
@@ -53,7 +53,7 @@ export const SettingsAiAgentTableRow = ({
       </TableCell>
       <TableCell
         align="right"
-        padding={`0 ${themeCssVariables.spacing[2]} 0 0`}
+        padding={`0 var(--t-spacing-2) 0 0`}
       >
         {action}
       </TableCell>

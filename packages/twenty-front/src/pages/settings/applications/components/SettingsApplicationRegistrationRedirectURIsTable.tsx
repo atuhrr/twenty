@@ -16,11 +16,11 @@ type SettingsApplicationRegistrationRedirectURIsTableProps = {
 };
 
 const StyledTableContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[4]};
+  margin-top: var(--t-spacing-4);
 `;
 
 const StyledTableBodyContainer = styled.div`
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
+  border-bottom: 1px solid var(--t-border-color-light);
 `;
 
 export const SettingsApplicationRegistrationRedirectURIsTable = ({

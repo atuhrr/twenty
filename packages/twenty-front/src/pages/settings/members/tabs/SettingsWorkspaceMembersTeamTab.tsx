@@ -46,14 +46,14 @@ const StyledTableContainer = styled.div<{ hasMoreRows?: boolean }>`
     border-bottom: ${({ hasMoreRows }) =>
       hasMoreRows
         ? 'none'
-        : `1px solid ${themeCssVariables.border.color.light}`};
+        : `1px solid var(--t-border-color-light)`};
   }
 `;
 
 const StyledIconWrapper = styled.div`
   align-items: center;
   display: flex;
-  margin-right: ${themeCssVariables.spacing[2]};
+  margin-right: var(--t-spacing-2);
 `;
 
 const StyledTextContainerWithEllipsis = styled.div`
@@ -65,18 +65,18 @@ const StyledTextContainerWithEllipsis = styled.div`
 const StyledSearchContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
+  padding-bottom: var(--t-spacing-2);
 `;
 
 const StyledTableRows = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
-  padding-top: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
+  padding-top: var(--t-spacing-2);
 `;
 
 const StyledChevronWrapper = styled.div`
   align-items: center;
-  color: ${themeCssVariables.font.color.secondary};
+  color: var(--t-font-color-secondary);
   display: flex;
   justify-content: flex-end;
   width: 100%;

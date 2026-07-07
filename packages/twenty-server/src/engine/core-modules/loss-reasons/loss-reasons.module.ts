@@ -7,7 +7,7 @@ import { LossReasonsController } from './loss-reasons.controller';
 import { LossReasonsService } from './loss-reasons.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LossReasonEntity], 'core')],
+  imports: [TypeOrmModule.forFeature([LossReasonEntity])],
   controllers: [LossReasonsController],
   providers: [LossReasonsService],
   exports: [LossReasonsService],

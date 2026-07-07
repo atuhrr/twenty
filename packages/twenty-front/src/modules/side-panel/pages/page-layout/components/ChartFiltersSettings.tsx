@@ -19,15 +19,14 @@ import { styled } from '@linaria/react';
 import { t } from '@lingui/core/macro';
 import { useStore } from 'jotai';
 import { useMemo } from 'react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledChartFiltersPageContainer = styled.div`
   display: flex;
   flex-direction: column;
 
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 
-  padding: ${themeCssVariables.spacing[3]};
+  padding: var(--t-spacing-3);
 `;
 
 export type ChartFiltersSettingsProps = {

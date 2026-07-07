@@ -1,542 +1,416 @@
-// FORK: Voka CRM — B2.1: página de templates (chat + e-mail)
-import { useState } from 'react';
+// FORK: Voka CRM — T-9: Templates de mensagem (grid + modal com preview, TailAdmin)
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
-import { styled } from '@linaria/react';
-
-import {
-  IconBrandWhatsapp,
-  IconEdit,
-  IconFileText,
-  IconMail,
-  IconMessage,
-  IconPlus,
-  IconTrash,
-} from 'twenty-ui/icon';
-
-import { TemplateDrawer } from '@/templates/components/TemplateDrawer';
-import { EmailTemplateModal } from '@/templates/components/EmailTemplateModal';
+import Badge from '@/tailadmin/ui/Badge';
+import { Modal } from '@/tailadmin/ui/Modal';
 import {
   CANAL_LABELS,
   TIPO_LABELS,
+  useCreateTemplate,
   useDeleteTemplate,
   useTemplates,
+  useUpdateTemplate,
+  VARIAVEIS_DISPONIVEIS,
   type CRMTemplate,
+  type TemplateTipo,
 } from '@/templates/hooks/useTemplates';
 
-// ── Tokens de tema ───────────────────────────────────────────────────────────
-
-const C = {
-  bg:      'var(--t-background-secondary)',
-  card:    'var(--t-background-primary)',
-  border:  'var(--t-border-color-light)',
-  txt:     'var(--t-font-color-primary)',
-  muted:   'var(--t-font-color-tertiary)',
-  brand:   'var(--t-color-purple)',
-  green:   'var(--t-color-green)',
-  danger:  'var(--t-color-red)',
+const TIPO_BADGE: Record<TemplateTipo, 'success' | 'primary' | 'info'> = {
+  whatsapp_hsm: 'success',
+  geral: 'primary',
+  email: 'info',
 };
 
-// ── Estilos ──────────────────────────────────────────────────────────────────
+const extrairVariaveis = (corpo: string): string[] => [
+  ...new Set(corpo.match(/\{\{[^}]+\}\}/g) ?? []),
+];
 
-const Page = styled.div`
-  background: ${C.bg};
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 24px;
-`;
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-const PageHeader = styled.div`
-  margin-bottom: 24px;
-`;
+const labelClass =
+  'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5';
 
-const PageTitle = styled.h1`
-  color: ${C.txt};
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
-`;
+// ─── Modal criar/editar ───────────────────────────────────────────────────────
 
-const PageSubtitle = styled.p`
-  color: ${C.muted};
-  font-size: 13px;
-  margin: 0;
-`;
+interface TemplateModalProps {
+  template: CRMTemplate | null;
+  onClose: () => void;
+  onSave: (input: {
+    nome: string;
+    tipo: TemplateTipo;
+    canal: string;
+    assunto: string | null;
+    corpo: string;
+  }) => Promise<void>;
+  salvando: boolean;
+}
 
-// ── Tabs ─────────────────────────────────────────────────────────────────────
+function TemplateModal({
+  template,
+  onClose,
+  onSave,
+  salvando,
+}: TemplateModalProps) {
+  const [nome, setNome] = useState(template?.nome ?? '');
+  const [tipo, setTipo] = useState<TemplateTipo>(
+    template?.tipo ?? 'whatsapp_hsm',
+  );
+  const [canal, setCanal] = useState(template?.canal ?? 'WHATSAPP');
+  const [assunto, setAssunto] = useState(template?.assunto ?? '');
+  const [corpo, setCorpo] = useState(template?.corpo ?? '');
 
-const Tabs = styled.div`
-  border-bottom: 1px solid ${C.border};
-  display: flex;
-  margin-bottom: 24px;
-`;
+  const inserirVariavel = (token: string) => setCorpo((c) => `${c}${token}`);
 
-const Tab = styled.button<{ active: boolean }>`
-  align-items: center;
-  background: none;
-  border: none;
-  border-bottom: 2px solid ${({ active }) => (active ? C.brand : 'transparent')};
-  color: ${({ active }) => (active ? C.brand : C.muted)};
-  cursor: pointer;
-  display: flex;
-  font-size: 14px;
-  font-weight: 600;
-  gap: 8px;
-  margin-bottom: -1px;
-  padding: 10px 18px;
-  transition: color 0.15s;
-  &:hover { color: ${C.txt}; }
-`;
+  const previewCorpo = useMemo(() => {
+    let texto = corpo;
+    for (const v of VARIAVEIS_DISPONIVEIS) {
+      texto = texto.replaceAll(v.token, `〈${v.label}〉`);
+    }
+    return texto;
+  }, [corpo]);
 
-// ── Estado vazio ─────────────────────────────────────────────────────────────
+  return (
+    <Modal isOpen onClose={onClose} className="max-w-[860px] p-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        {template ? 'Editar Template' : 'Novo Template'}
+      </h2>
 
-const EmptyWrap = styled.div`
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  padding: 40px 0;
-`;
+      <div className="grid grid-cols-12 gap-5">
+        {/* Formulário */}
+        <div className="col-span-7 space-y-4">
+          <div>
+            <label className={labelClass}>Nome</label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex.: Boas-vindas"
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Tipo</label>
+              <select
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value as TemplateTipo)}
+                className={inputClass}
+              >
+                {Object.entries(TIPO_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Canal</label>
+              <select
+                value={canal}
+                onChange={(e) => setCanal(e.target.value)}
+                className={inputClass}
+              >
+                {Object.entries(CANAL_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {tipo === 'email' && (
+            <div>
+              <label className={labelClass}>Assunto</label>
+              <input
+                type="text"
+                value={assunto}
+                onChange={(e) => setAssunto(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          )}
+          <div>
+            <label className={labelClass}>Corpo da mensagem</label>
+            <textarea
+              value={corpo}
+              onChange={(e) => setCorpo(e.target.value)}
+              rows={6}
+              placeholder="Olá {{contact.name}}, tudo bem?"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Inserir variável</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {VARIAVEIS_DISPONIVEIS.map((v) => (
+                <button
+                  key={v.token}
+                  onClick={() => inserirVariavel(v.token)}
+                  title={v.token}
+                  className="px-2.5 py-1 text-xs font-medium rounded-full bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-500/[0.12] dark:text-brand-400 transition-colors"
+                >
+                  + {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-const EmptyIcon = styled.div`
-  align-items: center;
-  background: var(--t-background-tertiary, #f7f8fa);
-  border: 1px solid ${C.border};
-  border-radius: 50%;
-  display: flex;
-  height: 64px;
-  justify-content: center;
-  width: 64px;
-`;
+        {/* Preview ao vivo */}
+        <div className="col-span-5">
+          <label className={labelClass}>Pré-visualização</label>
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 min-h-[280px]">
+            {tipo === 'email' && assunto !== '' && (
+              <p className="text-sm font-semibold text-gray-800 dark:text-white/90 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                {assunto}
+              </p>
+            )}
+            <div className="max-w-[260px] rounded-xl rounded-tl-none bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 shadow-theme-xs">
+              <p className="text-sm text-gray-800 dark:text-white/90 whitespace-pre-wrap">
+                {previewCorpo === ''
+                  ? 'Digite o corpo da mensagem…'
+                  : previewCorpo}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-const EmptyText = styled.p`
-  color: ${C.muted};
-  font-size: 14px;
-  line-height: 1.6;
-  margin: -16px 0 0;
-  max-width: 480px;
-  text-align: center;
-`;
+      <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={() =>
+            onSave({
+              nome: nome.trim(),
+              tipo,
+              canal,
+              assunto: assunto.trim() === '' ? null : assunto.trim(),
+              corpo,
+            })
+          }
+          disabled={salvando || nome.trim() === '' || corpo.trim() === ''}
+          className="px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+        >
+          {salvando ? 'Salvando…' : 'Salvar'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
-const CardGrid = styled.div`
-  display: grid;
-  gap: 20px;
-  grid-template-columns: 1fr 1fr;
-  max-width: 780px;
-  width: 100%;
-`;
-
-const FeatureCard = styled.div`
-  background: ${C.card};
-  border: 1px solid ${C.border};
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
-`;
-
-const CardIcon = styled.div<{ color: string }>`
-  align-items: center;
-  background: ${({ color }) => color}18;
-  border-radius: 12px;
-  color: ${({ color }) => color};
-  display: flex;
-  height: 44px;
-  justify-content: center;
-  width: 44px;
-`;
-
-const CardTitle = styled.h3`
-  color: ${C.txt};
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0;
-`;
-
-const CardList = styled.ul`
-  color: ${C.muted};
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  gap: 6px;
-  line-height: 1.5;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-
-  li::before {
-    color: ${C.brand};
-    content: '• ';
-  }
-`;
-
-const BtnPrimary = styled.button`
-  background: ${C.brand};
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  margin-top: auto;
-  padding: 10px 16px;
-  text-align: center;
-  &:hover { opacity: 0.9; }
-`;
-
-const BtnSecondary = styled.button`
-  background: none;
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  margin-top: auto;
-  padding: 10px 16px;
-  &:hover { background: ${C.bg}; }
-`;
-
-// ── Tabela de templates ───────────────────────────────────────────────────────
-
-const TableHeader = styled.div`
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-bottom: 16px;
-`;
-
-const BtnAdd = styled.button`
-  align-items: center;
-  background: ${C.brand};
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  font-size: 13px;
-  font-weight: 700;
-  gap: 6px;
-  padding: 8px 16px;
-  &:hover { opacity: 0.9; }
-`;
-
-const Card = styled.div`
-  background: ${C.card};
-  border: 1px solid ${C.border};
-  border-radius: 12px;
-  overflow: hidden;
-`;
-
-const Table = styled.table`
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-`;
-
-const Th = styled.th`
-  background: var(--t-background-tertiary, #fafafa);
-  border-bottom: 1px solid ${C.border};
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 10px 16px;
-  text-align: left;
-  text-transform: uppercase;
-`;
-
-const Td = styled.td`
-  border-bottom: 1px solid ${C.border};
-  color: ${C.txt};
-  padding: 12px 16px;
-  vertical-align: middle;
-`;
-
-const TipoPill = styled.span<{ tipo: string }>`
-  background: ${({ tipo }) =>
-    tipo === 'whatsapp_hsm' ? '#dcfce7'
-    : tipo === 'email'       ? '#e0f2fe'
-    :                          '#f5f0ff'};
-  border-radius: 6px;
-  color: ${({ tipo }) =>
-    tipo === 'whatsapp_hsm' ? '#166534'
-    : tipo === 'email'       ? '#0369a1'
-    :                          '#6d28d9'};
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-`;
-
-const IconBtn = styled.button`
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: inline-flex;
-  padding: 4px;
-  &:hover { background: ${C.border}; }
-`;
-
-// ── Email empty state ─────────────────────────────────────────────────────────
-
-const EmailEmpty = styled.div`
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 60px 0;
-`;
-
-const EmailEmptyBtn = styled.button`
-  align-items: center;
-  background: ${C.brand};
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  font-size: 13px;
-  font-weight: 700;
-  gap: 6px;
-  padding: 10px 20px;
-  &:hover { opacity: 0.9; }
-`;
-
-// ── Componente principal ──────────────────────────────────────────────────────
-
-type TabId = 'chat' | 'email';
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export const TemplatesPage = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('chat');
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<CRMTemplate | null>(null);
+  const [busca, setBusca] = useState('');
+  const [tipoAtivo, setTipoAtivo] = useState<TemplateTipo | null>(null);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [templateEmEdicao, setTemplateEmEdicao] = useState<CRMTemplate | null>(
+    null,
+  );
 
-  const { templates, refetch } = useTemplates();
+  const { templates, loading, refetch } = useTemplates();
+  const { create, loading: criando } = useCreateTemplate();
+  const { update, loading: atualizando } = useUpdateTemplate();
   const { remove } = useDeleteTemplate();
 
-  const chatTemplates = templates.filter((t) => t.tipo !== 'email');
-  const emailTemplates = templates.filter((t) => t.tipo === 'email');
+  const visiveis = useMemo(() => {
+    let lista = templates;
+    if (tipoAtivo !== null) lista = lista.filter((t) => t.tipo === tipoAtivo);
+    const q = busca.trim().toLowerCase();
+    if (q !== '') lista = lista.filter((t) => t.nome.toLowerCase().includes(q));
+    return lista;
+  }, [templates, tipoAtivo, busca]);
 
-  const handleDelete = async (id: string) => {
+  const salvar = async (input: {
+    nome: string;
+    tipo: TemplateTipo;
+    canal: string;
+    assunto: string | null;
+    corpo: string;
+  }) => {
+    if (templateEmEdicao === null) await create({ variables: { input } });
+    else
+      await update({
+        variables: { input: { id: templateEmEdicao.id, ...input } },
+      });
+    setModalAberto(false);
+    await refetch();
+  };
+
+  const excluir = async (id: string) => {
     await remove({ variables: { id } });
     await refetch();
   };
 
-  const openEditDrawer = (t: CRMTemplate) => {
-    setEditingTemplate(t);
-    setShowDrawer(true);
-  };
-
-  const openEditEmail = (t: CRMTemplate) => {
-    setEditingTemplate(t);
-    setShowEmailModal(true);
-  };
-
-  const closeDrawer = () => {
-    setShowDrawer(false);
-    setEditingTemplate(null);
-    refetch();
-  };
-
-  const closeEmailModal = () => {
-    setShowEmailModal(false);
-    setEditingTemplate(null);
-    refetch();
-  };
+  const tiposFiltro: { key: TemplateTipo | null; label: string }[] = [
+    { key: null, label: 'Todos' },
+    { key: 'whatsapp_hsm', label: 'WhatsApp HSM' },
+    { key: 'geral', label: 'Geral' },
+    { key: 'email', label: 'E-mail' },
+  ];
 
   return (
-    <Page>
-      <PageHeader>
-        <PageTitle>Templates</PageTitle>
-        <PageSubtitle>
-          Crie modelos de mensagem para agilizar sua comunicação e manter a consistência.
-        </PageSubtitle>
-      </PageHeader>
+    <div className="flex flex-col h-full overflow-auto">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-4 flex-wrap">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-shrink-0">
+            Templates
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({templates.length})
+              </span>
+            )}
+          </h1>
 
-      <Tabs>
-        <Tab active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
-          <IconMessage size={16} />
-          Chat Templates
-        </Tab>
-        <Tab active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
-          <IconMail size={16} />
-          E-mail
-        </Tab>
-      </Tabs>
+          <div className="flex items-center gap-1.5">
+            {tiposFiltro.map(({ key, label }) => (
+              <button
+                key={label}
+                onClick={() => setTipoAtivo(key)}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  tipoAtivo === key
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-      {/* ── Chat Templates ────────────────────────────────────────────────── */}
-      {activeTab === 'chat' && (
-        <>
-          {chatTemplates.length === 0 ? (
-            <EmptyWrap>
-              <EmptyIcon>
-                <IconMessage size={28} color="var(--t-font-color-tertiary)" />
-              </EmptyIcon>
-              <EmptyText>
-                Crie templates para agilizar sua comunicação e manter a consistência com seus leads e clientes.
-              </EmptyText>
-              <CardGrid>
-                {/* WhatsApp Business */}
-                <FeatureCard>
-                  <CardIcon color="#25D366">
-                    <IconBrandWhatsapp size={24} />
-                  </CardIcon>
-                  <CardTitle>Templates de WhatsApp</CardTitle>
-                  <CardList>
-                    <li>Alcance clientes no WhatsApp Business</li>
-                    <li>Envie campanhas de marketing</li>
-                    <li>Inicie novas conversas com clientes</li>
-                    <li>Use formulários interativos e cartões de produto</li>
-                    <li>Taxas de mensagem se aplicam</li>
-                    <li>Revisados pela Meta para qualidade</li>
-                  </CardList>
-                  <BtnPrimary onClick={() => alert('Integração WhatsApp Business — em breve')}>
-                    Conectar WhatsApp Business
-                  </BtnPrimary>
-                </FeatureCard>
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar template..."
+            className="w-48 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          />
 
-                {/* Templates Gerais */}
-                <FeatureCard>
-                  <CardIcon color="var(--t-color-purple)">
-                    <IconFileText size={24} />
-                  </CardIcon>
-                  <CardTitle>Templates gerais</CardTitle>
-                  <CardList>
-                    <li>Use em todos os canais</li>
-                    <li>Automatize respostas para perguntas frequentes</li>
-                    <li>Envie mensagens simples com texto e imagens</li>
-                    <li>Sem taxas</li>
-                  </CardList>
-                  <BtnSecondary onClick={() => { setEditingTemplate(null); setShowDrawer(true); }}>
-                    Adicionar novo template geral
-                  </BtnSecondary>
-                </FeatureCard>
-              </CardGrid>
-            </EmptyWrap>
-          ) : (
-            <>
-              <TableHeader>
-                <BtnAdd onClick={() => { setEditingTemplate(null); setShowDrawer(true); }}>
-                  <IconPlus size={15} />
-                  Novo template
-                </BtnAdd>
-              </TableHeader>
-              <Card>
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Nome</Th>
-                      <Th>Canal</Th>
-                      <Th>Tipo</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chatTemplates.map((t) => (
-                      <tr key={t.id}>
-                        <Td style={{ fontWeight: 600 }}>{t.nome}</Td>
-                        <Td style={{ color: C.muted }}>
-                          {t.canal ? (CANAL_LABELS[t.canal] ?? t.canal) : 'Todos os canais'}
-                        </Td>
-                        <Td>
-                          <TipoPill tipo={t.tipo}>
-                            {TIPO_LABELS[t.tipo] ?? t.tipo}
-                          </TipoPill>
-                        </Td>
-                        <Td>
-                          <IconBtn onClick={() => openEditDrawer(t)} title="Editar">
-                            <IconEdit size={15} />
-                          </IconBtn>
-                          <IconBtn onClick={() => handleDelete(t.id)} title="Excluir">
-                            <IconTrash size={15} />
-                          </IconBtn>
-                        </Td>
-                      </tr>
+          <div className="flex-1" />
+
+          <button
+            onClick={() => {
+              setTemplateEmEdicao(null);
+              setModalAberto(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0"
+          >
+            + Novo Template
+          </button>
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="flex-1 p-4 md:p-6">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] h-52 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : visiveis.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-400 dark:border-gray-800 dark:bg-white/[0.03]">
+            Nenhum template encontrado. Clique em "+ Novo Template" para criar.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {visiveis.map((t) => (
+              <div
+                key={t.id}
+                className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                    {t.nome}
+                  </h3>
+                  <Badge color={TIPO_BADGE[t.tipo]} size="sm">
+                    {TIPO_LABELS[t.tipo]}
+                  </Badge>
+                </div>
+
+                {t.canal !== null && (
+                  <span className="w-fit px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 mb-2">
+                    {CANAL_LABELS[t.canal] ?? t.canal}
+                  </span>
+                )}
+
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3 mb-3">
+                  {t.corpo}
+                </p>
+
+                {/* Variáveis usadas */}
+                {extrairVariaveis(t.corpo).length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap mb-3">
+                    {extrairVariaveis(t.corpo).map((v) => (
+                      <code
+                        key={v}
+                        className="px-1.5 py-0.5 text-[10px] rounded bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400"
+                      >
+                        {v}
+                      </code>
                     ))}
-                  </tbody>
-                </Table>
-              </Card>
-            </>
-          )}
-        </>
-      )}
+                  </div>
+                )}
 
-      {/* ── E-mail Templates ──────────────────────────────────────────────── */}
-      {activeTab === 'email' && (
-        <>
-          {emailTemplates.length === 0 ? (
-            <EmailEmpty>
-              <EmptyIcon>
-                <IconMail size={28} color="var(--t-font-color-tertiary)" />
-              </EmptyIcon>
-              <EmptyText>
-                Crie templates de e-mail com variáveis dinâmicas para personalizar cada mensagem automaticamente.
-              </EmptyText>
-              <EmailEmptyBtn onClick={() => { setEditingTemplate(null); setShowEmailModal(true); }}>
-                <IconPlus size={15} />
-                Novo template de e-mail
-              </EmailEmptyBtn>
-            </EmailEmpty>
-          ) : (
-            <>
-              <TableHeader>
-                <BtnAdd onClick={() => { setEditingTemplate(null); setShowEmailModal(true); }}>
-                  <IconPlus size={15} />
-                  Novo template de e-mail
-                </BtnAdd>
-              </TableHeader>
-              <Card>
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Nome</Th>
-                      <Th>Assunto</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {emailTemplates.map((t) => (
-                      <tr key={t.id}>
-                        <Td style={{ fontWeight: 600 }}>{t.nome}</Td>
-                        <Td style={{ color: C.muted }}>{t.assunto ?? '—'}</Td>
-                        <Td>
-                          <IconBtn onClick={() => openEditEmail(t)} title="Editar">
-                            <IconEdit size={15} />
-                          </IconBtn>
-                          <IconBtn onClick={() => handleDelete(t.id)} title="Excluir">
-                            <IconTrash size={15} />
-                          </IconBtn>
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card>
-            </>
-          )}
-        </>
-      )}
+                <div className="flex-1" />
 
-      {showDrawer && (
-        <TemplateDrawer
-          template={editingTemplate}
-          onClose={closeDrawer}
+                {/* Ações */}
+                <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
+                  <Link
+                    to="/campanhas"
+                    className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Usar em Campanha
+                  </Link>
+                  <Link
+                    to="/salesbot"
+                    className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Usar no Salesbot
+                  </Link>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => {
+                      setTemplateEmEdicao(t);
+                      setModalAberto(true);
+                    }}
+                    className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => excluir(t.id)}
+                    className="px-2.5 py-1 text-xs font-medium text-error-500 hover:bg-error-50 dark:hover:bg-error-500/[0.12] rounded-lg transition-colors"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalAberto && (
+        <TemplateModal
+          key={templateEmEdicao?.id ?? 'novo'}
+          template={templateEmEdicao}
+          onClose={() => setModalAberto(false)}
+          onSave={salvar}
+          salvando={criando || atualizando}
         />
       )}
-
-      {showEmailModal && (
-        <EmailTemplateModal
-          template={editingTemplate}
-          onClose={closeEmailModal}
-        />
-      )}
-    </Page>
+    </div>
   );
 };

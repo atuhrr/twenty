@@ -14,7 +14,7 @@ import { getSettingsPath } from 'twenty-shared/utils';
 import { IconChevronRight, IconSettingsAutomation } from 'twenty-ui/icon';
 import { SearchInput } from 'twenty-ui/input';
 import { MenuItemToggle } from 'twenty-ui/navigation';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { SETTINGS_AI_AGENT_TABLE_METADATA } from '~/pages/settings/ai/constants/SettingsAiAgentTableMetadata';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
@@ -28,15 +28,15 @@ import {
 } from './SettingsAiAgentTableRow';
 
 const StyledSearchContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 const StyledTableContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[3]};
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledTableHeaderRowContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 export const SettingsAiAgentsTable = () => {

@@ -11,14 +11,13 @@ import { H2Title } from 'twenty-ui/typography';
 import { SearchInput } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
 import { MenuItemToggle } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { SettingsAgentToolsTable } from '~/pages/settings/ai/components/SettingsAgentToolsTable';
 import { useSettingsAgentToolsTable } from '~/pages/settings/ai/hooks/useSettingsAgentToolsTable';
 import { type SettingsAgentToolItem } from '~/pages/settings/ai/types/SettingsAgentToolItem';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 const StyledSearchContainer = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
 `;
 
 export const SettingsAgentToolsTab = () => {

@@ -25,7 +25,6 @@ import { IconRepeat, IconTrash } from 'twenty-ui/icon';
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
   AssignRoleToApiKeyDocument,
@@ -38,16 +37,16 @@ import {
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 const StyledInfo = styled.span`
-  color: ${themeCssVariables.font.color.light};
-  font-size: ${themeCssVariables.font.size.sm};
-  font-weight: ${themeCssVariables.font.weight.regular};
+  color: var(--t-font-color-light);
+  font-size: var(--t-font-size-sm);
+  font-weight: var(--t-font-weight-regular);
 `;
 
 const StyledInputContainer = styled.div`
   align-items: center;
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
   width: 100%;
 `;
 

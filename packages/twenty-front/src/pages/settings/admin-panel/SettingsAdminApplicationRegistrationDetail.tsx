@@ -23,7 +23,6 @@ import { SettingsApplicationRegistrationGeneralTab } from '~/pages/settings/appl
 import { TabList } from '@/ui/layout/tab-list/components/TabList';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { styled } from '@linaria/react';
 
 const REGISTRATION_DETAIL_TAB_LIST_ID =
@@ -32,7 +31,7 @@ const REGISTRATION_DETAIL_TAB_LIST_ID =
 const StyledTitleContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsAdminApplicationRegistrationDetail = () => {

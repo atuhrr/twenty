@@ -1,15 +1,14 @@
 import { styled } from '@linaria/react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledContainer = styled.div`
   align-items: center;
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
   justify-content: center;
   min-height: 400px;
-  padding: ${themeCssVariables.spacing[10]};
+  padding: var(--t-spacing-10);
 `;
 
 const StyledEmoji = styled.div`
@@ -17,18 +16,18 @@ const StyledEmoji = styled.div`
 `;
 
 const StyledTitle = styled.h2`
-  color: ${themeCssVariables.font.color.primary};
-  font-family: ${themeCssVariables.font.family};
-  font-size: ${themeCssVariables.font.size.xl};
-  font-weight: ${themeCssVariables.font.weight.semiBold};
+  color: var(--t-font-color-primary);
+  font-family: var(--t-font-family);
+  font-size: var(--t-font-size-xl);
+  font-weight: var(--t-font-weight-semi-bold);
   margin: 0;
   text-align: center;
 `;
 
 const StyledDescription = styled.p`
-  color: ${themeCssVariables.font.color.secondary};
-  font-family: ${themeCssVariables.font.family};
-  font-size: ${themeCssVariables.font.size.md};
+  color: var(--t-font-color-secondary);
+  font-family: var(--t-font-family);
+  font-size: var(--t-font-size-md);
   margin: 0;
   text-align: center;
 `;

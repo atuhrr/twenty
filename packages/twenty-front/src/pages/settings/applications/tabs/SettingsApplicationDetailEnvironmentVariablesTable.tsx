@@ -7,27 +7,27 @@ import { IconInfoCircle } from 'twenty-ui/icon';
 import { AppTooltip, TooltipDelay } from 'twenty-ui/surfaces';
 import { H2Title } from 'twenty-ui/typography';
 import { Section } from 'twenty-ui/layout';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { useDebouncedCallback } from 'use-debounce';
 import { type ApplicationVariable } from '~/generated-metadata/graphql';
 
 const StyledContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 const StyledLabelRow = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[1]};
-  margin-bottom: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
+  margin-bottom: var(--t-spacing-1);
 `;
 
 const StyledLabel = styled.span`
-  color: ${themeCssVariables.font.color.light};
+  color: var(--t-font-color-light);
   font-size: 11px;
-  font-weight: ${themeCssVariables.font.weight.semiBold};
+  font-weight: var(--t-font-weight-semi-bold);
 `;
 
 export const SettingsApplicationDetailEnvironmentVariablesTable = ({

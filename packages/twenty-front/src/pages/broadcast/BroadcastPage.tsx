@@ -1,35 +1,21 @@
-// FORK: Voka CRM — Campanhas de Disparo em Massa (top-level page)
-/* oxlint-disable twenty/no-hardcoded-colors */
-import { styled } from '@linaria/react';
-import { useEffect, useMemo, useState } from 'react';
+// FORK: Voka CRM — T-8: Campanhas de disparo (tabs + wizard + relatórios, TailAdmin)
+import { useMemo, useState } from 'react';
+import Chart from 'react-apexcharts';
+import type { ApexOptions } from 'apexcharts';
 
-import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import {
-  type BroadcastCampaign,
   useBroadcastCampaigns,
-  useBroadcastCampaignRecipients,
   useCancelBroadcastCampaign,
   useCreateBroadcastCampaign,
   useLaunchBroadcastCampaign,
+  type BroadcastCampaign,
 } from '@/broadcast/hooks/useBroadcast';
-import { IconSend, IconPlus, IconX } from 'twenty-ui/icon';
+import Badge from '@/tailadmin/ui/Badge';
+import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+type Aba = 'campanhas' | 'criar' | 'relatorios';
 
-const C = {
-  bg: '#F2F4F7',
-  cardBg: '#FFFFFF',
-  border: '#EAECF0',
-  txt: '#101828',
-  muted: '#667085',
-  brand: '#7C3AED',
-  success: '#12B76A',
-  danger: '#F04438',
-  warn: '#F79009',
-  running: '#2E90FA',
-};
-
-const STATUS_PT: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Rascunho',
   SCHEDULED: 'Agendada',
   RUNNING: 'Enviando',
@@ -38,824 +24,627 @@ const STATUS_PT: Record<string, string> = {
   FAILED: 'Falhou',
 };
 
-type SourceMode = 'livre' | 'contatos' | 'clientes' | 'leads';
-
-type ContactEntry = { id: string; name: string; phone: string };
-
-// ─── Styled components ────────────────────────────────────────────────────────
-
-const StyledPage = styled.div`
-  background: ${C.bg};
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 24px;
-`;
-
-const StyledHeader = styled.div`
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 24px;
-`;
-
-const StyledTitle = styled.h1`
-  align-items: center;
-  color: ${C.txt};
-  display: flex;
-  font-size: 20px;
-  font-weight: 700;
-  gap: 10px;
-  margin: 0;
-`;
-
-const StyledCard = styled.div`
-  background: ${C.cardBg};
-  border: 1px solid ${C.border};
-  border-radius: 12px;
-  overflow: hidden;
-`;
-
-const StyledTable = styled.table`
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-`;
-
-const StyledTh = styled.th`
-  background: #FAFAFA;
-  border-bottom: 1px solid ${C.border};
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  padding: 10px 16px;
-  text-align: left;
-  text-transform: uppercase;
-`;
-
-const StyledTd = styled.td`
-  border-bottom: 1px solid ${C.border};
-  color: ${C.txt};
-  padding: 10px 16px;
-  vertical-align: middle;
-`;
-
-const StyledStatusBadge = styled.span<{ status: string }>`
-  background: ${({ status }) =>
-    status === 'COMPLETED' ? '#ECFDF3'
-    : status === 'RUNNING' ? '#EFF8FF'
-    : status === 'CANCELLED' || status === 'FAILED' ? '#FEF3F2'
-    : status === 'SCHEDULED' ? '#FFF6ED'
-    : '#F4F4F5'};
-  border-radius: 20px;
-  color: ${({ status }) =>
-    status === 'COMPLETED' ? C.success
-    : status === 'RUNNING' ? C.running
-    : status === 'CANCELLED' || status === 'FAILED' ? C.danger
-    : status === 'SCHEDULED' ? C.warn
-    : C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-`;
-
-const StyledBtn = styled.button<{ variant?: 'primary' | 'ghost' }>`
-  align-items: center;
-  background: ${({ variant }) => variant === 'primary' ? C.brand : 'transparent'};
-  border: ${({ variant }) => variant === 'ghost' ? `1px solid ${C.border}` : 'none'};
-  border-radius: 8px;
-  color: ${({ variant }) => variant === 'ghost' ? C.txt : '#fff'};
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 13px;
-  font-weight: 600;
-  gap: 6px;
-  padding: 8px 16px;
-
-  &:hover { opacity: 0.87; }
-  &:disabled { cursor: not-allowed; opacity: 0.4; }
-`;
-
-const StyledSmallBtn = styled.button<{ variant?: 'danger' }>`
-  background: ${({ variant }) => variant === 'danger' ? '#FEF3F2' : 'transparent'};
-  border: 1px solid ${({ variant }) => variant === 'danger' ? '#FEE4E2' : C.border};
-  border-radius: 6px;
-  color: ${({ variant }) => variant === 'danger' ? C.danger : C.muted};
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-
-  &:disabled { cursor: not-allowed; opacity: 0.4; }
-`;
-
-const StyledOverlay = styled.div`
-  align-items: center;
-  background: rgba(0,0,0,0.40);
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  left: 0;
-  position: fixed;
-  right: 0;
-  top: 0;
-  z-index: 1000;
-`;
-
-const StyledModal = styled.div`
-  background: ${C.cardBg};
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.18);
-  display: flex;
-  flex-direction: column;
-  max-height: 90vh;
-  overflow: hidden;
-  width: 560px;
-`;
-
-const StyledModalHeader = styled.div`
-  align-items: center;
-  border-bottom: 1px solid ${C.border};
-  display: flex;
-  justify-content: space-between;
-  padding: 20px 24px;
-`;
-
-const StyledModalTitle = styled.h2`
-  color: ${C.txt};
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
-`;
-
-const StyledModalBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-  padding: 24px;
-`;
-
-const StyledModalFooter = styled.div`
-  border-top: 1px solid ${C.border};
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 16px 24px;
-`;
-
-const StyledIconBtn = styled.button`
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: flex;
-  padding: 4px;
-
-  &:hover { background: ${C.border}; }
-`;
-
-const StyledField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const StyledLabel = styled.label`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-`;
-
-const StyledInput = styled.input`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-size: 13px;
-  outline: none;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const StyledTextarea = styled.textarea`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-family: inherit;
-  font-size: 13px;
-  min-height: 90px;
-  outline: none;
-  padding: 9px 12px;
-  resize: vertical;
-  width: 100%;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const StyledSourceGrid = styled.div`
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 1fr 1fr;
-`;
-
-const StyledSourceCard = styled.button<{ active: boolean }>`
-  background: ${({ active }) => active ? '#F5F0FF' : '#FAFAFA'};
-  border: 2px solid ${({ active }) => active ? C.brand : C.border};
-  border-radius: 10px;
-  cursor: pointer;
-  padding: 12px 14px;
-  text-align: left;
-  transition: border-color 0.15s;
-
-  &:hover { border-color: ${C.brand}; }
-`;
-
-const StyledSourceLabel = styled.div<{ active: boolean }>`
-  color: ${({ active }) => active ? C.brand : C.txt};
-  font-size: 13px;
-  font-weight: 600;
-`;
-
-const StyledSourceSub = styled.div`
-  color: ${C.muted};
-  font-size: 11px;
-  margin-top: 2px;
-`;
-
-const StyledContactList = styled.div`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-`;
-
-const StyledContactItem = styled.label`
-  align-items: center;
-  border-bottom: 1px solid ${C.border};
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  padding: 8px 12px;
-
-  &:last-child { border-bottom: none; }
-  &:hover { background: #FAFAFA; }
-`;
-
-const StyledProgressBar = styled.div<{ pct: number }>`
-  background: #EAECF0;
-  border-radius: 99px;
-  height: 6px;
-  overflow: hidden;
-  width: 100%;
-
-  &::after {
-    background: ${C.brand};
-    border-radius: 99px;
-    content: '';
-    display: block;
-    height: 100%;
-    width: ${({ pct }) => pct}%;
-  }
-`;
-
-const StyledDetail = styled.div`
-  background: #FAFAFA;
-  border-top: 1px solid ${C.border};
-  padding: 16px;
-`;
-
-const StyledMetricsRow = styled.div`
-  display: flex;
-  gap: 24px;
-  margin-bottom: 12px;
-`;
-
-const StyledMetric = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const StyledMetricValue = styled.span`
-  color: ${C.txt};
-  font-size: 18px;
-  font-weight: 700;
-`;
-
-const StyledMetricLabel = styled.span`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-`;
-
-// ─── Contact-fetch hooks ──────────────────────────────────────────────────────
-
-const PHONE_GQL = { primaryPhoneNumber: true, primaryPhoneCountryCode: true };
-
-function useContatosRecords(active: boolean) {
-  const { records } = useFindManyRecords({
-    objectNameSingular: 'person',
-    recordGqlFields: { id: true, name: { firstName: true, lastName: true }, phones: PHONE_GQL },
-    skip: !active,
-  });
-
-  return useMemo<ContactEntry[]>(() => {
-    type Row = { id: string; name?: { firstName?: string; lastName?: string }; phones?: { primaryPhoneNumber: string } };
-    return (records as unknown as Row[])
-      .filter(r => r.phones?.primaryPhoneNumber)
-      .map(r => ({
-        id: r.id,
-        name: `${r.name?.firstName ?? ''} ${r.name?.lastName ?? ''}`.trim() || '(sem nome)',
-        phone: r.phones!.primaryPhoneNumber,
-      }));
-  }, [records]);
-}
-
-function useClientesRecords(active: boolean) {
-  const { records } = useFindManyRecords({
-    objectNameSingular: 'cliente',
-    recordGqlFields: { id: true, name: true, telefone: PHONE_GQL },
-    skip: !active,
-  });
-
-  return useMemo<ContactEntry[]>(() => {
-    type Row = { id: string; name?: string; telefone?: { primaryPhoneNumber: string } };
-    return (records as unknown as Row[])
-      .filter(r => r.telefone?.primaryPhoneNumber)
-      .map(r => ({
-        id: r.id,
-        name: r.name ?? '(sem nome)',
-        phone: r.telefone!.primaryPhoneNumber,
-      }));
-  }, [records]);
-}
-
-function useLeadsRecords(active: boolean) {
-  const { records } = useFindManyRecords({
-    objectNameSingular: 'opportunity',
-    recordGqlFields: {
-      id: true,
-      name: true,
-      pointOfContact: {
-        id: true,
-        name: { firstName: true, lastName: true },
-        phones: PHONE_GQL,
-      },
-    },
-    skip: !active,
-  });
-
-  return useMemo<ContactEntry[]>(() => {
-    type Contact = { id: string; name?: { firstName?: string; lastName?: string }; phones?: { primaryPhoneNumber: string } };
-    type Row = { id: string; name?: string; pointOfContact?: Contact | null };
-    return (records as unknown as Row[])
-      .filter(r => r.pointOfContact?.phones?.primaryPhoneNumber)
-      .map(r => {
-        const poc = r.pointOfContact!;
-        const pocName = `${poc.name?.firstName ?? ''} ${poc.name?.lastName ?? ''}`.trim();
-        return {
-          id: r.id,
-          name: pocName || r.name || '(sem nome)',
-          phone: poc.phones!.primaryPhoneNumber,
-        };
-      });
-  }, [records]);
-}
-
-function parsePhoneLines(raw: string): ContactEntry[] {
-  return raw
-    .split(/[\n,;]+/)
-    .map(s => s.trim())
-    .filter(s => s.length >= 8)
-    .map((phone, i) => ({ id: `livre-${i}`, name: phone, phone }));
-}
-
-// ─── Campaign row ─────────────────────────────────────────────────────────────
-
-const CampaignRow = ({
-  campaign,
-  onLaunch,
-  onCancel,
-  launching,
-  cancelling,
-}: {
-  campaign: BroadcastCampaign;
-  onLaunch: (id: string) => void;
-  onCancel: (id: string) => void;
-  launching: boolean;
-  cancelling: boolean;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const { recipients } = useBroadcastCampaignRecipients(expanded ? campaign.id : null);
-
-  const pct =
-    campaign.totalCount > 0
-      ? Math.round(((campaign.sentCount + campaign.failedCount) / campaign.totalCount) * 100)
-      : 0;
-
-  return (
-    <>
-      <tr>
-        <StyledTd>
-          <span
-            style={{ color: C.brand, cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => setExpanded(e => !e)}
-          >
-            {campaign.name}
-          </span>
-        </StyledTd>
-        <StyledTd>
-          <StyledStatusBadge status={campaign.status}>
-            {STATUS_PT[campaign.status] ?? campaign.status}
-          </StyledStatusBadge>
-        </StyledTd>
-        <StyledTd>{campaign.totalCount}</StyledTd>
-        <StyledTd>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span>{campaign.sentCount}/{campaign.totalCount}</span>
-            {campaign.status === 'RUNNING' && <StyledProgressBar pct={pct} />}
-          </div>
-        </StyledTd>
-        <StyledTd>{campaign.templateName ?? '—'}</StyledTd>
-        <StyledTd>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {campaign.status === 'DRAFT' && (
-              <StyledSmallBtn onClick={() => onLaunch(campaign.id)} disabled={launching}>
-                {launching ? 'Disparando…' : 'Disparar'}
-              </StyledSmallBtn>
-            )}
-            {['DRAFT', 'RUNNING', 'SCHEDULED'].includes(campaign.status) && (
-              <StyledSmallBtn variant="danger" onClick={() => onCancel(campaign.id)} disabled={cancelling}>
-                Cancelar
-              </StyledSmallBtn>
-            )}
-          </div>
-        </StyledTd>
-      </tr>
-      {expanded && (
-        <tr>
-          <StyledTd colSpan={6} style={{ padding: 0 }}>
-            <StyledDetail>
-              <StyledMetricsRow>
-                {([
-                  { label: 'Entregues', value: campaign.deliveredCount, color: C.success },
-                  { label: 'Lidas', value: campaign.readCount, color: C.running },
-                  { label: 'Enviadas', value: campaign.sentCount, color: C.warn },
-                  { label: 'Falhas', value: campaign.failedCount, color: C.danger },
-                ] as { label: string; value: number; color: string }[]).map(m => (
-                  <StyledMetric key={m.label}>
-                    <StyledMetricValue style={{ color: m.color }}>{m.value}</StyledMetricValue>
-                    <StyledMetricLabel>{m.label}</StyledMetricLabel>
-                  </StyledMetric>
-                ))}
-              </StyledMetricsRow>
-              {recipients.length > 0 && (
-                <StyledTable>
-                  <thead>
-                    <tr>
-                      <StyledTh>Número</StyledTh>
-                      <StyledTh>Status</StyledTh>
-                      <StyledTh>Enviado às</StyledTh>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recipients.slice(0, 30).map(r => (
-                      <tr key={r.id}>
-                        <StyledTd>{r.phoneNumber}</StyledTd>
-                        <StyledTd>
-                          <StyledStatusBadge status={r.status}>{r.status}</StyledStatusBadge>
-                        </StyledTd>
-                        <StyledTd>
-                          {r.sentAt ? new Date(r.sentAt).toLocaleString('pt-BR') : '—'}
-                        </StyledTd>
-                      </tr>
-                    ))}
-                  </tbody>
-                </StyledTable>
-              )}
-            </StyledDetail>
-          </StyledTd>
-        </tr>
-      )}
-    </>
-  );
+const STATUS_BADGE: Record<
+  string,
+  'light' | 'warning' | 'primary' | 'success' | 'error'
+> = {
+  DRAFT: 'light',
+  SCHEDULED: 'warning',
+  RUNNING: 'primary',
+  COMPLETED: 'success',
+  CANCELLED: 'error',
+  FAILED: 'error',
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const formatData = (iso: string | null) =>
+  typeof iso === 'string' && iso !== ''
+    ? new Date(iso).toLocaleDateString('pt-BR')
+    : '—';
+
+const taxaLeitura = (c: BroadcastCampaign) =>
+  c.deliveredCount > 0 ? Math.round((c.readCount / c.deliveredCount) * 100) : 0;
+
+/** Lê uma cor do tema TailAdmin (CSS var) em runtime — evita hex hardcoded. */
+const themeColor = (name: string): string =>
+  getComputedStyle(document.documentElement)
+    .getPropertyValue(`--color-${name}`)
+    .trim();
+
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+
+const labelClass =
+  'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5';
+
+// ─── Wizard: Criar Nova ───────────────────────────────────────────────────────
+
+type WizardForm = {
+  nome: string;
+  canal: 'WHATSAPP';
+  tipo: 'imediato' | 'agendado';
+  scheduledAt: string;
+  numeros: string;
+  templateName: string;
+  languageCode: string;
+};
+
+const wizardVazio = (): WizardForm => ({
+  nome: '',
+  canal: 'WHATSAPP',
+  tipo: 'imediato',
+  scheduledAt: '',
+  numeros: '',
+  templateName: '',
+  languageCode: 'pt_BR',
+});
+
+const PASSOS = ['Dados', 'Audiência', 'Conteúdo', 'Confirmação'];
+
+function parseNumeros(texto: string): string[] {
+  return texto
+    .split(/[\n,;]+/)
+    .map((n) => n.trim().replace(/[^\d+]/g, ''))
+    .filter((n) => n.length >= 8);
+}
+
+interface CriarNovaWizardProps {
+  onCriada: () => void;
+}
+
+function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
+  const [passo, setPasso] = useState(0);
+  const [form, setForm] = useState<WizardForm>(wizardVazio);
+  const [enviando, setEnviando] = useState(false);
+  const { create } = useCreateBroadcastCampaign();
+
+  const numeros = useMemo(() => parseNumeros(form.numeros), [form.numeros]);
+
+  const podeAvancar =
+    passo === 0
+      ? form.nome.trim() !== '' &&
+        (form.tipo === 'imediato' || form.scheduledAt !== '')
+      : passo === 1
+        ? numeros.length > 0
+        : passo === 2
+          ? form.templateName.trim() !== ''
+          : true;
+
+  const lerCsv = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const texto = String(reader.result ?? '');
+      setForm((f) => ({ ...f, numeros: f.numeros + '\n' + texto }));
+    };
+    reader.readAsText(file);
+  };
+
+  const criar = async () => {
+    setEnviando(true);
+    try {
+      await create({
+        variables: {
+          input: {
+            name: form.nome.trim(),
+            templateName: form.templateName.trim(),
+            languageCode:
+              form.languageCode.trim() === ''
+                ? 'pt_BR'
+                : form.languageCode.trim(),
+            scheduledAt:
+              form.tipo === 'agendado' && form.scheduledAt !== ''
+                ? new Date(form.scheduledAt).toISOString()
+                : undefined,
+            recipients: numeros.map((n) => ({
+              phoneNumber: n,
+              contactId: undefined,
+            })),
+          },
+        },
+      });
+      setForm(wizardVazio());
+      setPasso(0);
+      onCriada();
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] max-w-[720px]">
+      {/* Stepper */}
+      <div className="flex items-center mb-8">
+        {PASSOS.map((rotulo, i) => (
+          <div key={rotulo} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  i < passo
+                    ? 'bg-success-500 text-white'
+                    : i === passo
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                }`}
+              >
+                {i < passo ? '✓' : i + 1}
+              </div>
+              <span
+                className={`text-xs font-medium ${
+                  i === passo
+                    ? 'text-brand-600 dark:text-brand-400'
+                    : 'text-gray-400'
+                }`}
+              >
+                {rotulo}
+              </span>
+            </div>
+            {i < PASSOS.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mx-3 mb-5 rounded ${
+                  i < passo ? 'bg-success-500' : 'bg-gray-200 dark:bg-gray-800'
+                }`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Passo 1 — Dados */}
+      {passo === 0 && (
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>Nome da campanha</label>
+            <input
+              type="text"
+              value={form.nome}
+              onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+              placeholder="Ex.: Promoção de julho"
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Canal</label>
+              <select value={form.canal} disabled className={inputClass}>
+                <option value="WHATSAPP">WhatsApp</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Tipo de envio</label>
+              <select
+                value={form.tipo}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    tipo: e.target.value as WizardForm['tipo'],
+                  }))
+                }
+                className={inputClass}
+              >
+                <option value="imediato">Imediato</option>
+                <option value="agendado">Agendado</option>
+              </select>
+            </div>
+          </div>
+          {form.tipo === 'agendado' && (
+            <div>
+              <label className={labelClass}>Data e hora do envio</label>
+              <input
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, scheduledAt: e.target.value }))
+                }
+                className={inputClass}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Passo 2 — Audiência */}
+      {passo === 1 && (
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>
+              Números de telefone (um por linha, ou separados por vírgula)
+            </label>
+            <textarea
+              value={form.numeros}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, numeros: e.target.value }))
+              }
+              placeholder={'+5511999999999\n+5511888888888'}
+              rows={6}
+              className={inputClass}
+            />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 8l5-5 5 5M12 3v12"
+                />
+              </svg>
+              Importar CSV
+              <input
+                type="file"
+                accept=".csv,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file !== undefined) lerCsv(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {numeros.length} destinatário(s) válido(s)
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Passo 3 — Conteúdo */}
+      {passo === 2 && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Template WhatsApp aprovado</label>
+              <input
+                type="text"
+                value={form.templateName}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, templateName: e.target.value }))
+                }
+                placeholder="Ex.: promo_julho_v1"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Idioma</label>
+              <input
+                type="text"
+                value={form.languageCode}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, languageCode: e.target.value }))
+                }
+                placeholder="pt_BR"
+                className={inputClass}
+              />
+            </div>
+          </div>
+          {/* Preview */}
+          <div>
+            <label className={labelClass}>Pré-visualização</label>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
+              <div className="max-w-[280px] rounded-xl rounded-tl-none bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 px-3 py-2 shadow-theme-xs">
+                <p className="text-sm text-gray-800 dark:text-white/90">
+                  {form.templateName.trim() === ''
+                    ? 'O conteúdo do template aprovado será enviado aos destinatários.'
+                    : `Template "${form.templateName}" (${form.languageCode})`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Passo 4 — Confirmação */}
+      {passo === 3 && (
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            Confira antes de criar
+          </h3>
+          <dl className="space-y-2 text-sm">
+            {[
+              ['Nome', form.nome],
+              ['Canal', 'WhatsApp'],
+              [
+                'Envio',
+                form.tipo === 'imediato'
+                  ? 'Imediato (após lançar)'
+                  : `Agendado para ${new Date(form.scheduledAt).toLocaleString('pt-BR')}`,
+              ],
+              ['Destinatários', `${numeros.length} número(s)`],
+              ['Template', `${form.templateName} (${form.languageCode})`],
+            ].map(([rotulo, valor]) => (
+              <div key={rotulo} className="flex gap-3">
+                <dt className="w-32 text-gray-400">{rotulo}</dt>
+                <dd className="text-gray-800 dark:text-white/90 font-medium">
+                  {valor}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="text-xs text-gray-400 pt-2">
+            A campanha é criada como rascunho — o envio começa quando você
+            clicar em "Lançar" na lista de campanhas.
+          </p>
+        </div>
+      )}
+
+      {/* Navegação */}
+      <div className="flex items-center justify-between mt-8 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <button
+          onClick={() => setPasso((p) => Math.max(0, p - 1))}
+          disabled={passo === 0}
+          className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-40"
+        >
+          ← Voltar
+        </button>
+        {passo < PASSOS.length - 1 ? (
+          <button
+            onClick={() => setPasso((p) => p + 1)}
+            disabled={!podeAvancar}
+            className="px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          >
+            Avançar →
+          </button>
+        ) : (
+          <button
+            onClick={criar}
+            disabled={enviando}
+            className="px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          >
+            {enviando ? 'Criando…' : 'Criar campanha'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Relatórios ───────────────────────────────────────────────────────────────
+
+function Relatorios({ campanhas }: { campanhas: BroadcastCampaign[] }) {
+  const comEnvios = campanhas.filter((c) => c.sentCount > 0);
+
+  const options: ApexOptions = {
+    colors: [
+      themeColor('brand-500'),
+      themeColor('success-500'),
+      themeColor('error-500'),
+    ],
+    chart: {
+      fontFamily: 'Outfit, sans-serif',
+      type: 'bar',
+      toolbar: { show: false },
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '45%',
+        borderRadius: 5,
+        borderRadiusApplication: 'end',
+      },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: comEnvios.map((c) => c.name),
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    legend: {
+      show: true,
+      position: 'top',
+      horizontalAlign: 'left',
+      fontFamily: 'Outfit',
+    },
+    grid: { yaxis: { lines: { show: true } } },
+  };
+
+  if (comEnvios.length === 0) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-400 dark:border-gray-800 dark:bg-white/[0.03]">
+        Nenhuma campanha com envios ainda — os relatórios aparecem depois do
+        primeiro disparo.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 pb-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
+        Performance por campanha
+      </h3>
+      <div className="max-w-full overflow-x-auto custom-scrollbar">
+        <div className="min-w-[650px] xl:min-w-full">
+          <Chart
+            options={options}
+            series={[
+              {
+                name: 'Entregues',
+                data: comEnvios.map((c) => c.deliveredCount),
+              },
+              { name: 'Lidas', data: comEnvios.map((c) => c.readCount) },
+              { name: 'Falhas', data: comEnvios.map((c) => c.failedCount) },
+            ]}
+            type="bar"
+            height={300}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export const BroadcastPage = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [sourceMode, setSourceMode] = useState<SourceMode>('livre');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [livreText, setLivreText] = useState('');
-  const [form, setForm] = useState({
-    nome: '',
-    templateName: '',
-    languageCode: 'pt_BR',
-    scheduledAt: '',
-  });
-  const [launchingId, setLaunchingId] = useState<string | null>(null);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [aba, setAba] = useState<Aba>('campanhas');
 
-  const { campaigns, refetch } = useBroadcastCampaigns();
-  const { create: createCampaign } = useCreateBroadcastCampaign();
-  const { launch: launchCampaign } = useLaunchBroadcastCampaign();
-  const { cancel: cancelCampaign } = useCancelBroadcastCampaign();
+  const { campaigns, loading, refetch } = useBroadcastCampaigns();
+  const { launch } = useLaunchBroadcastCampaign();
+  const { cancel } = useCancelBroadcastCampaign();
 
-  const contatosEntries = useContatosRecords(sourceMode === 'contatos');
-  const clientesEntries = useClientesRecords(sourceMode === 'clientes');
-  const leadsEntries = useLeadsRecords(sourceMode === 'leads');
-
-  const currentEntries = useMemo<ContactEntry[]>(() => {
-    if (sourceMode === 'contatos') return contatosEntries;
-    if (sourceMode === 'clientes') return clientesEntries;
-    if (sourceMode === 'leads') return leadsEntries;
-    return [];
-  }, [sourceMode, contatosEntries, clientesEntries, leadsEntries]);
-
-  useEffect(() => { setSelectedIds(new Set()); }, [sourceMode]);
-
-  const toggleId = (id: string) =>
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
-  const toggleAll = () =>
-    setSelectedIds(
-      selectedIds.size === currentEntries.length
-        ? new Set()
-        : new Set(currentEntries.map(e => e.id)),
-    );
-
-  const livreCount = parsePhoneLines(livreText).length;
-  const resolvedRecipients = useMemo<ContactEntry[]>(() => {
-    if (sourceMode === 'livre') return parsePhoneLines(livreText);
-    return currentEntries.filter(e => selectedIds.has(e.id));
-  }, [sourceMode, livreText, currentEntries, selectedIds]);
-
-  const canCreate =
-    form.nome.trim().length > 0 &&
-    (sourceMode === 'livre' ? livreCount > 0 : selectedIds.size > 0);
-
-  const closeModal = () => {
-    setShowModal(false);
-    setForm({ nome: '', templateName: '', languageCode: 'pt_BR', scheduledAt: '' });
-    setSourceMode('livre');
-    setSelectedIds(new Set());
-    setLivreText('');
-  };
-
-  const handleCreate = async () => {
-    if (!canCreate) return;
-    await createCampaign({
-      variables: {
-        input: {
-          name: form.nome.trim(),
-          templateName: form.templateName.trim() || undefined,
-          languageCode: form.languageCode.trim() || 'pt_BR',
-          scheduledAt: form.scheduledAt || undefined,
-          recipients: resolvedRecipients.map(r => ({
-            phoneNumber: r.phone,
-            contactId: undefined,
-          })),
-        },
-      },
-    });
-    closeModal();
+  const lancar = async (id: string) => {
+    await launch({ variables: { campaignId: id } });
     await refetch();
   };
 
-  const handleLaunch = async (id: string) => {
-    setLaunchingId(id);
-    await launchCampaign({ variables: { campaignId: id } });
+  const cancelar = async (id: string) => {
+    await cancel({ variables: { campaignId: id } });
     await refetch();
-    setLaunchingId(null);
   };
 
-  const handleCancel = async (id: string) => {
-    setCancellingId(id);
-    await cancelCampaign({ variables: { campaignId: id } });
-    await refetch();
-    setCancellingId(null);
-  };
+  const colunas: DataTableColumn<BroadcastCampaign>[] = [
+    {
+      key: 'nome',
+      header: 'Nome',
+      render: (c) => (
+        <span className="font-medium text-gray-800 dark:text-white/90">
+          {c.name}
+        </span>
+      ),
+    },
+    {
+      key: 'canal',
+      header: 'Canal',
+      render: (c) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {c.channel === 'WHATSAPP' ? 'WhatsApp' : c.channel}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (c) => (
+        <Badge color={STATUS_BADGE[c.status] ?? 'light'} size="sm">
+          {STATUS_LABELS[c.status] ?? c.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'enviados',
+      header: 'Enviados',
+      render: (c) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {c.sentCount}/{c.totalCount}
+        </span>
+      ),
+    },
+    {
+      key: 'entregues',
+      header: 'Entregues',
+      render: (c) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {c.deliveredCount}
+        </span>
+      ),
+    },
+    {
+      key: 'leitura',
+      header: 'Taxa leitura',
+      render: (c) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {taxaLeitura(c)}%
+        </span>
+      ),
+    },
+    {
+      key: 'data',
+      header: 'Data',
+      render: (c) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {formatData(c.startedAt ?? c.scheduledAt ?? c.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'acoes',
+      header: '',
+      render: (c) => (
+        <div className="flex items-center gap-1 justify-end">
+          {c.status === 'DRAFT' && (
+            <button
+              onClick={() => lancar(c.id)}
+              className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
+            >
+              Lançar
+            </button>
+          )}
+          {(c.status === 'RUNNING' || c.status === 'SCHEDULED') && (
+            <button
+              onClick={() => cancelar(c.id)}
+              className="px-3 py-1 text-xs font-medium text-error-500 border border-error-500/30 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/[0.12] transition-colors"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
-  const sources: [SourceMode, string, string][] = [
-    ['livre', 'Lista livre', 'Cole os números manualmente'],
-    ['contatos', 'Contatos', 'Pessoas cadastradas no CRM'],
-    ['clientes', 'Clientes', 'Base de clientes recorrentes'],
-    ['leads', 'Leads', 'Oportunidades e prospects'],
+  const abas: { key: Aba; label: string }[] = [
+    { key: 'campanhas', label: 'Campanhas' },
+    { key: 'criar', label: 'Criar Nova' },
+    { key: 'relatorios', label: 'Relatórios' },
   ];
 
   return (
-    <StyledPage>
-      <StyledHeader>
-        <StyledTitle>
-          <IconSend size={22} color={C.brand} />
-          Campanhas de Disparo
-        </StyledTitle>
-        <StyledBtn variant="primary" onClick={() => setShowModal(true)}>
-          <IconPlus size={16} />
-          Nova Campanha
-        </StyledBtn>
-      </StyledHeader>
-
-      <StyledCard>
-        <StyledTable>
-          <thead>
-            <tr>
-              <StyledTh>Nome</StyledTh>
-              <StyledTh>Status</StyledTh>
-              <StyledTh>Destinatários</StyledTh>
-              <StyledTh>Progresso</StyledTh>
-              <StyledTh>Template</StyledTh>
-              <StyledTh>Ações</StyledTh>
-            </tr>
-          </thead>
-          <tbody>
-            {campaigns.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  style={{
-                    color: C.muted,
-                    fontSize: 13,
-                    padding: '32px 16px',
-                    textAlign: 'center',
-                  }}
-                >
-                  Nenhuma campanha criada ainda
-                </td>
-              </tr>
-            ) : (
-              campaigns.map(c => (
-                <CampaignRow
-                  key={c.id}
-                  campaign={c}
-                  onLaunch={handleLaunch}
-                  onCancel={handleCancel}
-                  launching={launchingId === c.id}
-                  cancelling={cancellingId === c.id}
-                />
-              ))
+    <div className="flex flex-col h-full overflow-auto">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-4 flex-wrap">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-shrink-0">
+            Campanhas
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({campaigns.length})
+              </span>
             )}
-          </tbody>
-        </StyledTable>
-      </StyledCard>
+          </h1>
 
-      {showModal && (
-        <StyledOverlay onClick={e => e.target === e.currentTarget && closeModal()}>
-          <StyledModal>
-            <StyledModalHeader>
-              <StyledModalTitle>Nova Campanha de Disparo</StyledModalTitle>
-              <StyledIconBtn onClick={closeModal}><IconX size={18} /></StyledIconBtn>
-            </StyledModalHeader>
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {abas.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setAba(key)}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  aba === key
+                    ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
+                    : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-            <StyledModalBody>
-              <StyledField>
-                <StyledLabel>Nome da campanha *</StyledLabel>
-                <StyledInput
-                  placeholder="Ex: Promoção Julho 2026"
-                  value={form.nome}
-                  onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
-                />
-              </StyledField>
-
-              <StyledField>
-                <StyledLabel>Template WhatsApp</StyledLabel>
-                <StyledInput
-                  placeholder="Nome do template aprovado na Meta"
-                  value={form.templateName}
-                  onChange={e => setForm(f => ({ ...f, templateName: e.target.value }))}
-                />
-              </StyledField>
-
-              <StyledField>
-                <StyledLabel>Idioma</StyledLabel>
-                <StyledInput
-                  placeholder="pt_BR"
-                  value={form.languageCode}
-                  onChange={e => setForm(f => ({ ...f, languageCode: e.target.value }))}
-                />
-              </StyledField>
-
-              <StyledField>
-                <StyledLabel>Agendar para (opcional)</StyledLabel>
-                <StyledInput
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
-                />
-              </StyledField>
-
-              <StyledField>
-                <StyledLabel>Destinatários</StyledLabel>
-                <StyledSourceGrid>
-                  {sources.map(([mode, label, sub]) => (
-                    <StyledSourceCard
-                      key={mode}
-                      active={sourceMode === mode}
-                      onClick={() => setSourceMode(mode)}
-                      type="button"
-                    >
-                      <StyledSourceLabel active={sourceMode === mode}>{label}</StyledSourceLabel>
-                      <StyledSourceSub>{sub}</StyledSourceSub>
-                    </StyledSourceCard>
-                  ))}
-                </StyledSourceGrid>
-              </StyledField>
-
-              {sourceMode === 'livre' ? (
-                <StyledField>
-                  <StyledLabel>Números (um por linha ou separados por vírgula)</StyledLabel>
-                  <StyledTextarea
-                    placeholder={'+5511999990001\n+5521999990002\n+5541999990003'}
-                    value={livreText}
-                    onChange={e => setLivreText(e.target.value)}
-                  />
-                  {livreCount > 0 && (
-                    <span style={{ color: C.muted, fontSize: 12 }}>
-                      {livreCount} número(s) detectado(s)
-                    </span>
-                  )}
-                </StyledField>
-              ) : (
-                <StyledField>
-                  <div style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
-                    <StyledLabel style={{ margin: 0 }}>
-                      {currentEntries.length} registro(s) com telefone
-                    </StyledLabel>
-                    {currentEntries.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={toggleAll}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: C.brand,
-                          cursor: 'pointer',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        {selectedIds.size === currentEntries.length
-                          ? 'Desmarcar todos'
-                          : 'Selecionar todos'}
-                      </button>
-                    )}
-                  </div>
-
-                  {currentEntries.length === 0 ? (
-                    <span style={{ color: C.muted, fontSize: 13 }}>
-                      Nenhum registro com telefone cadastrado.
-                    </span>
-                  ) : (
-                    <StyledContactList>
-                      {currentEntries.map(entry => (
-                        <StyledContactItem key={entry.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(entry.id)}
-                            onChange={() => toggleId(entry.id)}
-                          />
-                          <span style={{ color: C.txt, fontSize: 13 }}>{entry.name}</span>
-                          <span style={{ color: C.muted, fontSize: 12, marginLeft: 'auto' }}>
-                            {entry.phone}
-                          </span>
-                        </StyledContactItem>
-                      ))}
-                    </StyledContactList>
-                  )}
-
-                  {selectedIds.size > 0 && (
-                    <span style={{ color: C.brand, fontSize: 12, fontWeight: 600 }}>
-                      {selectedIds.size} selecionado(s)
-                    </span>
-                  )}
-                </StyledField>
-              )}
-            </StyledModalBody>
-
-            <StyledModalFooter>
-              <StyledBtn variant="ghost" onClick={closeModal}>Cancelar</StyledBtn>
-              <StyledBtn variant="primary" onClick={handleCreate} disabled={!canCreate}>
-                <IconSend size={14} />
-                {form.scheduledAt ? 'Agendar' : 'Criar Campanha'}
-              </StyledBtn>
-            </StyledModalFooter>
-          </StyledModal>
-        </StyledOverlay>
-      )}
-    </StyledPage>
+      {/* Conteúdo */}
+      <div className="flex-1 p-4 md:p-6">
+        {aba === 'campanhas' && (
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <DataTable
+              columns={colunas}
+              data={campaigns}
+              loading={loading}
+              emptyMessage='Nenhuma campanha criada. Use a aba "Criar Nova" para começar.'
+            />
+          </div>
+        )}
+        {aba === 'criar' && (
+          <CriarNovaWizard
+            onCriada={() => {
+              setAba('campanhas');
+              refetch();
+            }}
+          />
+        )}
+        {aba === 'relatorios' && <Relatorios campanhas={campaigns} />}
+      </div>
+    </div>
   );
 };

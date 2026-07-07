@@ -1,39 +1,17 @@
-// FORK: Voka CRM — Fase 13: Automações por Etapa
-/* oxlint-disable twenty/no-hardcoded-colors */
-import { styled } from '@linaria/react';
-import { useState } from 'react';
+// FORK: Voka CRM — T-8: Automações (grid de cards + modal, TailAdmin)
+import { useMemo, useState } from 'react';
 
 import {
-  type AutomationAction,
-  type AutomationCondition,
-  type AutomationRule,
-  useAutomationExecutions,
   useAutomationRules,
   useCreateAutomationRule,
   useDeleteAutomationRule,
   useUpdateAutomationRule,
+  type AutomationAction,
+  type AutomationCondition,
+  type AutomationRule,
 } from '@/automation/hooks/useAutomation';
-import {
-  IconBolt,
-  IconCirclePlus,
-  IconPlus,
-  IconTrash,
-  IconX,
-} from 'twenty-ui/icon';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const C = {
-  bg: '#F2F4F7',
-  cardBg: '#FFFFFF',
-  border: '#EAECF0',
-  txt: '#101828',
-  muted: '#667085',
-  brand: '#7C3AED',
-  success: '#12B76A',
-  danger: '#F04438',
-  warn: '#F79009',
-};
+import Switch from '@/tailadmin/form/Switch';
+import { Modal } from '@/tailadmin/ui/Modal';
 
 const TRIGGER_LABELS: Record<string, string> = {
   LEAD_CREATED: 'Lead criado',
@@ -50,710 +28,602 @@ const ACTION_LABELS: Record<string, string> = {
   WEBHOOK: 'Chamar webhook',
 };
 
-const TRIGGER_OPTIONS = Object.entries(TRIGGER_LABELS).map(([value, label]) => ({ value, label }));
-const ACTION_TYPES = Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label }));
-
-// ─── Styled ───────────────────────────────────────────────────────────────────
-
-const StyledPage = styled.div`
-  background: ${C.bg};
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 24px;
-`;
-
-const StyledHeader = styled.div`
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 24px;
-`;
-
-const StyledTitle = styled.h1`
-  align-items: center;
-  color: ${C.txt};
-  display: flex;
-  font-size: 20px;
-  font-weight: 700;
-  gap: 10px;
-  margin: 0;
-`;
-
-const StyledCard = styled.div`
-  background: ${C.cardBg};
-  border: 1px solid ${C.border};
-  border-radius: 12px;
-  overflow: hidden;
-`;
-
-const StyledTable = styled.table`
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-`;
-
-const StyledTh = styled.th`
-  background: #FAFAFA;
-  border-bottom: 1px solid ${C.border};
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  padding: 10px 16px;
-  text-align: left;
-  text-transform: uppercase;
-`;
-
-const StyledTd = styled.td`
-  border-bottom: 1px solid ${C.border};
-  color: ${C.txt};
-  padding: 10px 16px;
-  vertical-align: middle;
-`;
-
-const StyledToggle = styled.button<{ enabled: boolean }>`
-  background: ${({ enabled }) => enabled ? C.brand : C.border};
-  border: none;
-  border-radius: 99px;
-  cursor: pointer;
-  height: 20px;
-  position: relative;
-  transition: background 0.2s;
-  width: 36px;
-
-  &::after {
-    background: #fff;
-    border-radius: 50%;
-    content: '';
-    height: 14px;
-    left: ${({ enabled }) => enabled ? '18px' : '3px'};
-    position: absolute;
-    top: 3px;
-    transition: left 0.2s;
-    width: 14px;
-  }
-`;
-
-const StyledBtn = styled.button<{ variant?: 'primary' | 'ghost' | 'danger' }>`
-  align-items: center;
-  background: ${({ variant }) =>
-    variant === 'primary' ? C.brand
-    : variant === 'danger' ? '#FEF3F2'
-    : 'transparent'};
-  border: ${({ variant }) =>
-    variant === 'ghost' ? `1px solid ${C.border}`
-    : variant === 'danger' ? `1px solid #FEE4E2`
-    : 'none'};
-  border-radius: 8px;
-  color: ${({ variant }) =>
-    variant === 'primary' ? '#fff'
-    : variant === 'danger' ? C.danger
-    : C.txt};
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 13px;
-  font-weight: 600;
-  gap: 6px;
-  padding: 8px 16px;
-
-  &:hover { opacity: 0.85; }
-  &:disabled { cursor: not-allowed; opacity: 0.4; }
-`;
-
-const StyledOverlay = styled.div`
-  align-items: center;
-  background: rgba(0,0,0,0.40);
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  left: 0;
-  position: fixed;
-  right: 0;
-  top: 0;
-  z-index: 1000;
-`;
-
-const StyledModal = styled.div`
-  background: ${C.cardBg};
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.18);
-  display: flex;
-  flex-direction: column;
-  max-height: 90vh;
-  overflow: hidden;
-  width: 620px;
-`;
-
-const StyledModalHeader = styled.div`
-  align-items: center;
-  border-bottom: 1px solid ${C.border};
-  display: flex;
-  justify-content: space-between;
-  padding: 20px 24px;
-`;
-
-const StyledModalTitle = styled.h2`
-  color: ${C.txt};
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
-`;
-
-const StyledModalBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
-  padding: 24px;
-`;
-
-const StyledModalFooter = styled.div`
-  border-top: 1px solid ${C.border};
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 16px 24px;
-`;
-
-const StyledSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-const StyledSectionTitle = styled.div`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-`;
-
-const StyledField = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const StyledLabel = styled.label`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-`;
-
-const StyledInput = styled.input`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-size: 13px;
-  outline: none;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const StyledSelect = styled.select`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-size: 13px;
-  outline: none;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const StyledIconBtn = styled.button`
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: flex;
-  padding: 4px;
-
-  &:hover { background: ${C.border}; }
-`;
-
-const StyledActionCard = styled.div`
-  background: #FAFAFA;
-  border: 1px solid ${C.border};
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-`;
-
-const StyledAddBtn = styled.button`
-  align-items: center;
-  background: none;
-  border: 1px dashed ${C.border};
-  border-radius: 8px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: flex;
-  font-size: 13px;
-  gap: 6px;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:hover { border-color: ${C.brand}; color: ${C.brand}; }
-`;
-
-const StyledBadge = styled.span<{ type: 'trigger' | 'action' }>`
-  background: ${({ type }) => type === 'trigger' ? '#F5F0FF' : '#FFF8ED'};
-  border-radius: 6px;
-  color: ${({ type }) => type === 'trigger' ? C.brand : C.warn};
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-`;
-
-const StyledDetail = styled.div`
-  background: #FAFAFA;
-  border-top: 1px solid ${C.border};
-  padding: 16px;
-`;
-
-// ─── Execution detail row ─────────────────────────────────────────────────────
-
-const ExecDetail = ({ ruleId }: { ruleId: string }) => {
-  const { executions } = useAutomationExecutions(ruleId);
-
-  if (executions.length === 0) {
-    return <div style={{ color: C.muted, fontSize: 13 }}>Nenhuma execução ainda</div>;
-  }
-
-  return (
-    <StyledTable>
-      <thead>
-        <tr>
-          <StyledTh>Record</StyledTh>
-          <StyledTh>Status</StyledTh>
-          <StyledTh>Executado em</StyledTh>
-          <StyledTh>Erro</StyledTh>
-        </tr>
-      </thead>
-      <tbody>
-        {executions.slice(0, 20).map(e => (
-          <tr key={e.id}>
-            <StyledTd style={{ fontFamily: 'monospace', fontSize: 12 }}>
-              {e.recordId.slice(0, 8)}…
-            </StyledTd>
-            <StyledTd>
-              <span style={{
-                color: e.status === 'SUCCESS' ? C.success : e.status === 'FAILED' ? C.danger : C.muted,
-                fontWeight: 600,
-              }}>
-                {e.status === 'SUCCESS' ? 'Sucesso' : e.status === 'FAILED' ? 'Falhou' : 'Ignorado'}
-              </span>
-            </StyledTd>
-            <StyledTd>{new Date(e.executedAt).toLocaleString('pt-BR')}</StyledTd>
-            <StyledTd style={{ color: C.danger, fontSize: 12 }}>{e.error ?? '—'}</StyledTd>
-          </tr>
-        ))}
-      </tbody>
-    </StyledTable>
-  );
+const OPERATOR_LABELS: Record<AutomationCondition['operator'], string> = {
+  eq: 'é igual a',
+  neq: 'é diferente de',
+  contains: 'contém',
+  notContains: 'não contém',
+  exists: 'existe',
 };
 
-// ─── Rule row ─────────────────────────────────────────────────────────────────
+const formatData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
-const RuleRow = ({
-  rule,
-  onToggle,
-  onDelete,
-}: {
-  rule: AutomationRule;
-  onToggle: (id: string, enabled: boolean) => void;
-  onDelete: (id: string) => void;
-}) => {
-  const [expanded, setExpanded] = useState(false);
+// ─── Modal de edição ──────────────────────────────────────────────────────────
 
-  return (
-    <>
-      <tr>
-        <StyledTd>
-          <span
-            style={{ color: C.brand, cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => setExpanded(e => !e)}
-          >
-            {rule.name}
-          </span>
-        </StyledTd>
-        <StyledTd>
-          <StyledBadge type="trigger">
-            {TRIGGER_LABELS[rule.triggerType] ?? rule.triggerType}
-          </StyledBadge>
-        </StyledTd>
-        <StyledTd>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {rule.actions.map((a, i) => (
-              <StyledBadge key={i} type="action">
-                {ACTION_LABELS[a.type] ?? a.type}
-              </StyledBadge>
-            ))}
-          </div>
-        </StyledTd>
-        <StyledTd>
-          <StyledToggle
-            enabled={rule.enabled}
-            onClick={() => onToggle(rule.id, !rule.enabled)}
-            title={rule.enabled ? 'Desativar' : 'Ativar'}
-          />
-        </StyledTd>
-        <StyledTd>
-          <StyledIconBtn onClick={() => onDelete(rule.id)} title="Excluir">
-            <IconTrash size={16} color={C.danger} />
-          </StyledIconBtn>
-        </StyledTd>
-      </tr>
-      {expanded && (
-        <tr>
-          <StyledTd colSpan={5} style={{ padding: 0 }}>
-            <StyledDetail>
-              <ExecDetail ruleId={rule.id} />
-            </StyledDetail>
-          </StyledTd>
-        </tr>
-      )}
-    </>
-  );
+type AbaModal = 'trigger' | 'condicoes' | 'acoes';
+
+type FormState = {
+  name: string;
+  triggerType: string;
+  toStage: string;
+  fromStage: string;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
 };
 
-// ─── Action config editor ─────────────────────────────────────────────────────
-
-const ActionEditor = ({
-  action,
-  onChange,
-  onRemove,
-}: {
-  action: AutomationAction;
-  onChange: (a: AutomationAction) => void;
-  onRemove: () => void;
-}) => {
-  const setConfig = (key: string, value: string) =>
-    onChange({ ...action, config: { ...action.config, [key]: value } });
-
-  return (
-    <StyledActionCard>
-      <div style={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between' }}>
-        <StyledSelect
-          value={action.type}
-          onChange={e => onChange({ type: e.target.value as AutomationAction['type'], config: {} })}
-          style={{ width: 'auto' }}
-        >
-          {ACTION_TYPES.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </StyledSelect>
-        <StyledIconBtn onClick={onRemove}><IconX size={14} /></StyledIconBtn>
-      </div>
-
-      {action.type === 'CREATE_TASK' && (
-        <>
-          <StyledField>
-            <StyledLabel>Título da tarefa</StyledLabel>
-            <StyledInput
-              placeholder="Ex: Ligar para o lead"
-              value={String(action.config['title'] ?? '')}
-              onChange={e => setConfig('title', e.target.value)}
-            />
-          </StyledField>
-          <StyledField>
-            <StyledLabel>Vence em (minutos)</StyledLabel>
-            <StyledInput
-              type="number"
-              placeholder="60"
-              value={String(action.config['dueInMinutes'] ?? '')}
-              onChange={e => setConfig('dueInMinutes', e.target.value)}
-            />
-          </StyledField>
-        </>
-      )}
-
-      {action.type === 'SEND_TEMPLATE' && (
-        <>
-          <StyledField>
-            <StyledLabel>Nome do template</StyledLabel>
-            <StyledInput
-              placeholder="Nome aprovado na Meta"
-              value={String(action.config['templateName'] ?? '')}
-              onChange={e => setConfig('templateName', e.target.value)}
-            />
-          </StyledField>
-          <StyledField>
-            <StyledLabel>Idioma</StyledLabel>
-            <StyledInput
-              placeholder="pt_BR"
-              value={String(action.config['languageCode'] ?? 'pt_BR')}
-              onChange={e => setConfig('languageCode', e.target.value)}
-            />
-          </StyledField>
-        </>
-      )}
-
-      {action.type === 'MOVE_STAGE' && (
-        <StyledField>
-          <StyledLabel>Mover para etapa</StyledLabel>
-          <StyledInput
-            placeholder="Ex: MEETING"
-            value={String(action.config['toStage'] ?? '')}
-            onChange={e => setConfig('toStage', e.target.value)}
-          />
-        </StyledField>
-      )}
-
-      {action.type === 'ASSIGN_USER' && (
-        <StyledField>
-          <StyledLabel>ID do usuário responsável</StyledLabel>
-          <StyledInput
-            placeholder="UUID do usuário"
-            value={String(action.config['userId'] ?? '')}
-            onChange={e => setConfig('userId', e.target.value)}
-          />
-        </StyledField>
-      )}
-
-      {action.type === 'WEBHOOK' && (
-        <>
-          <StyledField>
-            <StyledLabel>URL do webhook</StyledLabel>
-            <StyledInput
-              placeholder="https://..."
-              value={String(action.config['url'] ?? '')}
-              onChange={e => setConfig('url', e.target.value)}
-            />
-          </StyledField>
-          <StyledField>
-            <StyledLabel>Método</StyledLabel>
-            <StyledSelect
-              value={String(action.config['method'] ?? 'POST')}
-              onChange={e => setConfig('method', e.target.value)}
-            >
-              <option value="POST">POST</option>
-              <option value="GET">GET</option>
-              <option value="PUT">PUT</option>
-            </StyledSelect>
-          </StyledField>
-        </>
-      )}
-    </StyledActionCard>
-  );
-};
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-const emptyAction = (): AutomationAction => ({
-  type: 'CREATE_TASK',
-  config: { title: '', dueInMinutes: '60' },
+const formVazio = (): FormState => ({
+  name: '',
+  triggerType: 'LEAD_CREATED',
+  toStage: '',
+  fromStage: '',
+  conditions: [],
+  actions: [{ type: 'CREATE_TASK', config: {} }],
 });
 
-export const AutomacoesPage = () => {
-  const [showModal, setShowModal] = useState(false);
+const formDaRegra = (regra: AutomationRule): FormState => ({
+  name: regra.name,
+  triggerType: regra.triggerType,
+  toStage: String(regra.triggerConfig?.['toStage'] ?? ''),
+  fromStage: String(regra.triggerConfig?.['fromStage'] ?? ''),
+  conditions: regra.conditions ?? [],
+  actions:
+    regra.actions?.length > 0
+      ? regra.actions
+      : [{ type: 'CREATE_TASK', config: {} }],
+});
 
-  const [form, setForm] = useState({
-    name: '',
-    triggerType: 'LEAD_CREATED',
-    toStage: '',
-    fromStage: '',
-  });
-  const [actions, setActions] = useState<AutomationAction[]>([emptyAction()]);
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-  const { rules, refetch } = useAutomationRules();
-  const { create: createRule } = useCreateAutomationRule();
-  const { update: updateRule } = useUpdateAutomationRule();
-  const { remove: deleteRule } = useDeleteAutomationRule();
+const labelClass =
+  'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5';
 
-  const closeModal = () => {
-    setShowModal(false);
-    setForm({ name: '', triggerType: 'LEAD_CREATED', toStage: '', fromStage: '' });
-    setActions([emptyAction()]);
+interface EditorModalProps {
+  regra: AutomationRule | null;
+  onClose: () => void;
+  onSave: (form: FormState, id: string | null) => Promise<void>;
+  salvando: boolean;
+}
+
+// Montado apenas enquanto aberto (key/conditional no pai), então o estado
+// inicial do form pode derivar direto das props.
+function EditorModal({ regra, onClose, onSave, salvando }: EditorModalProps) {
+  const [aba, setAba] = useState<AbaModal>('trigger');
+  const [form, setForm] = useState<FormState>(() =>
+    regra ? formDaRegra(regra) : formVazio(),
+  );
+
+  const setCondicao = (i: number, patch: Partial<AutomationCondition>) =>
+    setForm((f) => ({
+      ...f,
+      conditions: f.conditions.map((c, j) =>
+        j === i ? { ...c, ...patch } : c,
+      ),
+    }));
+
+  const setAcao = (i: number, patch: Partial<AutomationAction>) =>
+    setForm((f) => ({
+      ...f,
+      actions: f.actions.map((a, j) => (j === i ? { ...a, ...patch } : a)),
+    }));
+
+  const setAcaoConfig = (i: number, chave: string, valor: string) =>
+    setForm((f) => ({
+      ...f,
+      actions: f.actions.map((a, j) =>
+        j === i ? { ...a, config: { ...a.config, [chave]: valor } } : a,
+      ),
+    }));
+
+  const configCampo: Record<string, { chave: string; rotulo: string }> = {
+    CREATE_TASK: { chave: 'title', rotulo: 'Título da tarefa' },
+    SEND_TEMPLATE: { chave: 'templateName', rotulo: 'Nome do template' },
+    MOVE_STAGE: { chave: 'stage', rotulo: 'Etapa de destino' },
+    ASSIGN_USER: { chave: 'userId', rotulo: 'ID do usuário' },
+    WEBHOOK: { chave: 'url', rotulo: 'URL do webhook' },
   };
 
-  const handleCreate = async () => {
-    if (!form.name.trim() || actions.length === 0) return;
+  const abas: { key: AbaModal; label: string }[] = [
+    { key: 'trigger', label: 'Trigger' },
+    { key: 'condicoes', label: 'Condições' },
+    { key: 'acoes', label: 'Ações' },
+  ];
 
+  return (
+    <Modal isOpen onClose={onClose} className="max-w-[560px] p-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        {regra ? 'Editar Automação' : 'Nova Automação'}
+      </h2>
+
+      {/* Nome */}
+      <div className="mb-4">
+        <label className={labelClass}>Nome</label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          placeholder="Ex.: Boas-vindas para novo lead"
+          className={inputClass}
+        />
+      </div>
+
+      {/* Abas */}
+      <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden mb-4 w-fit">
+        {abas.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setAba(key)}
+            className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+              aba === key
+                ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
+                : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="min-h-[220px]">
+        {/* Aba Trigger */}
+        {aba === 'trigger' && (
+          <div className="space-y-4">
+            <div>
+              <label className={labelClass}>Quando isto acontecer</label>
+              <select
+                value={form.triggerType}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, triggerType: e.target.value }))
+                }
+                className={inputClass}
+              >
+                {Object.entries(TRIGGER_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {form.triggerType === 'STAGE_CHANGED' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Da etapa (opcional)</label>
+                  <input
+                    type="text"
+                    value={form.fromStage}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, fromStage: e.target.value }))
+                    }
+                    placeholder="Ex.: NEW"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Para a etapa (opcional)</label>
+                  <input
+                    type="text"
+                    value={form.toStage}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, toStage: e.target.value }))
+                    }
+                    placeholder="Ex.: PROPOSAL"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Aba Condições */}
+        {aba === 'condicoes' && (
+          <div className="space-y-3">
+            {form.conditions.length === 0 && (
+              <p className="text-sm text-gray-400">
+                Sem condições — a automação executa para todos os registros do
+                trigger.
+              </p>
+            )}
+            {form.conditions.map((c, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={c.field}
+                  onChange={(e) => setCondicao(i, { field: e.target.value })}
+                  placeholder="Campo"
+                  className={`${inputClass} flex-1`}
+                />
+                <select
+                  value={c.operator}
+                  onChange={(e) =>
+                    setCondicao(i, {
+                      operator: e.target
+                        .value as AutomationCondition['operator'],
+                    })
+                  }
+                  className={`${inputClass} w-40`}
+                >
+                  {Object.entries(OPERATOR_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {c.operator !== 'exists' && (
+                  <input
+                    type="text"
+                    value={String(c.value ?? '')}
+                    onChange={(e) => setCondicao(i, { value: e.target.value })}
+                    placeholder="Valor"
+                    className={`${inputClass} flex-1`}
+                  />
+                )}
+                <button
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      conditions: f.conditions.filter((_, j) => j !== i),
+                    }))
+                  }
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-error-50 hover:text-error-500 transition-colors flex-shrink-0"
+                  aria-label="Remover condição"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  conditions: [
+                    ...f.conditions,
+                    { field: '', operator: 'eq', value: '' },
+                  ],
+                }))
+              }
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+            >
+              + Adicionar condição
+            </button>
+          </div>
+        )}
+
+        {/* Aba Ações */}
+        {aba === 'acoes' && (
+          <div className="space-y-3">
+            {form.actions.map((a, i) => {
+              const cfg = configCampo[a.type];
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <select
+                    value={a.type}
+                    onChange={(e) =>
+                      setAcao(i, {
+                        type: e.target.value as AutomationAction['type'],
+                        config: {},
+                      })
+                    }
+                    className={`${inputClass} w-56`}
+                  >
+                    {Object.entries(ACTION_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={String(a.config?.[cfg.chave] ?? '')}
+                    onChange={(e) =>
+                      setAcaoConfig(i, cfg.chave, e.target.value)
+                    }
+                    placeholder={cfg.rotulo}
+                    className={`${inputClass} flex-1`}
+                  />
+                  {form.actions.length > 1 && (
+                    <button
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          actions: f.actions.filter((_, j) => j !== i),
+                        }))
+                      }
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-error-50 hover:text-error-500 transition-colors flex-shrink-0"
+                      aria-label="Remover ação"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  actions: [...f.actions, { type: 'CREATE_TASK', config: {} }],
+                }))
+              }
+              className="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+            >
+              + Adicionar ação
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2.5 mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={() => onSave(form, regra?.id ?? null)}
+          disabled={salvando || form.name.trim() === ''}
+          className="px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+        >
+          {salvando ? 'Salvando…' : 'Salvar'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Página ───────────────────────────────────────────────────────────────────
+
+type FiltroStatus = 'todas' | 'ativas' | 'inativas';
+
+export function AutomacoesPage() {
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<FiltroStatus>('todas');
+  const [modalAberto, setModalAberto] = useState(false);
+  const [regraEmEdicao, setRegraEmEdicao] = useState<AutomationRule | null>(
+    null,
+  );
+
+  const { rules, loading, refetch } = useAutomationRules();
+  const { create, loading: criando } = useCreateAutomationRule();
+  const { update, loading: atualizando } = useUpdateAutomationRule();
+  const { remove } = useDeleteAutomationRule();
+
+  const regrasFiltradas = useMemo(() => {
+    let resultado = rules;
+    if (filtro === 'ativas') resultado = resultado.filter((r) => r.enabled);
+    if (filtro === 'inativas') resultado = resultado.filter((r) => !r.enabled);
+    const q = busca.trim().toLowerCase();
+    if (q !== '')
+      resultado = resultado.filter((r) => r.name.toLowerCase().includes(q));
+    return resultado;
+  }, [rules, filtro, busca]);
+
+  const abrirNova = () => {
+    setRegraEmEdicao(null);
+    setModalAberto(true);
+  };
+
+  const abrirEdicao = (regra: AutomationRule) => {
+    setRegraEmEdicao(regra);
+    setModalAberto(true);
+  };
+
+  const salvar = async (form: FormState, id: string | null) => {
     const triggerConfig: Record<string, unknown> = {};
     if (form.triggerType === 'STAGE_CHANGED') {
-      if (form.toStage) triggerConfig['toStage'] = form.toStage;
-      if (form.fromStage) triggerConfig['fromStage'] = form.fromStage;
+      if (form.toStage !== '') triggerConfig['toStage'] = form.toStage;
+      if (form.fromStage !== '') triggerConfig['fromStage'] = form.fromStage;
     }
+    const input = {
+      name: form.name.trim(),
+      triggerType: form.triggerType,
+      triggerConfig,
+      conditions: form.conditions.filter((c) => c.field !== ''),
+      actions: form.actions,
+    };
+    if (id === null) {
+      await create({ variables: { input } });
+    } else {
+      await update({ variables: { input: { id, ...input } } });
+    }
+    setModalAberto(false);
+    await refetch();
+  };
 
-    await createRule({
+  const alternar = async (regra: AutomationRule, enabled: boolean) => {
+    await update({ variables: { input: { id: regra.id, enabled } } });
+  };
+
+  const duplicar = async (regra: AutomationRule) => {
+    await create({
       variables: {
         input: {
-          name: form.name.trim(),
-          triggerType: form.triggerType,
-          triggerConfig,
-          conditions: [],
-          actions,
+          name: `${regra.name} (cópia)`,
+          triggerType: regra.triggerType,
+          triggerConfig: regra.triggerConfig ?? {},
+          conditions: regra.conditions ?? [],
+          actions: regra.actions ?? [],
         },
       },
     });
-    closeModal();
     await refetch();
   };
 
-  const handleToggle = async (id: string, enabled: boolean) => {
-    await updateRule({ variables: { input: { id, enabled } } });
+  const excluir = async (id: string) => {
+    await remove({ variables: { id } });
     await refetch();
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteRule({ variables: { id } });
-    await refetch();
-  };
-
-  const addAction = () => setActions(prev => [...prev, emptyAction()]);
-  const removeAction = (i: number) => setActions(prev => prev.filter((_, idx) => idx !== i));
-  const updateAction = (i: number, a: AutomationAction) =>
-    setActions(prev => prev.map((x, idx) => (idx === i ? a : x)));
-
-  const canCreate = form.name.trim().length > 0 && actions.length > 0;
+  const filtros: { key: FiltroStatus; label: string }[] = [
+    { key: 'todas', label: 'Todas' },
+    { key: 'ativas', label: 'Ativas' },
+    { key: 'inativas', label: 'Inativas' },
+  ];
 
   return (
-    <StyledPage>
-      <StyledHeader>
-        <StyledTitle>
-          <IconBolt size={22} color={C.brand} />
-          Automações
-        </StyledTitle>
-        <StyledBtn variant="primary" onClick={() => setShowModal(true)}>
-          <IconPlus size={16} />
-          Nova Automação
-        </StyledBtn>
-      </StyledHeader>
-
-      <StyledCard>
-        <StyledTable>
-          <thead>
-            <tr>
-              <StyledTh>Nome</StyledTh>
-              <StyledTh>Gatilho</StyledTh>
-              <StyledTh>Ações</StyledTh>
-              <StyledTh>Ativa</StyledTh>
-              <StyledTh></StyledTh>
-            </tr>
-          </thead>
-          <tbody>
-            {rules.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  style={{
-                    color: C.muted,
-                    fontSize: 13,
-                    padding: '32px 16px',
-                    textAlign: 'center',
-                  }}
-                >
-                  Nenhuma automação criada. Clique em "Nova Automação" para começar.
-                </td>
-              </tr>
-            ) : (
-              rules.map(rule => (
-                <RuleRow
-                  key={rule.id}
-                  rule={rule}
-                  onToggle={handleToggle}
-                  onDelete={handleDelete}
-                />
-              ))
+    <div className="flex flex-col h-full overflow-auto">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-4 flex-wrap">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-shrink-0">
+            Automações
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({rules.length})
+              </span>
             )}
-          </tbody>
-        </StyledTable>
-      </StyledCard>
+          </h1>
 
-      {/* ── Modal ──────────────────────────────────────────────────────────── */}
-      {showModal && (
-        <StyledOverlay onClick={e => e.target === e.currentTarget && closeModal()}>
-          <StyledModal>
-            <StyledModalHeader>
-              <StyledModalTitle>Nova Automação</StyledModalTitle>
-              <StyledIconBtn onClick={closeModal}><IconX size={18} /></StyledIconBtn>
-            </StyledModalHeader>
+          <div className="flex items-center gap-1.5">
+            {filtros.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFiltro(key)}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                  filtro === key
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-            <StyledModalBody>
-              {/* Nome */}
-              <StyledField>
-                <StyledLabel>Nome *</StyledLabel>
-                <StyledInput
-                  placeholder="Ex: Lead novo → tarefa + template"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                />
-              </StyledField>
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar automação..."
+            className="w-52 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          />
 
-              {/* Gatilho */}
-              <StyledSection>
-                <StyledSectionTitle>Gatilho</StyledSectionTitle>
-                <StyledSelect
-                  value={form.triggerType}
-                  onChange={e => setForm(f => ({ ...f, triggerType: e.target.value }))}
-                >
-                  {TRIGGER_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </StyledSelect>
+          <div className="flex-1" />
 
-                {form.triggerType === 'STAGE_CHANGED' && (
-                  <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }}>
-                    <StyledField>
-                      <StyledLabel>De etapa (opcional)</StyledLabel>
-                      <StyledInput
-                        placeholder="Ex: NEW"
-                        value={form.fromStage}
-                        onChange={e => setForm(f => ({ ...f, fromStage: e.target.value }))}
-                      />
-                    </StyledField>
-                    <StyledField>
-                      <StyledLabel>Para etapa (opcional)</StyledLabel>
-                      <StyledInput
-                        placeholder="Ex: MEETING"
-                        value={form.toStage}
-                        onChange={e => setForm(f => ({ ...f, toStage: e.target.value }))}
-                      />
-                    </StyledField>
+          <button
+            onClick={abrirNova}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0"
+          >
+            + Nova Automação
+          </button>
+        </div>
+      </div>
+
+      {/* Grid de cards */}
+      <div className="flex-1 p-4 md:p-6">
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] h-48 animate-pulse"
+              />
+            ))}
+          </div>
+        ) : regrasFiltradas.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-400 dark:border-gray-800 dark:bg-white/[0.03]">
+            Nenhuma automação encontrada. Clique em "+ Nova Automação" para
+            criar a primeira.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {regrasFiltradas.map((regra) => (
+              <div
+                key={regra.id}
+                className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03] flex flex-col"
+              >
+                {/* Header: nome + toggle */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center justify-center w-10 h-10 bg-brand-50 dark:bg-brand-500/[0.12] rounded-xl flex-shrink-0">
+                      <svg
+                        className="w-5 h-5 text-brand-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 10V3L4 14h7v7l9-11h-7z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                      {regra.name}
+                    </h3>
                   </div>
-                )}
-              </StyledSection>
-
-              {/* Ações */}
-              <StyledSection>
-                <StyledSectionTitle>Ações</StyledSectionTitle>
-                {actions.map((action, i) => (
-                  <ActionEditor
-                    key={i}
-                    action={action}
-                    onChange={a => updateAction(i, a)}
-                    onRemove={() => removeAction(i)}
+                  <Switch
+                    checked={regra.enabled}
+                    onChange={(v) => alternar(regra, v)}
+                    id={`toggle-${regra.id}`}
                   />
-                ))}
-                <StyledAddBtn type="button" onClick={addAction}>
-                  <IconCirclePlus size={16} />
-                  Adicionar ação
-                </StyledAddBtn>
-              </StyledSection>
-            </StyledModalBody>
+                </div>
 
-            <StyledModalFooter>
-              <StyledBtn variant="ghost" onClick={closeModal}>Cancelar</StyledBtn>
-              <StyledBtn variant="primary" onClick={handleCreate} disabled={!canCreate}>
-                <IconBolt size={14} />
-                Criar Automação
-              </StyledBtn>
-            </StyledModalFooter>
-          </StyledModal>
-        </StyledOverlay>
+                {/* Chips trigger → ações */}
+                <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                  <span className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400">
+                    {TRIGGER_LABELS[regra.triggerType] ?? regra.triggerType}
+                  </span>
+                  <span className="text-gray-300 dark:text-gray-600">→</span>
+                  {(regra.actions ?? []).map((a, i) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                    >
+                      {ACTION_LABELS[a.type] ?? a.type}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Stats */}
+                <p className="text-xs text-gray-400 mb-4">
+                  Criada em {formatData(regra.createdAt)} · Atualizada em{' '}
+                  {formatData(regra.updatedAt)}
+                </p>
+
+                <div className="flex-1" />
+
+                {/* Footer */}
+                <div className="flex items-center gap-1 pt-3 border-t border-gray-100 dark:border-gray-800">
+                  <button
+                    onClick={() => abrirEdicao(regra)}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => duplicar(regra)}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Duplicar
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => excluir(regra.id)}
+                    className="px-3 py-1.5 text-sm font-medium text-error-500 hover:bg-error-50 dark:hover:bg-error-500/[0.12] rounded-lg transition-colors"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modalAberto && (
+        <EditorModal
+          key={regraEmEdicao?.id ?? 'nova'}
+          regra={regraEmEdicao}
+          onClose={() => setModalAberto(false)}
+          onSave={salvar}
+          salvando={criando || atualizando}
+        />
       )}
-    </StyledPage>
+    </div>
   );
-};
+}

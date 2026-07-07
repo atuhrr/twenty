@@ -17,12 +17,11 @@ import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomState
 import { isDefined } from 'twenty-shared/utils';
 import { Loader } from 'twenty-ui/feedback';
 import { MainButton } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation } from '@apollo/client/react';
 import { ActivateWorkspaceDocument } from '~/generated-metadata/graphql';
 
 const StyledButtonContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[8]};
+  margin-top: var(--t-spacing-8);
   width: 200px;
 `;
 
@@ -30,8 +29,8 @@ const StyledLoaderContainer = styled.div`
   align-items: center;
   display: flex;
   justify-content: center;
-  margin-bottom: ${themeCssVariables.spacing[8]};
-  margin-top: ${themeCssVariables.spacing[8]};
+  margin-bottom: var(--t-spacing-8);
+  margin-top: var(--t-spacing-8);
   width: 100%;
 `;
 

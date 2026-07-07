@@ -74,11 +74,11 @@ const StyledFullWidthContainer = styled.div`
 `;
 
 const StyledInputContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[3]};
+  margin-bottom: var(--t-spacing-3);
 `;
 
 const StyledMainButtonContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[2]};
+  margin-top: var(--t-spacing-2);
 `;
 
 export const PasswordReset = () => {

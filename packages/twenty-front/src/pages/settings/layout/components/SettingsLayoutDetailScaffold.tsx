@@ -18,8 +18,8 @@ import { themeCssVariables } from 'twenty-ui/theme-constants';
 export type DetailRow = { key: string; label: string; value: ReactNode };
 
 const StyledDescription = styled.div`
-  color: ${themeCssVariables.font.color.secondary};
-  font-size: ${themeCssVariables.font.size.md};
+  color: var(--t-font-color-secondary);
+  font-size: var(--t-font-size-md);
   line-height: 1.5;
   white-space: pre-wrap;
 `;

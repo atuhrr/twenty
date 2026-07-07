@@ -1,653 +1,463 @@
-// FORK: Voka CRM — Fase 15: Web Forms + Chat Widget
-/* oxlint-disable twenty/no-hardcoded-colors */
-import { styled } from '@linaria/react';
+// FORK: Voka CRM — T-9: Web Forms (lista + builder, TailAdmin)
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
-
+import Switch from '@/tailadmin/form/Switch';
+import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
+import { Modal } from '@/tailadmin/ui/Modal';
 import {
-  type WebForm,
-  type WebFormField,
-  type WebFormFieldType,
+  newField,
   useCreateWebForm,
   useDeleteWebForm,
   useUpdateWebForm,
   useWebForms,
+  type WebForm,
+  type WebFormField,
+  type WebFormFieldType,
 } from '@/web-form/hooks/useWebForm';
-import {
-  IconCopy,
-  IconFileText,
-  IconPlus,
-  IconTrash,
-  IconX,
-} from 'twenty-ui/icon';
 
-// ─── Tokens ───────────────────────────────────────────────────────────────────
-
-const C = {
-  bg: '#F2F4F7',
-  card: '#FFFFFF',
-  border: '#EAECF0',
-  txt: '#101828',
-  muted: '#667085',
-  brand: '#7C3AED',
-  success: '#12B76A',
-  danger: '#F04438',
-  code: '#F8F5FF',
-};
-
-const FIELD_TYPES: { value: WebFormFieldType; label: string }[] = [
-  { value: 'text', label: 'Texto' },
-  { value: 'email', label: 'E-mail' },
-  { value: 'phone', label: 'Telefone' },
-  { value: 'textarea', label: 'Texto longo' },
-  { value: 'select', label: 'Seleção' },
+const TIPOS_CAMPO: { type: WebFormFieldType; label: string }[] = [
+  { type: 'text', label: 'Texto' },
+  { type: 'email', label: 'E-mail' },
+  { type: 'phone', label: 'Telefone' },
+  { type: 'select', label: 'Seleção' },
+  { type: 'textarea', label: 'Texto longo' },
 ];
 
-// ─── Styled ───────────────────────────────────────────────────────────────────
+const TIPO_LABEL: Record<WebFormFieldType, string> = {
+  text: 'Texto',
+  email: 'E-mail',
+  phone: 'Telefone',
+  select: 'Seleção',
+  textarea: 'Texto longo',
+};
 
-const Page = styled.div`
-  background: ${C.bg};
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 24px;
-`;
+const formatData = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
-const Header = styled.div`
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 24px;
-`;
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-const Title = styled.h1`
-  align-items: center;
-  color: ${C.txt};
-  display: flex;
-  font-size: 20px;
-  font-weight: 700;
-  gap: 10px;
-  margin: 0;
-`;
+const labelClass =
+  'block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5';
 
-const Card = styled.div`
-  background: ${C.card};
-  border: 1px solid ${C.border};
-  border-radius: 12px;
-  overflow: hidden;
-`;
+// ─── Builder ──────────────────────────────────────────────────────────────────
 
-const Table = styled.table`
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-`;
+interface FormBuilderProps {
+  form: WebForm | null;
+  onClose: () => void;
+  onSave: (
+    nome: string,
+    fields: WebFormField[],
+    id: string | null,
+  ) => Promise<void>;
+  salvando: boolean;
+}
 
-const Th = styled.th`
-  background: #FAFAFA;
-  border-bottom: 1px solid ${C.border};
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 10px 16px;
-  text-align: left;
-  text-transform: uppercase;
-`;
+// Montado apenas enquanto aberto (key no pai) — estado inicial deriva das props.
+function FormBuilder({ form, onClose, onSave, salvando }: FormBuilderProps) {
+  const [nome, setNome] = useState(form?.name ?? '');
+  const [fields, setFields] = useState<WebFormField[]>(form?.fields ?? []);
+  const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [linkCopiado, setLinkCopiado] = useState(false);
 
-const Td = styled.td`
-  border-bottom: 1px solid ${C.border};
-  color: ${C.txt};
-  padding: 12px 16px;
-  vertical-align: middle;
-`;
+  const campo = fields.find((f) => f.id === selecionado) ?? null;
 
-const Toggle = styled.button<{ enabled: boolean }>`
-  background: ${({ enabled }) => (enabled ? C.brand : C.border)};
-  border: none;
-  border-radius: 99px;
-  cursor: pointer;
-  height: 20px;
-  position: relative;
-  transition: background 0.2s;
-  width: 36px;
-
-  &::after {
-    background: #fff;
-    border-radius: 50%;
-    content: '';
-    height: 14px;
-    left: ${({ enabled }) => (enabled ? '18px' : '3px')};
-    position: absolute;
-    top: 3px;
-    transition: left 0.2s;
-    width: 14px;
-  }
-`;
-
-const Btn = styled.button<{ variant?: 'primary' | 'ghost' | 'danger' | 'code' }>`
-  align-items: center;
-  background: ${({ variant }) =>
-    variant === 'primary' ? C.brand
-    : variant === 'code' ? C.code
-    : variant === 'danger' ? '#FEF3F2'
-    : 'transparent'};
-  border: ${({ variant }) =>
-    variant === 'ghost' ? `1px solid ${C.border}`
-    : variant === 'code' ? `1px solid #DDD6FE`
-    : variant === 'danger' ? `1px solid #FEE4E2`
-    : 'none'};
-  border-radius: 8px;
-  color: ${({ variant }) =>
-    variant === 'primary' ? '#fff'
-    : variant === 'code' ? C.brand
-    : variant === 'danger' ? C.danger
-    : C.txt};
-  cursor: pointer;
-  display: inline-flex;
-  font-size: 13px;
-  font-weight: 600;
-  gap: 6px;
-  padding: 8px 16px;
-
-  &:hover { opacity: 0.85; }
-  &:disabled { cursor: not-allowed; opacity: 0.4; }
-`;
-
-const IconBtn = styled.button`
-  background: none;
-  border: none;
-  border-radius: 6px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: flex;
-  padding: 4px;
-
-  &:hover { background: ${C.border}; }
-`;
-
-const Overlay = styled.div`
-  align-items: flex-start;
-  background: rgba(0, 0, 0, 0.4);
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  left: 0;
-  overflow-y: auto;
-  padding: 40px 16px;
-  position: fixed;
-  right: 0;
-  top: 0;
-  z-index: 1000;
-`;
-
-const Modal = styled.div`
-  background: ${C.card};
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
-  display: flex;
-  flex-direction: column;
-  width: 680px;
-`;
-
-const ModalHead = styled.div`
-  align-items: center;
-  border-bottom: 1px solid ${C.border};
-  display: flex;
-  justify-content: space-between;
-  padding: 20px 24px;
-`;
-
-const ModalBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 24px;
-`;
-
-const ModalFoot = styled.div`
-  border-top: 1px solid ${C.border};
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 16px 24px;
-`;
-
-const Tabs = styled.div`
-  border-bottom: 1px solid ${C.border};
-  display: flex;
-  gap: 0;
-  padding: 0 24px;
-`;
-
-const Tab = styled.button<{ active: boolean }>`
-  background: none;
-  border: none;
-  border-bottom: 2px solid ${({ active }) => (active ? C.brand : 'transparent')};
-  color: ${({ active }) => (active ? C.brand : C.muted)};
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: ${({ active }) => (active ? '700' : '500')};
-  padding: 12px 16px;
-`;
-
-const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-`;
-
-const SectionTitle = styled.div`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-`;
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-`;
-
-const Label = styled.label`
-  color: ${C.muted};
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-`;
-
-const Input = styled.input`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-size: 13px;
-  outline: none;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const Select = styled.select`
-  border: 1px solid ${C.border};
-  border-radius: 8px;
-  color: ${C.txt};
-  font-size: 13px;
-  outline: none;
-  padding: 9px 12px;
-
-  &:focus { border-color: ${C.brand}; }
-`;
-
-const CodeBox = styled.pre`
-  background: #1E1E2E;
-  border-radius: 10px;
-  color: #CDD6F4;
-  font-family: 'Fira Mono', monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  overflow-x: auto;
-  padding: 16px;
-  white-space: pre-wrap;
-  word-break: break-all;
-`;
-
-const FieldRow = styled.div`
-  align-items: center;
-  background: #FAFAFA;
-  border: 1px solid ${C.border};
-  border-radius: 10px;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 1fr 1fr 1fr auto auto;
-  padding: 10px 14px;
-`;
-
-const AddFieldBtn = styled.button`
-  align-items: center;
-  background: none;
-  border: 1px dashed ${C.border};
-  border-radius: 8px;
-  color: ${C.muted};
-  cursor: pointer;
-  display: flex;
-  font-size: 13px;
-  gap: 6px;
-  padding: 9px 12px;
-  width: 100%;
-
-  &:hover { border-color: ${C.brand}; color: ${C.brand}; }
-`;
-
-// ─── Field editor row ─────────────────────────────────────────────────────────
-
-const FieldEditor = ({
-  field,
-  onChange,
-  onRemove,
-}: {
-  field: WebFormField;
-  onChange: (f: WebFormField) => void;
-  onRemove: () => void;
-}) => (
-  <FieldRow>
-    <Input
-      placeholder="Rótulo do campo"
-      value={field.label}
-      onChange={(e) => onChange({ ...field, label: e.target.value })}
-    />
-    <Select
-      value={field.type}
-      onChange={(e) => onChange({ ...field, type: e.target.value as WebFormFieldType })}
-    >
-      {FIELD_TYPES.map((t) => (
-        <option key={t.value} value={t.value}>{t.label}</option>
-      ))}
-    </Select>
-    <Input
-      placeholder="Placeholder"
-      value={field.placeholder ?? ''}
-      onChange={(e) => onChange({ ...field, placeholder: e.target.value })}
-    />
-    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.muted, whiteSpace: 'nowrap' }}>
-      <input
-        type="checkbox"
-        checked={field.required ?? false}
-        onChange={(e) => onChange({ ...field, required: e.target.checked })}
-      />
-      Obrig.
-    </label>
-    <IconBtn onClick={onRemove}><IconTrash size={14} color={C.danger} /></IconBtn>
-  </FieldRow>
-);
-
-// ─── Embed tab ────────────────────────────────────────────────────────────────
-
-const EmbedTab = ({ form, workspaceId }: { form: WebForm; workspaceId: string }) => {
-  const origin = window.location.origin.replace(':4000', ':3000');
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
+  const addCampo = (type: WebFormFieldType) => {
+    const f = { ...newField(type), label: TIPO_LABEL[type] };
+    setFields((arr) => [...arr, f]);
+    setSelecionado(f.id);
   };
 
-  const iframeCode = `<iframe\n  src="${origin}/public/web-forms/${form.publicToken}"\n  width="100%"\n  height="520"\n  frameborder="0"\n  style="border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08)"\n></iframe>`;
+  const patchCampo = (id: string, patch: Partial<WebFormField>) =>
+    setFields((arr) => arr.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 
-  const widgetCode = `<!-- Voka Chat Widget -->\n<script src="${origin}/public/chat-widget/${workspaceId}/widget.js"></script>`;
+  const mover = (id: string, delta: number) =>
+    setFields((arr) => {
+      const i = arr.findIndex((f) => f.id === id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= arr.length) return arr;
+      const copia = [...arr];
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+      return copia;
+    });
+
+  const copiarLink = async () => {
+    if (form === null) return;
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/forms/${form.publicToken}`,
+    );
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2000);
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Section>
-        <SectionTitle>Embed via iframe</SectionTitle>
-        <CodeBox>{iframeCode}</CodeBox>
-        <Btn variant="code" onClick={() => copy(iframeCode, 'iframe')}>
-          <IconCopy size={14} />
-          {copied === 'iframe' ? 'Copiado!' : 'Copiar código iframe'}
-        </Btn>
-      </Section>
+    <Modal isOpen onClose={onClose} className="max-w-[1080px] p-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5 pr-10">
+        <input
+          type="text"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="Nome do formulário"
+          className={`${inputClass} max-w-[320px] font-semibold`}
+        />
+        {form !== null && (
+          <button
+            onClick={copiarLink}
+            className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            {linkCopiado ? 'Link copiado ✓' : 'Copiar link'}
+          </button>
+        )}
+        <div className="flex-1" />
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={() => onSave(nome, fields, form?.id ?? null)}
+          disabled={salvando || nome.trim() === '' || fields.length === 0}
+          className="px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+        >
+          {salvando ? 'Salvando…' : 'Publicar'}
+        </button>
+      </div>
 
-      <Section>
-        <SectionTitle>Link direto</SectionTitle>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <code style={{ flex: 1, background: C.code, border: `1px solid #DDD6FE`, borderRadius: 8, color: C.brand, fontSize: 13, padding: '9px 12px' }}>
-            {origin}/public/web-forms/{form.publicToken}
-          </code>
-          <Btn variant="code" onClick={() => copy(`${origin}/public/web-forms/${form.publicToken}`, 'link')}>
-            {copied === 'link' ? 'Copiado!' : 'Copiar'}
-          </Btn>
+      <div className="grid grid-cols-12 gap-4 min-h-[420px]">
+        {/* Painel esquerdo — campos disponíveis */}
+        <div className="col-span-3 rounded-xl border border-gray-200 dark:border-gray-800 p-3">
+          <p className={labelClass}>Adicionar campo</p>
+          <div className="space-y-1.5">
+            {TIPOS_CAMPO.map(({ type, label }) => (
+              <button
+                key={type}
+                onClick={() => addCampo(type)}
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 hover:border-brand-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+              >
+                + {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </Section>
 
-      <Section>
-        <SectionTitle>Chat widget (botão flutuante no site)</SectionTitle>
-        <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
-          Cole este script antes do fechamento do &lt;/body&gt; no seu site. Um botão roxo aparecerá no canto inferior direito.
-        </p>
-        <CodeBox>{widgetCode}</CodeBox>
-        <Btn variant="code" onClick={() => copy(widgetCode, 'widget')}>
-          <IconCopy size={14} />
-          {copied === 'widget' ? 'Copiado!' : 'Copiar snippet widget'}
-        </Btn>
-      </Section>
-    </div>
+        {/* Centro — preview */}
+        <div className="col-span-6 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 p-4 overflow-y-auto">
+          <p className={labelClass}>Pré-visualização</p>
+          {fields.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-16">
+              Adicione campos pelo painel à esquerda
+            </p>
+          ) : (
+            <div className="space-y-3 max-w-[380px] mx-auto bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+              {fields.map((f) => (
+                <div
+                  key={f.id}
+                  onClick={() => setSelecionado(f.id)}
+                  className={`rounded-lg p-2 -m-2 cursor-pointer transition-colors ${
+                    selecionado === f.id
+                      ? 'ring-2 ring-brand-500 bg-brand-50/50 dark:bg-brand-500/[0.08]'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                    {f.label === '' ? '(sem rótulo)' : f.label}
+                    {f.required === true && (
+                      <span className="text-error-500"> *</span>
+                    )}
+                  </span>
+                  {f.type === 'textarea' ? (
+                    <textarea
+                      disabled
+                      placeholder={f.placeholder}
+                      rows={2}
+                      className={`${inputClass} pointer-events-none`}
+                    />
+                  ) : f.type === 'select' ? (
+                    <select
+                      disabled
+                      className={`${inputClass} pointer-events-none`}
+                    >
+                      {(f.options ?? ['Opção 1']).map((o) => (
+                        <option key={o}>{o}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      disabled
+                      type="text"
+                      placeholder={f.placeholder}
+                      className={`${inputClass} pointer-events-none`}
+                    />
+                  )}
+                </div>
+              ))}
+              <button
+                disabled
+                className="w-full px-4 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg opacity-80"
+              >
+                Enviar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Painel direito — propriedades */}
+        <div className="col-span-3 rounded-xl border border-gray-200 dark:border-gray-800 p-3">
+          <p className={labelClass}>Propriedades</p>
+          {campo === null ? (
+            <p className="text-sm text-gray-400">
+              Selecione um campo no preview
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-400">
+                Tipo:{' '}
+                <span className="font-medium">{TIPO_LABEL[campo.type]}</span>
+              </p>
+              <div>
+                <label className={labelClass}>Rótulo</label>
+                <input
+                  type="text"
+                  value={campo.label}
+                  onChange={(e) =>
+                    patchCampo(campo.id, { label: e.target.value })
+                  }
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Placeholder</label>
+                <input
+                  type="text"
+                  value={campo.placeholder ?? ''}
+                  onChange={(e) =>
+                    patchCampo(campo.id, { placeholder: e.target.value })
+                  }
+                  className={inputClass}
+                />
+              </div>
+              {campo.type === 'select' && (
+                <div>
+                  <label className={labelClass}>Opções (uma por linha)</label>
+                  <textarea
+                    value={(campo.options ?? []).join('\n')}
+                    onChange={(e) =>
+                      patchCampo(campo.id, {
+                        options: e.target.value
+                          .split('\n')
+                          .filter((o) => o.trim() !== ''),
+                      })
+                    }
+                    rows={3}
+                    className={inputClass}
+                  />
+                </div>
+              )}
+              <Switch
+                checked={campo.required === true}
+                onChange={(v) => patchCampo(campo.id, { required: v })}
+                label="Obrigatório"
+                id={`req-${campo.id}`}
+              />
+              <div className="flex items-center gap-1.5 pt-2">
+                <button
+                  onClick={() => mover(campo.id, -1)}
+                  className="px-2.5 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => mover(campo.id, 1)}
+                  className="px-2.5 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  ↓
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={() => {
+                    setFields((arr) => arr.filter((f) => f.id !== campo.id));
+                    setSelecionado(null);
+                  }}
+                  className="px-2.5 py-1 text-sm text-error-500 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/[0.12]"
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
-};
+}
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-type FormState = {
-  name: string;
-  fields: WebFormField[];
-};
-
-type Tab = 'builder' | 'embed';
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export const WebFormsPage = () => {
-  const { forms, refetch } = useWebForms();
-  const { create } = useCreateWebForm();
-  const { update } = useUpdateWebForm();
+  const [builderAberto, setBuilderAberto] = useState(false);
+  const [formEmEdicao, setFormEmEdicao] = useState<WebForm | null>(null);
+
+  const { forms, loading, refetch } = useWebForms();
+  const { create, loading: criando } = useCreateWebForm();
+  const { update, loading: atualizando } = useUpdateWebForm();
   const { remove } = useDeleteWebForm();
-  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
-  const workspaceId = currentWorkspace?.id ?? 'SEU_WORKSPACE_ID';
 
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<WebForm | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('builder');
-  const [form, setForm] = useState<FormState>({ name: '', fields: [] });
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ name: '', fields: [] });
-    setActiveTab('builder');
-    setShowModal(true);
-  };
-
-  const openEdit = (f: WebForm) => {
-    setEditing(f);
-    setForm({ name: f.name, fields: f.fields });
-    setActiveTab('builder');
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditing(null);
-  };
-
-  const addField = () =>
-    setForm((f) => ({
-      ...f,
-      fields: [...f.fields, { id: uuidv4(), type: 'text', label: '', required: false }],
-    }));
-
-  const updateField = (i: number, field: WebFormField) =>
-    setForm((f) => ({ ...f, fields: f.fields.map((x, idx) => (idx === i ? field : x)) }));
-
-  const removeField = (i: number) =>
-    setForm((f) => ({ ...f, fields: f.fields.filter((_, idx) => idx !== i) }));
-
-  const handleSave = async () => {
-    if (!form.name.trim()) return;
-
-    const input = { name: form.name.trim(), fields: form.fields };
-
-    if (editing) {
-      await update({ variables: { input: { id: editing.id, ...input } } });
-    } else {
-      await create({ variables: { input } });
-    }
-
-    closeModal();
+  const salvar = async (
+    nome: string,
+    fields: WebFormField[],
+    id: string | null,
+  ) => {
+    const input = { name: nome.trim(), fields };
+    if (id === null) await create({ variables: { input } });
+    else await update({ variables: { input: { id, ...input } } });
+    setBuilderAberto(false);
     await refetch();
   };
 
-  const handleToggle = async (f: WebForm) => {
-    await update({ variables: { input: { id: f.id, enabled: !f.enabled } } });
+  const alternar = async (f: WebForm, enabled: boolean) => {
+    await update({ variables: { input: { id: f.id, enabled } } });
     await refetch();
   };
 
-  const handleDelete = async (id: string) => {
+  const excluir = async (id: string) => {
     await remove({ variables: { id } });
     await refetch();
   };
 
+  const colunas: DataTableColumn<WebForm>[] = [
+    {
+      key: 'nome',
+      header: 'Nome',
+      render: (f) => (
+        <button
+          onClick={() => {
+            setFormEmEdicao(f);
+            setBuilderAberto(true);
+          }}
+          className="font-medium text-gray-800 dark:text-white/90 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+        >
+          {f.name}
+        </button>
+      ),
+    },
+    {
+      key: 'campos',
+      header: 'Campos',
+      render: (f) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {f.fields.length}
+        </span>
+      ),
+    },
+    {
+      key: 'link',
+      header: 'Link público',
+      render: (f) => (
+        <button
+          onClick={() =>
+            navigator.clipboard.writeText(
+              `${window.location.origin}/forms/${f.publicToken}`,
+            )
+          }
+          className="text-xs text-brand-600 dark:text-brand-400 hover:underline"
+        >
+          Copiar link
+        </button>
+      ),
+    },
+    {
+      key: 'ativo',
+      header: 'Ativo',
+      render: (f) => (
+        <Switch
+          checked={f.enabled}
+          onChange={(v) => alternar(f, v)}
+          id={`wf-${f.id}`}
+        />
+      ),
+    },
+    {
+      key: 'criado',
+      header: 'Criado em',
+      render: (f) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {formatData(f.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'acoes',
+      header: '',
+      render: (f) => (
+        <div className="flex items-center gap-1 justify-end">
+          <button
+            onClick={() => {
+              setFormEmEdicao(f);
+              setBuilderAberto(true);
+            }}
+            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Editar
+          </button>
+          <button
+            onClick={() => excluir(f.id)}
+            className="px-3 py-1 text-xs font-medium text-error-500 border border-error-500/30 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/[0.12] transition-colors"
+          >
+            Excluir
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <Page>
-      <Header>
-        <Title>
-          <IconFileText size={22} color={C.brand} />
-          Formulários Web
-        </Title>
-        <Btn variant="primary" onClick={openCreate}>
-          <IconPlus size={16} />
-          Novo Formulário
-        </Btn>
-      </Header>
-
-      <Card>
-        <Table>
-          <thead>
-            <tr>
-              <Th>Nome</Th>
-              <Th>Campos</Th>
-              <Th>Token público</Th>
-              <Th>Ativo</Th>
-              <Th></Th>
-            </tr>
-          </thead>
-          <tbody>
-            {forms.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={5}
-                  style={{ color: C.muted, fontSize: 13, padding: '32px 16px', textAlign: 'center' }}
-                >
-                  Nenhum formulário criado. Clique em "Novo Formulário".
-                </td>
-              </tr>
-            ) : (
-              forms.map((f) => (
-                <tr key={f.id}>
-                  <Td>
-                    <span
-                      style={{ color: C.brand, cursor: 'pointer', fontWeight: 600 }}
-                      onClick={() => openEdit(f)}
-                    >
-                      {f.name}
-                    </span>
-                  </Td>
-                  <Td style={{ color: C.muted }}>{f.fields.length} campo(s)</Td>
-                  <Td>
-                    <code style={{ background: C.code, borderRadius: 4, color: C.brand, fontSize: 11, padding: '2px 6px' }}>
-                      {f.publicToken.slice(0, 12)}…
-                    </code>
-                  </Td>
-                  <Td>
-                    <Toggle enabled={f.enabled} onClick={() => handleToggle(f)} />
-                  </Td>
-                  <Td>
-                    <IconBtn onClick={() => handleDelete(f.id)}>
-                      <IconTrash size={16} color={C.danger} />
-                    </IconBtn>
-                  </Td>
-                </tr>
-              ))
+    <div className="flex flex-col h-full overflow-auto">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Formulários
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({forms.length})
+              </span>
             )}
-          </tbody>
-        </Table>
-      </Card>
+          </h1>
+          <div className="flex-1" />
+          <button
+            onClick={() => {
+              setFormEmEdicao(null);
+              setBuilderAberto(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+          >
+            + Novo Formulário
+          </button>
+        </div>
+      </div>
 
-      {/* ── Modal ─────────────────────────────────────────────────────────── */}
-      {showModal && (
-        <Overlay onClick={(e) => e.target === e.currentTarget && closeModal()}>
-          <Modal>
-            <ModalHead>
-              <h2 style={{ color: C.txt, fontSize: 16, fontWeight: 700, margin: 0 }}>
-                {editing ? `Editar: ${editing.name}` : 'Novo Formulário'}
-              </h2>
-              <IconBtn onClick={closeModal}><IconX size={18} /></IconBtn>
-            </ModalHead>
+      {/* Tabela */}
+      <div className="flex-1 p-4 md:p-6">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+          <DataTable
+            columns={colunas}
+            data={forms}
+            loading={loading}
+            emptyMessage='Nenhum formulário criado. Clique em "+ Novo Formulário" para começar.'
+          />
+        </div>
+      </div>
 
-            <Tabs>
-              <Tab active={activeTab === 'builder'} onClick={() => setActiveTab('builder')}>
-                Construtor
-              </Tab>
-              {editing && (
-                <Tab active={activeTab === 'embed'} onClick={() => setActiveTab('embed')}>
-                  Embed / Widget
-                </Tab>
-              )}
-            </Tabs>
-
-            <ModalBody>
-              {activeTab === 'builder' && (
-                <>
-                  <Field>
-                    <Label>Nome do formulário *</Label>
-                    <Input
-                      placeholder="Ex: Fale Conosco"
-                      value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    />
-                  </Field>
-
-                  <Section>
-                    <SectionTitle>Campos ({form.fields.length})</SectionTitle>
-
-                    {form.fields.length === 0 && (
-                      <div style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '8px 0' }}>
-                        Adicione campos abaixo para montar o formulário.
-                      </div>
-                    )}
-
-                    {form.fields.map((field, i) => (
-                      <FieldEditor
-                        key={field.id}
-                        field={field}
-                        onChange={(f) => updateField(i, f)}
-                        onRemove={() => removeField(i)}
-                      />
-                    ))}
-
-                    <AddFieldBtn onClick={addField}>
-                      <IconPlus size={14} />
-                      Adicionar campo
-                    </AddFieldBtn>
-                  </Section>
-                </>
-              )}
-
-              {activeTab === 'embed' && editing && (
-                <EmbedTab form={editing} workspaceId={workspaceId} />
-              )}
-            </ModalBody>
-
-            {activeTab === 'builder' && (
-              <ModalFoot>
-                <Btn variant="ghost" onClick={closeModal}>Cancelar</Btn>
-                <Btn
-                  variant="primary"
-                  onClick={handleSave}
-                  disabled={!form.name.trim()}
-                >
-                  <IconFileText size={14} />
-                  {editing ? 'Salvar alterações' : 'Criar Formulário'}
-                </Btn>
-              </ModalFoot>
-            )}
-          </Modal>
-        </Overlay>
+      {builderAberto && (
+        <FormBuilder
+          key={formEmEdicao?.id ?? 'novo'}
+          form={formEmEdicao}
+          onClose={() => setBuilderAberto(false)}
+          onSave={salvar}
+          salvando={criando || atualizando}
+        />
       )}
-    </Page>
+    </div>
   );
 };

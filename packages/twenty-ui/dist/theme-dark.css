@@ -1058,7 +1058,7 @@
   --t-canvas-preview-btn-disabled: #2a3942;
   --t-canvas-preview-placeholder:  #667681;
 
-  /* Estatisticas / Analytics */
+  /* ── Estatísticas / Analytics ─────────────────────────────────────────── */
   --stats-bg-gradient:        linear-gradient(135deg, #0f2a4a 0%, #1a6b8a 100%);
   --stats-card-bg:            rgba(255,255,255,0.08);
   --stats-card-border:        rgba(255,255,255,0.12);
@@ -1071,7 +1071,7 @@
   --stats-chart-won:          #9AED6B;
   --stats-chart-lost:         #F04438;
 
-  /* Animacoes */
+  /* ── Animações ──────────────────────────────────────────────────────────── */
   --anim-duration-fast:     150ms;
   --anim-duration-normal:   300ms;
   --anim-duration-slow:     600ms;

@@ -28,13 +28,12 @@ import { FieldMetadataType } from 'twenty-shared/types';
 import { IconArchive, IconSettings } from 'twenty-ui/icon';
 import { SearchInput } from 'twenty-ui/input';
 import { MenuItemToggle } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMapFieldMetadataItemToSettingsObjectDetailTableItem } from '~/pages/settings/data-model/hooks/useMapFieldMetadataItemToSettingsObjectDetailTableItem';
 import { type SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
 
 const StyledSearchContainer = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
 `;
 
 const SETTINGS_OBJECT_FIELD_TABLE_METADATA: TableMetadata<SettingsObjectDetailTableItem> =

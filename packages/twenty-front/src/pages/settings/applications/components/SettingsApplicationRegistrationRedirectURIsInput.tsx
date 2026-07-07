@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { useLingui } from '@lingui/react/macro';
 import { Button } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -16,7 +15,7 @@ const StyledContainer = styled.div`
 
 const StyledLinkContainer = styled.div`
   flex: 1;
-  margin-right: ${themeCssVariables.spacing[2]};
+  margin-right: var(--t-spacing-2);
 `;
 
 type SettingsApplicationRegistrationRedirectURIsInputProps = {

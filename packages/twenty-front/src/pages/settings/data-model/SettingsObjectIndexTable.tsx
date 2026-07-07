@@ -11,14 +11,13 @@ import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
 import { IconSquareKey, IconTrash } from 'twenty-ui/icon';
 import { LightIconButton } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type SettingsObjectIndexesTableItem } from '~/pages/settings/data-model/types/SettingsObjectIndexesTableItem';
 
 const OBJECT_INDEX_TABLE_GRID_TEMPLATE_COLUMNS = '1fr 70px 80px 32px';
 
 const StyledTableContainer = styled.div`
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
-  margin-top: ${themeCssVariables.spacing[3]};
+  border-bottom: 1px solid var(--t-border-color-light);
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledActionCell = styled(TableCell)`
@@ -27,9 +26,9 @@ const StyledActionCell = styled(TableCell)`
 `;
 
 const StyledEmpty = styled.div`
-  color: ${themeCssVariables.font.color.light};
-  font-size: ${themeCssVariables.font.size.md};
-  padding: ${themeCssVariables.spacing[3]};
+  color: var(--t-font-color-light);
+  font-size: var(--t-font-size-md);
+  padding: var(--t-spacing-3);
   text-align: center;
 `;
 

@@ -35,7 +35,7 @@ const StyledCardLink = styled.a`
 
 const StyledCardsGrid = styled.div`
   display: grid;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   @media (max-width: ${MOBILE_VIEWPORT}px) {
@@ -45,7 +45,7 @@ const StyledCardsGrid = styled.div`
 
 const StyledFeaturesContent = styled.div`
   display: grid;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 type SettingsCommunityLink = {

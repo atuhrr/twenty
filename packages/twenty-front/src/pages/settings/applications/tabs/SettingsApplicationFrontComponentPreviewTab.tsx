@@ -2,7 +2,6 @@ import { styled } from '@linaria/react';
 import { t } from '@lingui/core/macro';
 import { Suspense, lazy } from 'react';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const FrontComponentRenderer = lazy(() =>
   import('@/front-components/components/FrontComponentRenderer').then(
@@ -11,9 +10,9 @@ const FrontComponentRenderer = lazy(() =>
 );
 
 const StyledPreviewFrame = styled.div`
-  background: ${themeCssVariables.background.primary};
-  border: 1px solid ${themeCssVariables.border.color.light};
-  border-radius: ${themeCssVariables.border.radius.md};
+  background: var(--t-background-primary);
+  border: 1px solid var(--t-border-color-light);
+  border-radius: var(--t-border-radius-md);
   display: flex;
   height: 600px;
   overflow: auto;
@@ -22,21 +21,21 @@ const StyledPreviewFrame = styled.div`
 
 const StyledHeadlessNotice = styled.div`
   align-items: center;
-  color: ${themeCssVariables.font.color.secondary};
+  color: var(--t-font-color-secondary);
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
   height: 100%;
   justify-content: center;
-  padding: ${themeCssVariables.spacing[6]};
+  padding: var(--t-spacing-6);
   text-align: center;
   width: 100%;
 `;
 
 const StyledHeadlessTitle = styled.span`
-  color: ${themeCssVariables.font.color.primary};
-  font-size: ${themeCssVariables.font.size.md};
-  font-weight: ${themeCssVariables.font.weight.medium};
+  color: var(--t-font-color-primary);
+  font-size: var(--t-font-size-md);
+  font-weight: var(--t-font-weight-medium);
 `;
 
 const StyledRendererContainer = styled.div`

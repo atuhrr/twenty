@@ -1,13 +1,8 @@
-// FORK: Voka CRM — Fase 18/19: Motivos de Perda
-import { useEffect, useState } from 'react';
+// FORK: Voka CRM — T-10: Motivos de perda (lista TailAdmin)
+import { useCallback, useEffect, useState } from 'react';
 
-import { styled } from '@linaria/react';
-import { t } from '@lingui/core/macro';
-
-import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { SettingsPageLayout } from '@/settings/components/layout/SettingsPageLayout';
-import { IconPlus, IconTrash } from 'twenty-ui/icon';
-import { Button } from 'twenty-ui/input';
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
 type LossReason = {
   id: string;
@@ -16,96 +11,35 @@ type LossReason = {
   isDefault: boolean;
 };
 
-const StyledList = styled.div`
-  margin-top: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const StyledRow = styled.div`
-  align-items: center;
-  background: #fff;
-  border: 1px solid #EAECF0;
-  border-radius: 8px;
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-`;
-
-const StyledHandle = styled.span`
-  color: #D0D5DD;
-  cursor: grab;
-  font-size: 16px;
-  user-select: none;
-`;
-
-const StyledLabel = styled.span`
-  color: #101828;
-  flex: 1;
-  font-size: 14px;
-`;
-
-const StyledDefault = styled.span`
-  background: #F2F4F7;
-  border-radius: 999px;
-  color: #667085;
-  font-size: 11px;
-  padding: 2px 8px;
-`;
-
-const StyledDeleteBtn = styled.button`
-  background: transparent;
-  border: none;
-  color: #F04438;
-  cursor: pointer;
-  padding: 2px;
-
-  &:hover { opacity: 0.7; }
-  &:disabled { color: #D0D5DD; cursor: not-allowed; }
-`;
-
-const StyledForm = styled.div`
-  background: #F9FAFB;
-  border: 1px solid #EAECF0;
-  border-radius: 8px;
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 12px 16px;
-`;
-
-const StyledInput = styled.input`
-  border: 1px solid #D0D5DD;
-  border-radius: 6px;
-  color: #101828;
-  flex: 1;
-  font-size: 14px;
-  padding: 8px 12px;
-
-  &:focus { border-color: #7C3AED; outline: none; }
-`;
-
-const StyledEmpty = styled.div`
-  color: #667085;
-  font-size: 14px;
-  padding: 32px 0;
-  text-align: center;
-`;
-
 const useApi = () => {
   const getHeaders = () => {
     const raw = localStorage.getItem('tokenPair');
-    const token = raw ? (JSON.parse(raw) as { accessToken?: { token?: string } })?.accessToken?.token ?? '' : '';
-    return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const token =
+      raw !== null
+        ? ((JSON.parse(raw) as { accessToken?: { token?: string } })
+            ?.accessToken?.token ?? '')
+        : '';
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
   };
   const base = '/metadata/loss-reasons';
 
   return {
-    fetchAll: () => fetch(base, { headers: getHeaders() }).then(r => r.json() as Promise<LossReason[]>),
+    fetchAll: async (): Promise<LossReason[]> => {
+      const res = await fetch(base, { headers: getHeaders() });
+      if (!res.ok) return [];
+      return res.json() as Promise<LossReason[]>;
+    },
     create: (label: string) =>
-      fetch(base, { method: 'POST', headers: getHeaders(), body: JSON.stringify({ label }) }).then(r => r.json() as Promise<LossReason>),
-    remove: (id: string) => fetch(`${base}/${id}`, { method: 'DELETE', headers: getHeaders() }),
+      fetch(base, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ label }),
+      }),
+    remove: (id: string) =>
+      fetch(`${base}/${id}`, { method: 'DELETE', headers: getHeaders() }),
   };
 };
 
@@ -116,90 +50,131 @@ export const SettingsMotivosDePerdaPage = () => {
   const [newLabel, setNewLabel] = useState('');
   const api = useApi();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setReasons(await api.fetchAll());
     setLoading(false);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const handleCreate = async () => {
-    if (!newLabel.trim()) return;
+  const criar = async () => {
+    if (newLabel.trim() === '') return;
     await api.create(newLabel.trim());
     setNewLabel('');
     setShowForm(false);
     void load();
   };
 
-  const handleDelete = async (id: string) => {
+  const excluir = async (id: string) => {
     await api.remove(id);
     void load();
   };
 
   return (
-    <SettingsPageLayout
-      links={[
-        { children: t`Configurações`, href: '/settings' },
-        { children: t`Motivos de perda` },
-      ]}
-    >
-      <SettingsPageContainer>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 600, color: '#101828', marginBottom: 4 }}>
-              Motivos de Perda
-            </div>
-            <div style={{ fontSize: 14, color: '#667085' }}>
-              Configure os motivos disponíveis ao marcar um lead como perdido.
-            </div>
-          </div>
-          <Button
-            title={t`Novo motivo`}
-            Icon={IconPlus}
-            size="small"
-            variant="primary"
-            onClick={() => setShowForm(!showForm)}
-          />
+    <div className="p-4 md:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Motivos de Perda
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Configure os motivos disponíveis ao marcar um lead como perdido.
+          </p>
         </div>
+        <button
+          onClick={() => setShowForm((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+        >
+          + Novo motivo
+        </button>
+      </div>
 
-        {showForm && (
-          <StyledForm>
-            <StyledInput
-              placeholder="Ex: Preço alto"
-              value={newLabel}
-              onChange={e => setNewLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreate()}
-              autoFocus
-            />
-            <Button title={t`Adicionar`} size="small" variant="primary" onClick={handleCreate} />
-            <Button title={t`Cancelar`} size="small" variant="secondary" onClick={() => setShowForm(false)} />
-          </StyledForm>
-        )}
+      {/* Form inline */}
+      {showForm && (
+        <div className="flex items-center gap-2 mb-5 max-w-[480px]">
+          <input
+            type="text"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') criar();
+            }}
+            placeholder="Ex.: Preço alto"
+            autoFocus
+            className={inputClass}
+          />
+          <button
+            onClick={criar}
+            disabled={newLabel.trim() === ''}
+            className="px-3 py-2 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors flex-shrink-0"
+          >
+            Adicionar
+          </button>
+        </div>
+      )}
 
+      {/* Lista */}
+      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] max-w-[560px] overflow-hidden">
         {loading ? (
-          <StyledEmpty>Carregando…</StyledEmpty>
-        ) : reasons.length === 0 ? (
-          <StyledEmpty>Nenhum motivo configurado.</StyledEmpty>
-        ) : (
-          <StyledList>
-            {reasons.map(r => (
-              <StyledRow key={r.id}>
-                <StyledHandle>⠿</StyledHandle>
-                <StyledLabel>{r.label}</StyledLabel>
-                {r.isDefault && <StyledDefault>padrão</StyledDefault>}
-                <StyledDeleteBtn
-                  onClick={() => handleDelete(r.id)}
-                  disabled={r.isDefault}
-                  title={r.isDefault ? 'Motivos padrão não podem ser removidos' : 'Remover'}
-                >
-                  <IconTrash size={14} />
-                </StyledDeleteBtn>
-              </StyledRow>
+          <div className="p-5 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-10 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"
+              />
             ))}
-          </StyledList>
+          </div>
+        ) : reasons.length === 0 ? (
+          <p className="p-8 text-sm text-gray-400 text-center">
+            Nenhum motivo cadastrado.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {[...reasons]
+              .sort((a, b) => a.position - b.position)
+              .map((reason) => (
+                <li
+                  key={reason.id}
+                  className="flex items-center gap-3 px-4 py-3 group"
+                >
+                  <svg
+                    className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle cx="9" cy="6" r="1.5" />
+                    <circle cx="15" cy="6" r="1.5" />
+                    <circle cx="9" cy="12" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="9" cy="18" r="1.5" />
+                    <circle cx="15" cy="18" r="1.5" />
+                  </svg>
+                  <span className="flex-1 text-sm text-gray-800 dark:text-white/90">
+                    {reason.label}
+                  </span>
+                  {reason.isDefault && (
+                    <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                      Padrão
+                    </span>
+                  )}
+                  {!reason.isDefault && (
+                    <button
+                      onClick={() => excluir(reason.id)}
+                      className="text-xs font-medium text-error-500 hover:bg-error-50 dark:hover:bg-error-500/[0.12] rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Excluir
+                    </button>
+                  )}
+                </li>
+              ))}
+          </ul>
         )}
-      </SettingsPageContainer>
-    </SettingsPageLayout>
+      </div>
+    </div>
   );
 };

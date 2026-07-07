@@ -26,7 +26,6 @@ import { IconCopy } from 'twenty-ui/icon';
 import { SeparatorLineText } from 'twenty-ui/typography';
 import { LightButton, MainButton } from 'twenty-ui/input';
 import { ClickToActionLink } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { z } from 'zod';
 import { GetInviteSuggestionsDocument } from '~/generated-metadata/graphql';
 import { useCopyToClipboard } from '~/hooks/useCopyToClipboard';
@@ -35,10 +34,10 @@ import { useCreateWorkspaceInvitation } from '@/workspace-invitation/hooks/useCr
 const StyledAnimatedContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
   overflow-x: hidden;
   overflow-y: scroll;
-  padding: ${themeCssVariables.spacing[8]} 0;
+  padding: var(--t-spacing-8) 0;
   width: 100%;
 `;
 
@@ -54,7 +53,7 @@ const StyledButtonContainer = styled.div`
 `;
 
 const StyledActionSkipLinkContainer = styled.div`
-  margin: ${themeCssVariables.spacing[3]} 0 0;
+  margin: var(--t-spacing-3) 0 0;
 `;
 
 const validationSchema = z.object({

@@ -36,7 +36,6 @@ import { useLingui } from '@lingui/react/macro';
 import { useSearchParams } from 'react-router-dom';
 import { isDefined } from 'twenty-shared/utils';
 import { Loader } from 'twenty-ui/feedback';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { AnimatedEaseIn } from 'twenty-ui/layout';
 import { type PublicWorkspaceData } from '~/generated-metadata/graphql';
 
@@ -44,8 +43,8 @@ const StyledLoaderContainer = styled.div`
   align-items: center;
   display: flex;
   justify-content: center;
-  margin-bottom: ${themeCssVariables.spacing[8]};
-  margin-top: ${themeCssVariables.spacing[8]};
+  margin-bottom: var(--t-spacing-8);
+  margin-top: var(--t-spacing-8);
   width: 100%;
 `;
 

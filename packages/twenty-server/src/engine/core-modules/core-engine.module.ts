@@ -84,6 +84,7 @@ import { SalesbotModule } from 'src/engine/core-modules/salesbot/salesbot.module
 import { WebFormModule } from 'src/engine/core-modules/web-form/web-form.module';
 import { IntegrationMarketplaceModule } from 'src/engine/core-modules/integration-marketplace/integration-marketplace.module';
 import { TeamsModule } from 'src/engine/core-modules/teams/teams.module';
+import { NotificationsModule } from 'src/engine/core-modules/notifications/notifications.module';
 import { LossReasonsModule } from 'src/engine/core-modules/loss-reasons/loss-reasons.module';
 import { TemplateModule } from 'src/engine/core-modules/template/template.module';
 import { AnalyticsModule } from 'src/engine/core-modules/analytics/analytics.module';
@@ -184,6 +185,7 @@ import { FileModule } from './file/file.module';
     WebFormModule,
     IntegrationMarketplaceModule,
     TeamsModule,
+    NotificationsModule,
     LossReasonsModule,
     TemplateModule,
     AnalyticsModule,

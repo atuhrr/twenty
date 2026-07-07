@@ -8,8 +8,6 @@ import { styled } from '@linaria/react';
 import { useMemo } from 'react';
 import { IconEye, IconEyeOff, useIcons } from 'twenty-ui/icon';
 import { MenuItemDraggable } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
-
 const StyledFieldListContainer = styled.div`
   display: flex;
   flex: 1;
@@ -18,10 +16,10 @@ const StyledFieldListContainer = styled.div`
 `;
 
 const StyledSectionLabel = styled.div`
-  color: ${themeCssVariables.font.color.light};
-  font-size: ${themeCssVariables.font.size.xs};
-  font-weight: ${themeCssVariables.font.weight.semiBold};
-  padding: ${themeCssVariables.spacing[1]} ${themeCssVariables.spacing[2]};
+  color: var(--t-font-color-light);
+  font-size: var(--t-font-size-xs);
+  font-weight: var(--t-font-weight-semi-bold);
+  padding: var(--t-spacing-1) var(--t-spacing-2);
   text-transform: uppercase;
 `;
 

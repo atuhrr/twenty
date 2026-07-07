@@ -1,6 +1,6 @@
 import { AppRouter } from '@/app/components/AppRouter';
 import { ApolloDevLogEffect } from '@/debug/components/ApolloDevLogEffect';
-import { ThemeProvider } from '@/modules/tailadmin/context/ThemeContext';
+import { ThemeProvider } from '@/tailadmin/context/ThemeContext';
 import { AppErrorBoundary } from '@/error-handler/components/AppErrorBoundary';
 import { AppRootErrorFallback } from '@/error-handler/components/AppRootErrorFallback';
 import { ExceptionHandlerProvider } from '@/error-handler/components/ExceptionHandlerProvider';

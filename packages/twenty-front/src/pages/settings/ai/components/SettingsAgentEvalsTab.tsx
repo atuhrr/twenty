@@ -27,7 +27,6 @@ import {
 import { Button, LightIconButton } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
 import { MenuItem } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { v4 as uuidv4 } from 'uuid';
 import { SETTINGS_AGENT_DETAIL_TABS } from '~/pages/settings/ai/constants/SettingsAgentDetailTabs';
 
@@ -36,13 +35,13 @@ const DELETE_EVAL_INPUT_MODAL_ID = 'delete-eval-input-modal';
 const StyledInputContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  margin-bottom: ${themeCssVariables.spacing[6]};
-  margin-top: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-2);
+  margin-bottom: var(--t-spacing-6);
+  margin-top: var(--t-spacing-4);
 `;
 
 const StyledEmptyMessage = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
 `;
 
 type SettingsAgentEvalsTabProps = {

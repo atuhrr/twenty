@@ -1,149 +1,35 @@
-// FORK: Voka CRM — Fase 17: Tarefas — lista + calendário
-import { useState, useMemo } from 'react';
-
-import { styled } from '@linaria/react';
-import { t } from '@lingui/core/macro';
+// FORK: Voka CRM — T-6: Tarefas (lista + FullCalendar)
+import { useState, useMemo, useCallback } from 'react';
+import { isNonEmptyString } from '@sniptt/guards';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
+import interactionPlugin from '@fullcalendar/interaction';
+import type { EventClickArg } from '@fullcalendar/core';
+import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
+import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
 import { CoreObjectNameSingular } from 'twenty-shared/types';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
-import { IconCalendar, IconChevronLeft, IconChevronRight, IconListCheck, IconPlus } from 'twenty-ui/icon';
-import { Button } from 'twenty-ui/input';
 import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { TaskDrawer } from '~/modules/tailadmin/ui/TaskDrawer';
 
-type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
+export type TaskStatus = 'TODO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+type FilterTab = 'todas' | 'hoje' | 'esta-semana' | 'atrasadas';
 
-type TaskRecord = ObjectRecord & {
+export type TaskRecord = ObjectRecord & {
   title?: string | null;
   status?: TaskStatus | null;
   dueAt?: string | null;
-  assignee?: { id: string; name: { firstName: string; lastName: string } } | null;
+  assignee?: {
+    id: string;
+    name: { firstName: string; lastName: string };
+  } | null;
 };
 
-// ─── Layout ─────────────────────────────────────────────────────────────────
-
-const StyledPage = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-`;
-
-const StyledHeader = styled.div`
-  align-items: center;
-  background: ${themeCssVariables.background.primary};
-  border-bottom: 1px solid ${themeCssVariables.border.color.medium};
-  display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  padding: ${themeCssVariables.spacing[4]} ${themeCssVariables.spacing[6]};
-`;
-
-const StyledTitle = styled.h1`
-  color: ${themeCssVariables.font.color.primary};
-  font-size: 16px;
-  font-weight: ${themeCssVariables.font.weight.semiBold};
-  margin: 0;
-  flex: 1;
-`;
-
-const StyledViewToggle = styled.div`
-  display: flex;
-  gap: ${themeCssVariables.spacing[1]};
-`;
-
-const StyledTabBtn = styled.button<{ active: boolean }>`
-  align-items: center;
-  background: ${({ active }) => (active ? themeCssVariables.background.transparent.medium : 'transparent')};
-  border: none;
-  border-radius: ${themeCssVariables.border.radius.sm};
-  color: ${({ active }) => (active ? themeCssVariables.font.color.primary : themeCssVariables.font.color.tertiary)};
-  cursor: pointer;
-  display: flex;
-  gap: ${themeCssVariables.spacing[1]};
-  padding: ${themeCssVariables.spacing[1]} ${themeCssVariables.spacing[2]};
-  font-size: 13px;
-
-  &:hover {
-    background: ${themeCssVariables.background.transparent.light};
-    color: ${themeCssVariables.font.color.primary};
-  }
-`;
-
-const StyledBody = styled.div`
-  flex: 1;
-  overflow: auto;
-  padding: ${themeCssVariables.spacing[6]};
-`;
-
-// ─── Lista view ────────────��──────────────────────��──────────────────────────
-
-const StyledGroup = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[6]};
-`;
-
-const StyledGroupTitle = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
-  font-size: 11px;
-  font-weight: ${themeCssVariables.font.weight.semiBold};
-  letter-spacing: 0.06em;
-  margin-bottom: ${themeCssVariables.spacing[2]};
-  text-transform: uppercase;
-`;
-
-const StyledTask = styled.div`
-  align-items: center;
-  background: ${themeCssVariables.background.secondary};
-  border: 1px solid ${themeCssVariables.border.color.light};
-  border-radius: ${themeCssVariables.border.radius.md};
-  display: flex;
-  gap: ${themeCssVariables.spacing[3]};
-  margin-bottom: ${themeCssVariables.spacing[1]};
-  padding: ${themeCssVariables.spacing[3]} ${themeCssVariables.spacing[4]};
-`;
-
-const StyledDot = styled.span<{ color: string }>`
-  background: ${({ color }) => color};
-  border-radius: 50%;
-  flex-shrink: 0;
-  height: 8px;
-  width: 8px;
-`;
-
-const StyledTaskTitle = styled.span<{ done: boolean }>`
-  color: ${themeCssVariables.font.color.primary};
-  flex: 1;
-  font-size: 13px;
-  text-decoration: ${({ done }) => (done ? 'line-through' : 'none')};
-`;
-
-const StyledDueDate = styled.span<{ isPast: boolean }>`
-  color: ${({ isPast }) => (isPast ? themeCssVariables.font.color.danger : themeCssVariables.font.color.tertiary)};
-  font-size: 12px;
-  white-space: nowrap;
-`;
-
-const StyledEmpty = styled.div`
-  align-items: center;
-  color: ${themeCssVariables.font.color.light};
-  display: flex;
-  flex-direction: column;
-  font-size: 14px;
-  gap: ${themeCssVariables.spacing[3]};
-  justify-content: center;
-  padding: ${themeCssVariables.spacing[12]} 0;
-`;
-
-const DAYS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const MONTHS_PT = [
-  'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
-];
-
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-};
+// ─── Utils ────────────────────────────────────────────────────────────────────
 
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
@@ -152,263 +38,316 @@ const isSameDay = (a: Date, b: Date) =>
 
 const startOfDay = (d: Date) => {
   const c = new Date(d);
-  c.setHours(0,0,0,0);
+  c.setHours(0, 0, 0, 0);
   return c;
 };
 
-// ─── Calendar view ───────────────────────────────────────────────────────────
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
-const StyledCalendar = styled.div`
-  background: ${themeCssVariables.background.secondary};
-  border: 1px solid ${themeCssVariables.border.color.light};
-  border-radius: ${themeCssVariables.border.radius.md};
-  overflow: hidden;
-`;
+function eventColor(status: TaskStatus | null | undefined): string {
+  if (status === 'CONCLUIDO') return 'var(--color-success-500)';
+  if (status === 'EM_ANDAMENTO') return 'var(--color-warning-500)';
+  return 'var(--color-brand-500)';
+}
 
-const StyledCalHeader = styled.div`
-  align-items: center;
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
-  display: flex;
-  justify-content: space-between;
-  padding: ${themeCssVariables.spacing[3]} ${themeCssVariables.spacing[4]};
-`;
+// ─── TaskItem ─────────────────────────────────────────────────────────────────
 
-const StyledCalMonth = styled.span`
-  color: ${themeCssVariables.font.color.primary};
-  font-size: 14px;
-  font-weight: ${themeCssVariables.font.weight.semiBold};
-`;
+interface TaskItemProps {
+  task: TaskRecord;
+  onToggle: (task: TaskRecord) => void;
+  onEdit: (task: TaskRecord) => void;
+}
 
-const StyledCalNav = styled.button`
-  align-items: center;
-  background: transparent;
-  border: none;
-  border-radius: ${themeCssVariables.border.radius.sm};
-  color: ${themeCssVariables.font.color.secondary};
-  cursor: pointer;
-  display: flex;
-  padding: ${themeCssVariables.spacing[1]};
-
-  &:hover {
-    background: ${themeCssVariables.background.transparent.light};
-    color: ${themeCssVariables.font.color.primary};
-  }
-`;
-
-const StyledGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-`;
-
-const StyledDayLabel = styled.div`
-  color: ${themeCssVariables.font.color.light};
-  font-size: 11px;
-  font-weight: ${themeCssVariables.font.weight.semiBold};
-  padding: ${themeCssVariables.spacing[2]};
-  text-align: center;
-  text-transform: uppercase;
-`;
-
-const StyledCell = styled.div<{ isToday: boolean; isCurrentMonth: boolean }>`
-  border-top: 1px solid ${themeCssVariables.border.color.light};
-  min-height: 72px;
-  opacity: ${({ isCurrentMonth }) => (isCurrentMonth ? 1 : 0.4)};
-  padding: ${themeCssVariables.spacing[1]};
-  position: relative;
-`;
-
-const StyledCellDay = styled.div<{ isToday: boolean }>`
-  align-items: center;
-  background: ${({ isToday }) => (isToday ? '#7C3AED' : 'transparent')};
-  border-radius: 50%;
-  color: ${({ isToday }) => (isToday ? '#fff' : themeCssVariables.font.color.secondary)};
-  display: inline-flex;
-  font-size: 12px;
-  font-weight: ${themeCssVariables.font.weight.medium};
-  height: 22px;
-  justify-content: center;
-  width: 22px;
-`;
-
-const StyledCalTask = styled.div<{ status: TaskStatus | null | undefined }>`
-  background: ${({ status }) =>
-    status === 'DONE' ? '#D1FAE5' :
-    status === 'IN_PROGRESS' ? '#FEF3C7' :
-    '#EEF2FF'};
-  border-left: 2px solid ${({ status }) =>
-    status === 'DONE' ? '#10B981' :
-    status === 'IN_PROGRESS' ? '#F59E0B' :
-    '#7C3AED'};
-  border-radius: 2px;
-  color: ${themeCssVariables.font.color.primary};
-  font-size: 11px;
-  margin-bottom: 2px;
-  overflow: hidden;
-  padding: 1px 4px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-// ─── Components ──────────────���───────────────────────────────────────────────
-
-const ListView = ({ tasks }: { tasks: TaskRecord[] }) => {
+const TaskItem = ({ task, onToggle, onEdit }: TaskItemProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
   const now = new Date();
   const todayStart = startOfDay(now);
+  const isDone = task.status === 'CONCLUIDO';
+  const dueDate = task.dueAt ? new Date(task.dueAt) : null;
+  const isOverdue =
+    dueDate !== null && dueDate < todayStart && !isSameDay(dueDate, todayStart);
+  const isToday = dueDate !== null && isSameDay(dueDate, todayStart);
+
+  const datePillClass = isOverdue
+    ? 'bg-red-50 text-red-600'
+    : isToday
+      ? 'bg-orange-50 text-orange-600'
+      : 'bg-gray-100 text-gray-500';
+
+  const initials = task.assignee
+    ? `${task.assignee.name.firstName[0] ?? ''}${task.assignee.name.lastName[0] ?? ''}`.toUpperCase()
+    : null;
+
+  return (
+    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group">
+      {/* Checkbox */}
+      <button
+        onClick={() => onToggle(task)}
+        aria-label={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
+        className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+          isDone
+            ? 'bg-emerald-500 border-emerald-500'
+            : 'border-gray-300 hover:border-brand-400'
+        }`}
+      >
+        {isDone && (
+          <svg
+            className="w-2.5 h-2.5 text-white"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        )}
+      </button>
+
+      {/* Title */}
+      <span
+        onClick={() => onEdit(task)}
+        className={`flex-1 text-sm cursor-pointer min-w-0 truncate transition-colors ${
+          isDone
+            ? 'line-through text-gray-400'
+            : 'text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400'
+        }`}
+      >
+        {task.title || 'Sem título'}
+      </span>
+
+      {/* Date pill */}
+      {dueDate && (
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${datePillClass}`}
+        >
+          {formatDate(task.dueAt!)}
+        </span>
+      )}
+
+      {/* Assignee avatar */}
+      {initials && (
+        <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+          {initials}
+        </span>
+      )}
+
+      {/* 3-dot menu */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={() => setMenuOpen((o) => !o)}
+          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="5" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+          </svg>
+        </button>
+        {menuOpen && (
+          <div
+            className="absolute right-0 top-7 z-20 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1"
+            onMouseLeave={() => setMenuOpen(false)}
+          >
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                onEdit(task);
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                onToggle(task);
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              {isDone ? 'Reabrir' : 'Concluir'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── ListView ─────────────────────────────────────────────────────────────────
+
+interface ListViewProps {
+  tasks: TaskRecord[];
+  filter: FilterTab;
+  onToggleDone: (task: TaskRecord) => void;
+  onEditTask: (task: TaskRecord) => void;
+}
+
+const ListView = ({
+  tasks,
+  filter,
+  onToggleDone,
+  onEditTask,
+}: ListViewProps) => {
+  const [doneOpen, setDoneOpen] = useState(false);
+
+  const todayStart = startOfDay(new Date());
   const weekEnd = new Date(todayStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const pending = tasks.filter(t => t.status !== 'DONE');
+  const filteredTasks = useMemo(() => {
+    if (filter === 'hoje')
+      return tasks.filter(
+        (t) =>
+          isNonEmptyString(t.dueAt) && isSameDay(new Date(t.dueAt), todayStart),
+      );
+    if (filter === 'atrasadas')
+      return tasks.filter(
+        (t) =>
+          t.status !== 'CONCLUIDO' &&
+          isNonEmptyString(t.dueAt) &&
+          new Date(t.dueAt) < todayStart &&
+          !isSameDay(new Date(t.dueAt), todayStart),
+      );
+    if (filter === 'esta-semana')
+      return tasks.filter((t) => {
+        if (!isNonEmptyString(t.dueAt)) return false;
+        const d = new Date(t.dueAt);
+        return d >= todayStart && d < weekEnd;
+      });
+    return tasks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, filter]);
 
-  const overdue = pending.filter(t => t.dueAt && new Date(t.dueAt) < todayStart && !isSameDay(new Date(t.dueAt), todayStart));
-  const today = pending.filter(t => t.dueAt && isSameDay(new Date(t.dueAt), todayStart));
-  const thisWeek = pending.filter(t => {
-    if (!t.dueAt) return false;
+  const pending = filteredTasks.filter((t) => t.status !== 'CONCLUIDO');
+  const overdue = pending.filter(
+    (t) =>
+      isNonEmptyString(t.dueAt) &&
+      new Date(t.dueAt) < todayStart &&
+      !isSameDay(new Date(t.dueAt), todayStart),
+  );
+  const today = pending.filter(
+    (t) =>
+      isNonEmptyString(t.dueAt) && isSameDay(new Date(t.dueAt), todayStart),
+  );
+  const thisWeek = pending.filter((t) => {
+    if (!isNonEmptyString(t.dueAt)) return false;
     const d = new Date(t.dueAt);
-    return d >= todayStart && d < weekEnd && !isSameDay(d, todayStart);
+    return d > todayStart && d < weekEnd && !isSameDay(d, todayStart);
   });
-  const future = pending.filter(t => {
-    if (!t.dueAt) return true;
-    const d = new Date(t.dueAt);
-    return d >= weekEnd;
-  });
-  const done = tasks.filter(t => t.status === 'DONE').slice(0, 20);
+  const future = pending.filter(
+    (t) => isNonEmptyString(t.dueAt) && new Date(t.dueAt) >= weekEnd,
+  );
+  const noDue = pending.filter((t) => !t.dueAt);
+  const done = filteredTasks
+    .filter((t) => t.status === 'CONCLUIDO')
+    .slice(0, 30);
 
-  const renderGroup = (label: string, items: TaskRecord[], dotColor: string) => {
+  const renderGroup = (
+    label: string,
+    labelClass: string,
+    items: TaskRecord[],
+  ) => {
     if (items.length === 0) return null;
     return (
-      <StyledGroup key={label}>
-        <StyledGroupTitle>{label} ({items.length})</StyledGroupTitle>
-        {items.map(task => (
-          <StyledTask key={task.id}>
-            <StyledDot color={dotColor} />
-            <StyledTaskTitle done={task.status === 'DONE'}>
-              {task.title ?? t`Sem título`}
-            </StyledTaskTitle>
-            {task.dueAt && (
-              <StyledDueDate isPast={new Date(task.dueAt) < now && !isSameDay(new Date(task.dueAt), now)}>
-                {formatDate(task.dueAt)}
-              </StyledDueDate>
-            )}
-          </StyledTask>
-        ))}
-      </StyledGroup>
+      <div key={label} className="mb-6">
+        <div
+          className={`text-xs font-semibold uppercase tracking-wider mb-2 ${labelClass}`}
+        >
+          {label} ({items.length})
+        </div>
+        <div className="space-y-1">
+          {items.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              onToggle={onToggleDone}
+              onEdit={onEditTask}
+            />
+          ))}
+        </div>
+      </div>
     );
   };
 
-  if (tasks.length === 0) {
+  if (filteredTasks.length === 0) {
     return (
-      <StyledEmpty>
-        <IconListCheck size={40} />
-        Nenhuma tarefa encontrada
-      </StyledEmpty>
+      <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+        <svg
+          className="w-10 h-10"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          />
+        </svg>
+        <span className="text-sm">Nenhuma tarefa encontrada</span>
+      </div>
     );
   }
 
   return (
-    <>
-      {renderGroup('Atrasadas', overdue, '#F04438')}
-      {renderGroup('Hoje', today, '#12B76A')}
-      {renderGroup('Esta semana', thisWeek, '#F79009')}
-      {renderGroup('Futuras / Sem prazo', future, '#7C3AED')}
-      {renderGroup('Concluídas', done, '#9E9E9E')}
-    </>
-  );
-};
+    <div>
+      {renderGroup('Atrasadas', 'text-red-500', overdue)}
+      {renderGroup('Hoje', 'text-orange-500', today)}
+      {renderGroup('Esta semana', 'text-brand-500', thisWeek)}
+      {renderGroup('Futuras', 'text-gray-500', future)}
+      {renderGroup('Sem prazo', 'text-gray-400', noDue)}
 
-const CalendarView = ({ tasks }: { tasks: TaskRecord[] }) => {
-  const [viewDate, setViewDate] = useState(() => {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
-
-  const today = new Date();
-
-  const prevMonth = () => setViewDate(v => {
-    if (v.month === 0) return { year: v.year - 1, month: 11 };
-    return { year: v.year, month: v.month - 1 };
-  });
-  const nextMonth = () => setViewDate(v => {
-    if (v.month === 11) return { year: v.year + 1, month: 0 };
-    return { year: v.year, month: v.month + 1 };
-  });
-
-  const tasksByDay = useMemo(() => {
-    const map: Record<string, TaskRecord[]> = {};
-    for (const task of tasks) {
-      if (!task.dueAt) continue;
-      const d = new Date(task.dueAt);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(task);
-    }
-    return map;
-  }, [tasks]);
-
-  const cells = useMemo(() => {
-    const firstDay = new Date(viewDate.year, viewDate.month, 1);
-    const lastDay = new Date(viewDate.year, viewDate.month + 1, 0);
-    const startOffset = firstDay.getDay();
-    const result: Array<{ date: Date; isCurrentMonth: boolean }> = [];
-
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const d = new Date(firstDay);
-      d.setDate(-i);
-      result.push({ date: d, isCurrentMonth: false });
-    }
-    for (let d = 1; d <= lastDay.getDate(); d++) {
-      result.push({ date: new Date(viewDate.year, viewDate.month, d), isCurrentMonth: true });
-    }
-    const remaining = 42 - result.length;
-    for (let d = 1; d <= remaining; d++) {
-      result.push({ date: new Date(viewDate.year, viewDate.month + 1, d), isCurrentMonth: false });
-    }
-    return result;
-  }, [viewDate]);
-
-  return (
-    <StyledCalendar>
-      <StyledCalHeader>
-        <StyledCalNav onClick={prevMonth}>
-          <IconChevronLeft size={16} />
-        </StyledCalNav>
-        <StyledCalMonth>
-          {MONTHS_PT[viewDate.month]} {viewDate.year}
-        </StyledCalMonth>
-        <StyledCalNav onClick={nextMonth}>
-          <IconChevronRight size={16} />
-        </StyledCalNav>
-      </StyledCalHeader>
-      <StyledGrid>
-        {DAYS_PT.map(d => <StyledDayLabel key={d}>{d}</StyledDayLabel>)}
-        {cells.map(({ date, isCurrentMonth }, i) => {
-          const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-          const dayTasks = tasksByDay[key] ?? [];
-          const isToday = isSameDay(date, today);
-          return (
-            <StyledCell key={i} isToday={isToday} isCurrentMonth={isCurrentMonth}>
-              <StyledCellDay isToday={isToday}>{date.getDate()}</StyledCellDay>
-              {dayTasks.slice(0, 3).map(task => (
-                <StyledCalTask key={task.id} status={task.status}>
-                  {task.title ?? 'Tarefa'}
-                </StyledCalTask>
+      {/* Concluídas — collapsible */}
+      {done.length > 0 && (
+        <div className="mb-6">
+          <button
+            onClick={() => setDoneOpen((o) => !o)}
+            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-2 hover:opacity-80 transition-opacity"
+          >
+            <svg
+              className={`w-3 h-3 transition-transform ${doneOpen ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+            Concluídas ({done.length})
+          </button>
+          {doneOpen && (
+            <div className="space-y-1">
+              {done.map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggle={onToggleDone}
+                  onEdit={onEditTask}
+                />
               ))}
-              {dayTasks.length > 3 && (
-                <div style={{ fontSize: 10, color: '#999', paddingLeft: 4 }}>
-                  +{dayTasks.length - 3} mais
-                </div>
-              )}
-            </StyledCell>
-          );
-        })}
-      </StyledGrid>
-    </StyledCalendar>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
-// ─── Page ─────────────���─────────────────────────────────���────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const TarefasPage = () => {
   const [view, setView] = useState<'lista' | 'calendario'>('lista');
+  const [filter, setFilter] = useState<FilterTab>('todas');
+  const [drawerTask, setDrawerTask] = useState<TaskRecord | null>(null);
 
   const openCreateTask = useOpenCreateActivityDrawer({
     activityObjectNameSingular: CoreObjectNameSingular.Task,
@@ -427,37 +366,173 @@ export const TarefasPage = () => {
     limit: 200,
   });
 
+  const { updateOneRecord } = useUpdateOneRecord();
+
+  const handleToggleDone = useCallback(
+    async (task: TaskRecord) => {
+      const newStatus: TaskStatus =
+        task.status === 'CONCLUIDO' ? 'TODO' : 'CONCLUIDO';
+      await updateOneRecord({
+        objectNameSingular: CoreObjectNameSingular.Task,
+        idToUpdate: task.id,
+        updateOneRecordInput: { status: newStatus },
+      });
+    },
+    [updateOneRecord],
+  );
+
+  const calendarEvents = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.dueAt)
+        .map((t) => ({
+          id: t.id,
+          title: t.title || 'Tarefa',
+          date: t.dueAt!,
+          backgroundColor: eventColor(t.status),
+          borderColor: eventColor(t.status),
+        })),
+    [tasks],
+  );
+
+  const handleEventClick = useCallback(
+    (arg: EventClickArg) => {
+      const task = tasks.find((t) => t.id === arg.event.id);
+      if (task) setDrawerTask(task);
+    },
+    [tasks],
+  );
+
+  const filterLabels: Array<{ key: FilterTab; label: string }> = [
+    { key: 'todas', label: 'Todas' },
+    { key: 'hoje', label: 'Hoje' },
+    { key: 'esta-semana', label: 'Esta semana' },
+    { key: 'atrasadas', label: 'Atrasadas' },
+  ];
+
   return (
-    <StyledPage>
-      <StyledHeader>
-        <StyledTitle>{t`Tarefas`}</StyledTitle>
-        <StyledViewToggle>
-          <StyledTabBtn active={view === 'lista'} onClick={() => setView('lista')}>
-            <IconListCheck size={14} />
-            Lista
-          </StyledTabBtn>
-          <StyledTabBtn active={view === 'calendario'} onClick={() => setView('calendario')}>
-            <IconCalendar size={14} />
-            Calendário
-          </StyledTabBtn>
-        </StyledViewToggle>
-        <Button
-          title={t`Nova tarefa`}
-          Icon={IconPlus}
-          size="small"
-          variant="primary"
-          onClick={() => openCreateTask({ targetableObjects: [] })}
-        />
-      </StyledHeader>
-      <StyledBody>
+    <div className="flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Title + count */}
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-shrink-0">
+            Tarefas
+            {!loading && (
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({tasks.length})
+              </span>
+            )}
+          </h1>
+
+          {/* View tabs */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <button
+              onClick={() => setView('lista')}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                view === 'lista'
+                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
+                  : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+              }`}
+            >
+              Lista
+            </button>
+            <button
+              onClick={() => setView('calendario')}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                view === 'calendario'
+                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
+                  : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+              }`}
+            >
+              Calendário
+            </button>
+          </div>
+
+          {/* Filter chips — list view only */}
+          {view === 'lista' && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {filterLabels.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    filter === key
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex-1" />
+
+          {/* Nova Tarefa */}
+          <button
+            onClick={() => openCreateTask({ targetableObjects: [] })}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Nova Tarefa
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-auto p-6">
         {loading ? (
-          <StyledEmpty>Carregando…</StyledEmpty>
+          <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+            Carregando…
+          </div>
         ) : view === 'lista' ? (
-          <ListView tasks={tasks} />
+          <ListView
+            tasks={tasks}
+            filter={filter}
+            onToggleDone={handleToggleDone}
+            onEditTask={setDrawerTask}
+          />
         ) : (
-          <CalendarView tasks={tasks} />
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+            <FullCalendar
+              plugins={[
+                dayGridPlugin,
+                timeGridPlugin,
+                listPlugin,
+                interactionPlugin,
+              ]}
+              initialView="dayGridMonth"
+              locale={ptBrLocale}
+              events={calendarEvents}
+              eventClick={handleEventClick}
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek',
+              }}
+              height="auto"
+              aspectRatio={1.8}
+            />
+          </div>
         )}
-      </StyledBody>
-    </StyledPage>
+      </div>
+
+      {/* Task Drawer */}
+      <TaskDrawer task={drawerTask} onClose={() => setDrawerTask(null)} />
+    </div>
   );
 };

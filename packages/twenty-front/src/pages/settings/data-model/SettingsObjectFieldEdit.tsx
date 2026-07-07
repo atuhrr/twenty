@@ -39,7 +39,6 @@ import { IconArchive, IconArchiveOff, IconTrash } from 'twenty-ui/icon';
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { useNavigateApp } from '~/hooks/useNavigateApp';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
@@ -54,7 +53,7 @@ export type SettingsDataModelFieldEditFormValues = z.infer<
 const DELETE_FIELD_MODAL_ID = 'delete-field-confirmation-modal';
 const StyledDangerButtons = styled.div`
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsObjectFieldEdit = () => {

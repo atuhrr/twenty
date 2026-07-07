@@ -22,7 +22,7 @@ import { AppPath, ConnectedAccountProvider } from 'twenty-shared/types';
 import { IconGoogle, IconMicrosoft } from 'twenty-ui/icon';
 import { MainButton } from 'twenty-ui/input';
 import { ClickToActionLink } from 'twenty-ui/navigation';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { useMutation } from '@apollo/client/react';
 import {
   CalendarChannelVisibility,
@@ -35,22 +35,22 @@ import { AuthenticatedMethod } from '@/auth/types/AuthenticatedMethod.enum';
 const StyledSyncEmailsContainer = styled.div`
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[2]};
-  margin: ${themeCssVariables.spacing[8]} 0;
+  gap: var(--t-spacing-2);
+  margin: var(--t-spacing-8) 0;
   width: 100%;
 `;
 
 const StyledActionLinkContainer = styled.div`
   display: flex;
   flex-direction: row;
-  margin: ${themeCssVariables.spacing[3]} 0 0;
-  padding-top: ${themeCssVariables.spacing[2]};
+  margin: var(--t-spacing-3) 0 0;
+  padding-top: var(--t-spacing-2);
 `;
 
 const StyledProviderContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[3]};
+  gap: var(--t-spacing-3);
 `;
 
 export const SyncEmails = () => {

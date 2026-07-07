@@ -13,14 +13,13 @@ import { enUS } from 'date-fns/locale';
 import { APP_LOCALES } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 import { dateLocaleState } from '~/localization/states/dateLocaleState';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
 import { logError } from '~/utils/logError';
 
 const StyledContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 export const LocalePicker = () => {

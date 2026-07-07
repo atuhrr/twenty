@@ -12,7 +12,6 @@ import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingC
 import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
 import { styled } from '@linaria/react';
 import { MainButton } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import {
   AnimatedPlaceholder,
   AnimatedPlaceholderEmptyTextContainer,
@@ -24,8 +23,8 @@ import { UndecoratedLink } from 'twenty-ui/navigation';
 
 const StyledBackDrop = styled.div`
   align-items: center;
-  backdrop-filter: ${themeCssVariables.blur.light};
-  background: ${themeCssVariables.background.transparent.secondary};
+  backdrop-filter: var(--t-blur-light);
+  background: var(--t-background-transparent-secondary);
   display: flex;
   flex-direction: column;
   height: 100%;

@@ -6,7 +6,7 @@ import { styled } from '@linaria/react';
 import { useContext } from 'react';
 import { ColorSample } from 'twenty-ui/data-display';
 import { MenuItemSelect } from 'twenty-ui/navigation';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { type ThemeColor } from 'twenty-ui/theme';
 type ChartColorGradientOptionProps = {
   colorOption: {
@@ -22,7 +22,7 @@ type ChartColorGradientOptionProps = {
 const StyledColorSamplesContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[0.5]};
+  gap: var(--t-spacing-0_5);
 `;
 
 export const ChartColorGradientOption = ({

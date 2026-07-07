@@ -7,13 +7,12 @@ import {
   UpdateApplicationRegistrationDocument,
 } from '~/generated-metadata/graphql';
 import { styled } from '@linaria/react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation } from '@apollo/client/react';
 import { useLingui } from '@lingui/react/macro';
 
 const StyledToggleContainer = styled.div`
   display: flex;
-  margin-top: ${themeCssVariables.spacing[4]};
+  margin-top: var(--t-spacing-4);
 `;
 
 export const SettingsAdminApplicationRegistrationGeneralToggles = ({

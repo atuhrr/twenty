@@ -12,13 +12,12 @@ import {
   IconInfoCircle,
 } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { FindMarketplaceAppDetailDocument } from '~/generated-metadata/graphql';
 import { useCopyToClipboard } from '~/hooks/useCopyToClipboard';
 
 const StyledButtonGroup = styled.div`
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsApplicationRegistrationShareLinkButtons = ({

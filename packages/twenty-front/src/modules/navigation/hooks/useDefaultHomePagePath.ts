@@ -115,7 +115,10 @@ export const useDefaultHomePagePath = () => {
     }
 
     if (!isDefined(firstObjectPathInfo)) {
-      return AppPath.NotFound;
+      // FORK: Voka CRM — T-13: a raiz é o Painel Voka; devolver NotFound aqui
+      // mandava o usuário para /not-found durante o boot (metadata ainda
+      // carregando) em qualquer full load frio.
+      return AppPath.Index;
     }
 
     return getAppPath(

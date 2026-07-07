@@ -23,34 +23,34 @@ import {
 } from '~/generated-metadata/graphql';
 
 const StyledTableContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[3]};
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledTableHeaderRowContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 const StyledMessagesContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
 `;
 
 const StyledMessageBubble = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
 `;
 
 const StyledMessageRole = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
-  font-size: ${themeCssVariables.font.size.sm};
-  font-weight: ${themeCssVariables.font.weight.medium};
+  color: var(--t-font-color-tertiary);
+  font-size: var(--t-font-size-sm);
+  font-weight: var(--t-font-weight-medium);
   text-transform: uppercase;
 `;
 
 const StyledMessageContent = styled.div`
-  color: ${themeCssVariables.font.color.primary};
+  color: var(--t-font-color-primary);
   max-width: 100%;
 `;
 

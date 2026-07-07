@@ -76,14 +76,17 @@ export const usePageChangeEffectNavigateLocation = () => {
     ? returnToPath
     : readReturnToPathFromUrlSearchParams();
 
+  // FORK: Voka CRM — Fase A: telas de auth próprias (design TailAdmin)
+  const rotasAuthVoka = ['/entrar', '/cadastro', '/recuperar-senha', '/verificacao'];
   if (
     (!hasAccessTokenPair || !isOnAWorkspace || !isDefined(currentWorkspace)) &&
     !someMatchingLocationOf([
       ...ONGOING_USER_CREATION_PATHS,
       AppPath.ResetPassword,
-    ])
+    ]) &&
+    !rotasAuthVoka.includes(location.pathname)
   ) {
-    return AppPath.SignInUp;
+    return '/entrar';
   }
 
   if (
@@ -176,8 +179,29 @@ export const usePageChangeEffectNavigateLocation = () => {
     return resolvedReturnToPath ?? defaultHomePagePath;
   }
 
+  // FORK: Voka CRM — T-13: a home do Voka é o Funil (estilo Kommo) —
+  // determinístico, sem depender do metadata (evita o /not-found no boot).
   if (isMatchingLocation(location, AppPath.Index) && hasAccessTokenPair) {
-    return resolvedReturnToPath ?? defaultHomePagePath;
+    return resolvedReturnToPath ?? '/funil';
+  }
+
+  // FORK: Voka CRM — T-13: rotas nativas do Twenty redirecionam para as
+  // páginas Voka equivalentes (aqui, e não em <Navigate>, para não disputar
+  // com o redirect de NotFound abaixo).
+  const vokaRedirect = location.pathname.match(
+    /^\/objects\/(opportunities|people|companies)(?:\/([\w-]+))?$/,
+  );
+  if (vokaRedirect !== null) {
+    const [, plural, recordId] = vokaRedirect;
+    const base =
+      plural === 'opportunities'
+        ? recordId !== undefined
+          ? '/leads'
+          : '/funil'
+        : plural === 'people'
+          ? '/contatos'
+          : '/empresas';
+    return recordId !== undefined ? `${base}/${recordId}` : base;
   }
 
   if (

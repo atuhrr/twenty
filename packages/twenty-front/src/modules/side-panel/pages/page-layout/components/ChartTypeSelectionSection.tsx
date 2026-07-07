@@ -4,7 +4,6 @@ import { styled } from '@linaria/react';
 import { GraphType } from '@/side-panel/pages/page-layout/types/GraphType';
 import { t } from '@lingui/core/macro';
 import { MenuPicker } from 'twenty-ui/navigation';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const graphTypeOptions = [
   GraphType.VERTICAL_BAR,
@@ -17,7 +16,7 @@ const graphTypeOptions = [
 const StyledChartTypeSelectionContainer = styled.div`
   display: flex;
   flex-direction: row;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 type ChartTypeSelectionSectionProps = {

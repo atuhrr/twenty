@@ -20,7 +20,6 @@ import {
 } from '~/generated-metadata/graphql';
 import { isNonEmptyString } from '@sniptt/guards';
 import { styled } from '@linaria/react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useQuery } from '@apollo/client/react';
 import {
   AvatarOrIcon,
@@ -38,22 +37,22 @@ import { getAbsoluteImageUrl } from '~/utils/image/getAbsoluteImageUrl';
 const StyledSourceRow = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
 `;
 
 const StyledDownloadLink = styled.a`
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
   cursor: pointer;
   text-decoration: underline;
   &:hover {
-    color: ${themeCssVariables.font.color.primary};
+    color: var(--t-font-color-primary);
   }
 `;
 
 const StyledGeneralContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsApplicationRegistrationGeneralInfo = ({

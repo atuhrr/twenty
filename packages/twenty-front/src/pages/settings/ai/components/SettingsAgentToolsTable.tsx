@@ -9,7 +9,7 @@ import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
 import { isDefined } from 'twenty-shared/utils';
 import { IconChevronRight } from 'twenty-ui/icon';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { SettingsToolIcon } from '~/pages/settings/ai/components/SettingsToolIcon';
 import {
   SettingsToolTableRow,
@@ -33,7 +33,7 @@ type SettingsAgentToolsTableProps = {
 };
 
 const StyledTableHeaderRowContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[2]};
+  margin-bottom: var(--t-spacing-2);
 `;
 
 export const SettingsAgentToolsTable = ({

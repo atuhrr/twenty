@@ -10,7 +10,6 @@ import { useConnectWhatsapp } from '@/settings/whatsapp/hooks/useConnectWhatsapp
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { MainButton } from 'twenty-ui/input';
 import { ModalContent } from 'twenty-ui/surfaces';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
@@ -18,14 +17,14 @@ const StyledForm = styled.form`
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
-  margin-top: ${themeCssVariables.spacing[6]};
+  gap: var(--t-spacing-4);
+  margin-top: var(--t-spacing-6);
 `;
 
 const StyledField = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
 `;
 
 const StyledLabel = styled.label`
@@ -62,8 +61,8 @@ const StyledHint = styled.p`
 const StyledActions = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[3]};
-  margin-top: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-3);
+  margin-top: var(--t-spacing-4);
   width: 100%;
 `;
 
@@ -73,7 +72,7 @@ const StyledSkipBtn = styled.button`
   font-size: 13px;
   color: var(--t-text-secondary, #667085);
   cursor: pointer;
-  padding: ${themeCssVariables.spacing[2]} 0;
+  padding: var(--t-spacing-2) 0;
   text-decoration: underline;
   text-underline-offset: 2px;
   &:hover {
@@ -89,7 +88,7 @@ const StyledWaLogo = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto ${themeCssVariables.spacing[4]};
+  margin: 0 auto var(--t-spacing-4);
   svg {
     width: 28px;
     height: 28px;

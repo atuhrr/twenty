@@ -15,7 +15,7 @@ import { useQuery } from '@apollo/client/react';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
 import { useContext, useMemo, useState } from 'react';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import { FeatureFlagKey, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import { CommandBlock } from 'twenty-ui/data-display';
@@ -42,16 +42,16 @@ import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
 const StyledButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-top: ${themeCssVariables.spacing[2]};
+  margin-top: var(--t-spacing-2);
 `;
 
 const StyledSearchInputContainer = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
 `;
 
 const StyledTableRowsContainer = styled.div`
-  border-bottom: 1px solid ${themeCssVariables.border.color.light};
-  padding: ${themeCssVariables.spacing[2]} 0;
+  border-bottom: 1px solid var(--t-border-color-light);
+  padding: var(--t-spacing-2) 0;
 `;
 
 const NPM_PACKAGES_GRID_COLUMNS = '200px 1fr 36px';

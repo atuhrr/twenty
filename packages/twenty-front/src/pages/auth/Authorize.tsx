@@ -18,7 +18,7 @@ import {
 } from 'twenty-ui/icon';
 import { H1Title, H1TitleFontColor } from 'twenty-ui/typography';
 import { ModalContent } from 'twenty-ui/surfaces';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 import {
   AuthorizeAppDocument,
   FindApplicationRegistrationByClientIdDocument,
@@ -27,18 +27,18 @@ import { useNavigateApp } from '~/hooks/useNavigateApp';
 
 const StyledCardWrapper = styled.div`
   --oauth-modal-content-max-width: calc(
-    ${themeCssVariables.modal.size.md.width} + ${themeCssVariables.spacing[32]}
+    var(--t-modal-size-md-width) + var(--t-spacing-32)
   );
 
-  background-color: ${themeCssVariables.background.primary};
-  border-radius: ${themeCssVariables.border.radius.md};
-  box-shadow: ${themeCssVariables.boxShadow.strong};
+  background-color: var(--t-background-primary);
+  border-radius: var(--t-border-radius-md);
+  box-shadow: var(--t-box-shadow-strong);
   display: flex;
   flex-direction: column;
   max-width: min(
     100%,
     calc(
-      var(--oauth-modal-content-max-width) + ${themeCssVariables.spacing[20]}
+      var(--oauth-modal-content-max-width) + var(--t-spacing-20)
     )
   );
   overflow: hidden;
@@ -51,8 +51,8 @@ const StyledHeader = styled.div`
   background-position: center;
   background-size: cover;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  height: ${themeCssVariables.spacing[30]};
+  gap: var(--t-spacing-2);
+  height: var(--t-spacing-30);
   justify-content: center;
   width: 100%;
 `;
@@ -60,7 +60,7 @@ const StyledHeader = styled.div`
 const StyledOAuthTitle = styled(H1Title)`
   margin: 0;
   max-width: min(100%, var(--oauth-modal-content-max-width));
-  padding-bottom: ${themeCssVariables.spacing[1]};
+  padding-bottom: var(--t-spacing-1);
   text-wrap: balance;
   width: max-content;
 `;
@@ -68,18 +68,18 @@ const StyledOAuthTitle = styled(H1Title)`
 const StyledPermissionSection = styled.div`
   display: flex;
   flex-direction: column;
-  margin-top: ${themeCssVariables.spacing[6]};
+  margin-top: var(--t-spacing-6);
   width: 100%;
 `;
 
 const StyledPermissionIntro = styled.p`
-  color: ${themeCssVariables.font.color.primary};
-  font-family: ${themeCssVariables.font.family};
-  font-size: ${themeCssVariables.font.size.md};
-  font-weight: ${themeCssVariables.font.weight.medium};
-  line-height: ${themeCssVariables.text.lineHeight.lg};
+  color: var(--t-font-color-primary);
+  font-family: var(--t-font-family);
+  font-size: var(--t-font-size-md);
+  font-weight: var(--t-font-weight-medium);
+  line-height: var(--t-text-line-height-lg);
   margin: 0;
-  padding: 0 0 ${themeCssVariables.spacing[3]} ${themeCssVariables.spacing[1]};
+  padding: 0 0 var(--t-spacing-3) var(--t-spacing-1);
 `;
 
 const StyledScopeList = styled.ul`
@@ -93,18 +93,18 @@ const StyledScopeList = styled.ul`
 
 const StyledScopeItem = styled.li`
   align-items: center;
-  color: ${themeCssVariables.font.color.secondary};
+  color: var(--t-font-color-secondary);
   display: flex;
-  font-family: ${themeCssVariables.font.family};
-  font-size: ${themeCssVariables.font.size.md};
-  gap: ${themeCssVariables.spacing[2]};
-  line-height: ${themeCssVariables.text.lineHeight.lg};
-  padding-left: ${themeCssVariables.spacing[2]};
+  font-family: var(--t-font-family);
+  font-size: var(--t-font-size-md);
+  gap: var(--t-spacing-2);
+  line-height: var(--t-text-line-height-lg);
+  padding-left: var(--t-spacing-2);
 
   & + & {
-    border-top: 1px solid ${themeCssVariables.border.color.light};
-    margin-top: ${themeCssVariables.spacing[3]};
-    padding-top: ${themeCssVariables.spacing[3]};
+    border-top: 1px solid var(--t-border-color-light);
+    margin-top: var(--t-spacing-3);
+    padding-top: var(--t-spacing-3);
   }
 
   span {
@@ -114,16 +114,16 @@ const StyledScopeItem = styled.li`
 
 const StyledScopeIcon = styled.div`
   align-items: center;
-  color: ${themeCssVariables.color.blue};
+  color: var(--t-color-blue);
   display: flex;
   flex-shrink: 0;
   justify-content: center;
 `;
 
 const StyledErrorText = styled.div`
-  color: ${themeCssVariables.color.red};
-  font-size: ${themeCssVariables.font.size.sm};
-  margin-top: ${themeCssVariables.spacing[4]};
+  color: var(--t-color-red);
+  font-size: var(--t-font-size-sm);
+  margin-top: var(--t-spacing-4);
   text-align: center;
   width: 100%;
 `;

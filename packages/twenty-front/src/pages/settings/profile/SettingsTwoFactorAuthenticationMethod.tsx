@@ -19,7 +19,6 @@ import { H2Title } from 'twenty-ui/typography';
 import { Loader } from 'twenty-ui/feedback';
 import { Section } from 'twenty-ui/layout';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { resolveCjsModuleDefaultExport } from '~/utils/resolveCjsModuleDefaultExport';
 import { useCopyToClipboard } from '~/hooks/useCopyToClipboard';
 
@@ -29,18 +28,18 @@ const StyledQRCodeContainer = styled.div`
   align-items: flex-start;
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[3]};
-  margin: ${themeCssVariables.spacing[4]} 0;
+  gap: var(--t-spacing-3);
+  margin: var(--t-spacing-4) 0;
 `;
 
 const StyledQRCodeWrapper = styled.div`
   align-items: center;
-  background-color: ${themeCssVariables.background.secondary};
-  border: 1px solid ${themeCssVariables.border.color.light};
-  border-radius: ${themeCssVariables.border.radius.md};
+  background-color: var(--t-background-secondary);
+  border: 1px solid var(--t-border-color-light);
+  border-radius: var(--t-border-radius-md);
   display: flex;
   justify-content: center;
-  padding: ${themeCssVariables.spacing[4]};
+  padding: var(--t-spacing-4);
 `;
 
 const StyledOTPContainer = styled.div`
@@ -58,8 +57,8 @@ const StyledQRCodeSizer = styled.div`
 `;
 
 const StyledCopySetupKeyText = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
-  font-size: ${themeCssVariables.font.size.sm};
+  color: var(--t-font-color-tertiary);
+  font-size: var(--t-font-size-sm);
   line-height: 1.5;
   text-align: left;
 `;
@@ -67,21 +66,21 @@ const StyledCopySetupKeyText = styled.div`
 const StyledCopySetupKeyLink = styled.button`
   background: none;
   border: none;
-  color: ${themeCssVariables.font.color.tertiary};
+  color: var(--t-font-color-tertiary);
   cursor: pointer;
   display: inline;
-  font-size: ${themeCssVariables.font.size.sm};
+  font-size: var(--t-font-size-sm);
   margin-left: 0;
   padding: 0;
   text-decoration: underline;
 
   &:hover {
-    color: ${themeCssVariables.font.color.secondary};
+    color: var(--t-font-color-secondary);
   }
 `;
 
 const StyledDivider = styled.div`
-  margin: ${themeCssVariables.spacing[6]} 0;
+  margin: var(--t-spacing-6) 0;
   width: 100%;
 `;
 

@@ -10,7 +10,6 @@ import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import { Avatar } from 'twenty-ui/data-display';
 import { Card } from 'twenty-ui/surfaces';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type MarketplaceApp } from '~/generated-metadata/graphql';
 import { getApplicationDescriptionSummary } from '~/pages/settings/applications/utils/getApplicationDescriptionSummary';
 import { getAbsoluteImageUrl } from '~/utils/image/getAbsoluteImageUrl';
@@ -30,7 +29,7 @@ const StyledLinkContainer = styled.div`
 const StyledDescription = styled.div`
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: ${themeCssVariables.font.color.secondary};
+  color: var(--t-font-color-secondary);
   display: -webkit-box;
 
   a {
@@ -39,7 +38,7 @@ const StyledDescription = styled.div`
     z-index: 1;
   }
 
-  font-size: ${themeCssVariables.font.size.sm};
+  font-size: var(--t-font-size-sm);
   line-height: 1.5;
   overflow: hidden;
 `;

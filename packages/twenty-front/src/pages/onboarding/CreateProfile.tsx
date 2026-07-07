@@ -28,18 +28,17 @@ import { isDefined } from 'twenty-shared/utils';
 import { H2Title } from 'twenty-ui/typography';
 import { MainButton } from 'twenty-ui/input';
 import { ModalContent } from 'twenty-ui/surfaces';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledContentContainer = styled.div`
   width: 100%;
 `;
 
 const StyledSectionContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[8]};
+  margin-top: var(--t-spacing-8);
 `;
 
 const StyledButtonContainer = styled.div`
-  margin-top: ${themeCssVariables.spacing[8]};
+  margin-top: var(--t-spacing-8);
   width: 200px;
 `;
 
@@ -47,7 +46,7 @@ const StyledComboInputContainer = styled.div`
   display: flex;
   flex-direction: row;
   > * + * {
-    margin-left: ${themeCssVariables.spacing[4]};
+    margin-left: var(--t-spacing-4);
   }
 `;
 

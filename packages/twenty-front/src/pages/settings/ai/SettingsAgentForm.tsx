@@ -24,7 +24,6 @@ import {
   IconSettings,
 } from 'twenty-ui/icon';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation, useQuery } from '@apollo/client/react';
 import {
   type CreateAgentInput,
@@ -51,12 +50,12 @@ const StyledContentContainer = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[8]};
+  gap: var(--t-spacing-8);
   width: 100%;
 `;
 
 const StyledTabListContainer = styled.div`
-  margin-bottom: ${themeCssVariables.spacing[8]};
+  margin-bottom: var(--t-spacing-8);
 `;
 
 export const SettingsAgentForm = ({ mode }: { mode: 'create' | 'edit' }) => {

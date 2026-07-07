@@ -17,13 +17,13 @@ import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import { Avatar } from 'twenty-ui/data-display';
 import { Section } from 'twenty-ui/layout';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { ThemeContext } from 'twenty-ui/theme-constants';
 
 const StyledUserHeader = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  margin-bottom: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-2);
+  margin-bottom: var(--t-spacing-4);
 `;
 
 const StyledUserInfo = styled.div`
@@ -32,14 +32,14 @@ const StyledUserInfo = styled.div`
 `;
 
 const StyledUserName = styled.span`
-  color: ${themeCssVariables.font.color.primary};
-  font-size: ${themeCssVariables.font.size.lg};
-  font-weight: ${themeCssVariables.font.weight.semiBold};
+  color: var(--t-font-color-primary);
+  font-size: var(--t-font-size-lg);
+  font-weight: var(--t-font-weight-semi-bold);
 `;
 
 const StyledUserCredits = styled.span`
-  color: ${themeCssVariables.font.color.tertiary};
-  font-size: ${themeCssVariables.font.size.sm};
+  color: var(--t-font-color-tertiary);
+  font-size: var(--t-font-size-sm);
 `;
 
 export const SettingsUsageUserDetail = () => {

@@ -13,7 +13,6 @@ import { IconKey, IconRefresh, IconShield } from 'twenty-ui/icon';
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import {
   RotateApplicationRegistrationClientSecretDocument,
   UpdateApplicationRegistrationDocument,
@@ -26,7 +25,7 @@ import { SettingsApplicationRegistrationRedirectURIsTable } from '~/pages/settin
 const ROTATE_SECRET_MODAL_ID = 'rotate-application-registration-secret-modal';
 
 const StyledRotateContainer = styled.div`
-  padding-top: ${themeCssVariables.spacing[2]};
+  padding-top: var(--t-spacing-2);
 `;
 
 export const SettingsApplicationRegistrationOAuthTab = ({

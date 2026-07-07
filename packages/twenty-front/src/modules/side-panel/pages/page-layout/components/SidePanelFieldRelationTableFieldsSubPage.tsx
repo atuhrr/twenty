@@ -4,14 +4,13 @@ import { usePageLayoutIdFromContextStore } from '@/side-panel/pages/page-layout/
 import { useWidgetInEditMode } from '@/side-panel/pages/page-layout/hooks/useWidgetInEditMode';
 import { styled } from '@linaria/react';
 import { isDefined } from 'twenty-shared/utils';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledContainer = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
   overflow-y: auto;
-  padding: ${themeCssVariables.spacing[2]};
+  padding: var(--t-spacing-2);
 `;
 
 export const SidePanelFieldRelationTableFieldsSubPage = () => {

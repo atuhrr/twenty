@@ -23,7 +23,6 @@ import {
 import { H2Title } from 'twenty-ui/typography';
 import { Button } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import {
   GetInstanceAndAllWorkspacesUpgradeStatusDocument,
   RefreshUpgradeStatusDocument,
@@ -34,8 +33,8 @@ import { formatDateTimeString } from '~/utils/string/formatDateTimeString';
 const StyledRefreshButtonContainer = styled.div`
   display: flex;
   justify-content: flex-end;
-  margin-bottom: ${themeCssVariables.spacing[4]};
-  margin-top: ${themeCssVariables.spacing[3]};
+  margin-bottom: var(--t-spacing-4);
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledCommandValue = styled.span`

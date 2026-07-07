@@ -22,7 +22,6 @@ import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/use
 import { activeTabIdComponentState } from '@/ui/layout/tab-list/states/activeTabIdComponentState';
 import { getAbsoluteImageUrl } from '~/utils/image/getAbsoluteImageUrl';
 import { styled } from '@linaria/react';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const REGISTRATION_DETAIL_TAB_LIST_ID =
   'application-registration-detail-tab-list';
@@ -30,7 +29,7 @@ const REGISTRATION_DETAIL_TAB_LIST_ID =
 const StyledTitleContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsApplicationRegistrationDetails = () => {

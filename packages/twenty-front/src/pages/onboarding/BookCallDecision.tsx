@@ -7,12 +7,11 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { Link } from 'react-router-dom';
 import { AppPath } from 'twenty-shared/types';
 import { LightButton, MainButton } from 'twenty-ui/input';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useMutation } from '@apollo/client/react';
 import { SkipBookOnboardingStepDocument } from '~/generated-metadata/graphql';
 
 const StyledCoverImage = styled.img`
-  border-radius: ${themeCssVariables.border.radius.sm};
+  border-radius: var(--t-border-radius-sm);
   height: 204px;
   object-fit: cover;
   width: 320px;
@@ -29,7 +28,7 @@ const StyledButtonContainer = styled.div`
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
+  gap: var(--t-spacing-4);
   width: 100%;
 `;
 

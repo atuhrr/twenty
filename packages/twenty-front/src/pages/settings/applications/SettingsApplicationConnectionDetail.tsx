@@ -40,14 +40,14 @@ const DETAIL_GRID_TEMPLATE = '220px 1fr';
 
 const StyledActions = styled.div`
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  margin-top: ${themeCssVariables.spacing[3]};
+  gap: var(--t-spacing-2);
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledMonoText = styled.span`
-  color: ${themeCssVariables.font.color.primary};
-  font-family: ${themeCssVariables.code.font.family}, monospace;
-  font-size: ${themeCssVariables.font.size.sm};
+  color: var(--t-font-color-primary);
+  font-family: var(--t-code-font-family), monospace;
+  font-size: var(--t-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -56,7 +56,7 @@ const StyledMonoText = styled.span`
 const StyledScopeList = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: ${themeCssVariables.spacing[1]};
+  gap: var(--t-spacing-1);
   min-width: 0;
 `;
 

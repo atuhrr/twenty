@@ -10,7 +10,6 @@ import { useMemo, useState } from 'react';
 import { H2Title } from 'twenty-ui/typography';
 import { SearchInput } from 'twenty-ui/input';
 import { Section } from 'twenty-ui/layout';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 import { SettingsApplicationDataTableRow } from '~/pages/settings/applications/components/SettingsApplicationDataTableRow';
 import { normalizeSearchText } from '~/utils/normalizeSearchText';
@@ -25,7 +24,7 @@ const StyledEmptyHeaderContainer = styled.div`
 `;
 
 const StyledSearchInputContainer = styled.div`
-  padding-bottom: ${themeCssVariables.spacing[2]};
+  padding-bottom: var(--t-spacing-2);
 `;
 
 export const SettingsApplicationDataTable = ({

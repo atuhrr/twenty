@@ -21,7 +21,6 @@ import {
   TransferApplicationRegistrationOwnershipDocument,
 } from '~/generated-metadata/graphql';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
-import { themeCssVariables } from 'twenty-ui/theme-constants';
 import {
   StyledAppModal,
   StyledAppModalButton,
@@ -39,7 +38,7 @@ const DELETE_REGISTRATION_BUTTON_ID = 'delete-registration-button';
 
 const StyledDangerButtonGroup = styled.div`
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 export const SettingsAdminApplicationRegistrationDangerZone = ({

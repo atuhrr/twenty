@@ -17,6 +17,7 @@ import {
   WhatsappMessageType,
 } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
 import { SalesbotExecutorService } from 'src/engine/core-modules/salesbot/salesbot-executor.service';
+import { NotificationsService } from 'src/engine/core-modules/notifications/notifications.service';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { normalizeBrPhone } from 'src/engine/core-modules/whatsapp/utils/normalize-br-phone.util';
 
@@ -68,6 +69,8 @@ export class WhatsappWebhookJob {
 
   constructor(
     private readonly whatsappService: WhatsappService,
+    // FORK: Voka CRM — Fase C: notifica novas mensagens recebidas
+    private readonly notificationsService: NotificationsService,
     private readonly salesbotExecutorService: SalesbotExecutorService,
     private readonly eventEmitter: EventEmitter2,
     @InjectRepository(WhatsappContactWindowEntity)
@@ -138,6 +141,18 @@ export class WhatsappWebhookJob {
 
     // FORK: Voka CRM — Fase 9: store phone for thread display
     await this.upsertContactWindow(workspaceId, contactId, timestamp, normalizedPhone);
+
+    // FORK: Voka CRM — Fase C: notificação de nova mensagem no header
+    await this.notificationsService
+      .create(workspaceId, {
+        title: `Nova mensagem de ${normalizedPhone}`,
+        body: content ?? '(mídia recebida)',
+        type: 'WHATSAPP',
+        link: '/inbox',
+      })
+      .catch((err) =>
+        this.logger.warn(`Falha ao criar notificação: ${String(err)}`),
+      );
 
     // FORK: Voka CRM — Fase 14: trigger Salesbot if message is text
     if (msg.type === 'text' && content) {

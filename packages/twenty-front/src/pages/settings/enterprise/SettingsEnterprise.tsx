@@ -61,18 +61,18 @@ const StyledStatusDot = styled.div<{ isActive: boolean }>`
 const StyledStatusContainer = styled.div`
   align-items: center;
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
 `;
 
 const StyledCancellationNotice = styled.div`
-  color: ${themeCssVariables.font.color.danger};
-  font-size: ${themeCssVariables.font.size.sm};
-  margin-top: ${themeCssVariables.spacing[3]};
+  color: var(--t-font-color-danger);
+  font-size: var(--t-font-size-sm);
+  margin-top: var(--t-spacing-3);
 `;
 
 const StyledInputContainer = styled.div`
   display: flex;
-  gap: ${themeCssVariables.spacing[2]};
+  gap: var(--t-spacing-2);
   width: 100%;
 `;
 
@@ -86,7 +86,7 @@ const StyledActivateButtonWrapper = styled.div`
 `;
 
 const StyledSpacer = styled.div`
-  height: ${themeCssVariables.spacing[4]};
+  height: var(--t-spacing-4);
 `;
 
 export const SettingsEnterprise = ({
