@@ -67,8 +67,14 @@ COPY ./packages/twenty-ui /app/packages/twenty-ui
 COPY ./packages/twenty-shared /app/packages/twenty-shared
 COPY ./packages/twenty-sdk /app/packages/twenty-sdk
 COPY ./packages/twenty-client-sdk /app/packages/twenty-client-sdk
-RUN npx nx run twenty-front:lingui:extract && \
-    npx nx run twenty-front:lingui:compile
+# FORK: Voka CRM — pula o lingui quando o front pré-buildado vem do host
+# (os catálogos compilados já estão embutidos no build/ enviado)
+RUN if [ -d /app/packages/twenty-front/build ]; then \
+      echo "Pre-built frontend detected — skipping lingui"; \
+    else \
+      npx nx run twenty-front:lingui:extract && \
+      npx nx run twenty-front:lingui:compile; \
+    fi
 # To skip the memory-intensive frontend build, pre-build on the host:
 #   npx nx build twenty-front
 # The check below will use packages/twenty-front/build/ if it already exists.
