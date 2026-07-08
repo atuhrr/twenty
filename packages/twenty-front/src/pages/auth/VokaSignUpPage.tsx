@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
+import { useSignUpInNewWorkspace } from '@/auth/sign-in-up/hooks/useSignUpInNewWorkspace';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
   AuthButton,
@@ -16,7 +17,8 @@ import {
 } from '~/pages/auth/vokaAuthUi';
 
 export const VokaSignUpPage = () => {
-  const { signUpWithCredentialsInWorkspace, signInWithGoogle } = useAuth();
+  const { signUpWithCredentials, signInWithGoogle } = useAuth();
+  const { createWorkspace } = useSignUpInNewWorkspace();
   const navigate = useNavigate();
   const { enqueueErrorSnackBar } = useSnackBar();
 
@@ -51,14 +53,18 @@ export const VokaSignUpPage = () => {
         JSON.stringify({ firstName: nome.trim(), lastName: sobrenome.trim() }),
       );
       const captchaToken = await readCaptchaToken();
-      // Sempre "in workspace": em modo single-workspace é a única mutation
-      // que cria usuário E workspace juntos (permitida quando ainda não há
-      // workspace na instância). O signUp global cria usuário órfão, sem
-      // workspace — e o login passa a falhar com "Workspace not found".
-      await signUpWithCredentialsInWorkspace({
-        email: email.trim().toLowerCase(),
-        password: senha,
+      // Fluxo canônico do Twenty em duas etapas: o signUp cria o usuário e
+      // autentica com token agnóstico; o workspace é criado em seguida por
+      // signUpInNewWorkspace (única mutation que aceita o nome). O design
+      // Kommo não pede nome de workspace no cadastro, então usamos o nome
+      // da pessoa — renomeável depois em Configurações.
+      await signUpWithCredentials(
+        email.trim().toLowerCase(),
+        senha,
         captchaToken,
+      );
+      await createWorkspace({
+        displayName: `${nome.trim()} ${sobrenome.trim()}`,
       });
       // O fluxo não navega sozinho em single-workspace (o redirect
       // multi-workspace é no-op) — sem isso o usuário fica autenticado e
