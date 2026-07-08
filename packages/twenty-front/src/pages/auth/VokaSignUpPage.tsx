@@ -1,7 +1,9 @@
 // FORK: Voka CRM — Fase A: tela de cadastro (design signup.png), lógica do Twenty
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
+import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
@@ -23,6 +25,12 @@ export const VokaSignUpPage = () => {
   const [senha, setSenha] = useState('');
   const [aceitou, setAceitou] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const { requestFreshCaptchaToken } = useRequestFreshCaptchaToken();
+  const { readCaptchaToken } = useReadCaptchaToken();
+
+  useEffect(() => {
+    void requestFreshCaptchaToken();
+  }, [requestFreshCaptchaToken]);
 
   const valido =
     nome.trim() !== '' &&
@@ -41,7 +49,12 @@ export const VokaSignUpPage = () => {
         'voka-signup-nome',
         JSON.stringify({ firstName: nome.trim(), lastName: sobrenome.trim() }),
       );
-      await signUpWithCredentials(email.trim().toLowerCase(), senha);
+      const captchaToken = await readCaptchaToken();
+      await signUpWithCredentials(
+        email.trim().toLowerCase(),
+        senha,
+        captchaToken,
+      );
     } catch (err) {
       enqueueErrorSnackBar({
         message: (err as Error)?.message ?? 'Não foi possível criar a conta.',

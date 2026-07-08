@@ -1,7 +1,9 @@
 // FORK: Voka CRM — Fase A: tela de login (design signin.png), lógica do Twenty
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
+import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
 import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
@@ -25,6 +27,12 @@ export const VokaSignInPage = () => {
   const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
   const { enqueueErrorSnackBar } = useSnackBar();
   const navigate = useNavigate();
+  const { requestFreshCaptchaToken } = useRequestFreshCaptchaToken();
+  const { readCaptchaToken } = useReadCaptchaToken();
+
+  useEffect(() => {
+    void requestFreshCaptchaToken();
+  }, [requestFreshCaptchaToken]);
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -37,11 +45,12 @@ export const VokaSignInPage = () => {
     setEnviando(true);
     try {
       const emailLimpo = email.trim().toLowerCase();
+      const captchaToken = await readCaptchaToken();
       if (isOnAWorkspace) {
-        await signInWithCredentialsInWorkspace(emailLimpo, senha);
+        await signInWithCredentialsInWorkspace(emailLimpo, senha, captchaToken);
         navigate('/funil');
       } else {
-        await signInWithCredentials(emailLimpo, senha);
+        await signInWithCredentials(emailLimpo, senha, captchaToken);
       }
     } catch (err) {
       enqueueErrorSnackBar({

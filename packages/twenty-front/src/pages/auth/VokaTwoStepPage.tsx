@@ -1,7 +1,9 @@
 // FORK: Voka CRM — Fase A: verificação em duas etapas (design two-step-verification.png)
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
+import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
 import { loginTokenState } from '@/auth/states/loginTokenState';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
@@ -19,6 +21,12 @@ export const VokaTwoStepPage = () => {
 
   const [valores, setValores] = useState<string[]>(Array(DIGITOS).fill(''));
   const [enviando, setEnviando] = useState(false);
+  const { requestFreshCaptchaToken } = useRequestFreshCaptchaToken();
+  const { readCaptchaToken } = useReadCaptchaToken();
+
+  useEffect(() => {
+    void requestFreshCaptchaToken();
+  }, [requestFreshCaptchaToken]);
 
   const codigo = valores.join('');
 
@@ -54,7 +62,8 @@ export const VokaTwoStepPage = () => {
     }
     setEnviando(true);
     try {
-      await getAuthTokensFromOTP(codigo, tokenEfetivo);
+      const captchaToken = await readCaptchaToken();
+      await getAuthTokensFromOTP(codigo, tokenEfetivo, captchaToken);
     } catch {
       enqueueErrorSnackBar({ message: 'Código inválido. Tente novamente.' });
       setValores(Array(DIGITOS).fill(''));

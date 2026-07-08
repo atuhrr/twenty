@@ -37,9 +37,7 @@ const StyledCardWrapper = styled.div`
   flex-direction: column;
   max-width: min(
     100%,
-    calc(
-      var(--oauth-modal-content-max-width) + var(--t-spacing-20)
-    )
+    calc(var(--oauth-modal-content-max-width) + var(--t-spacing-20))
   );
   overflow: hidden;
   width: fit-content;
