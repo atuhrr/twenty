@@ -72,7 +72,7 @@ services:
       # Rate limit agressivo para auth: 5 req/s (burst 10) em /graphql via router dedicado
       - traefik.http.middlewares.voka-auth-rl.ratelimit.average=5
       - traefik.http.middlewares.voka-auth-rl.ratelimit.burst=10
-      - traefik.http.routers.voka-auth.rule=(Host(`${DOMAIN}`) || HostRegexp(`^.+\.${DOMAIN}$`)) && Path(`/graphql`) && Method(`POST`) && HeadersRegexp(`Content-Type`, `.*`)
+      - traefik.http.routers.voka-auth.rule=(Host(`${DOMAIN}`) || HostRegexp(`^.+\.${DOMAIN}$`)) && Path(`/graphql`) && Method(`POST`)
       - traefik.http.routers.voka-auth.priority=50
       - traefik.http.routers.voka-auth.entrypoints=websecure
       - traefik.http.routers.voka-auth.tls.certresolver=le
