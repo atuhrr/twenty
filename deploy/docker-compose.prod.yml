@@ -86,7 +86,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    environment: *app-env
+    environment:
+      <<: *app-env
+      # Só o server roda migrations/crons no boot — dois entrypoints em
+      # paralelo num banco vazio corrompem a inicialização (race).
+      DISABLE_DB_MIGRATIONS: 'true'
+      DISABLE_CRON_JOBS_REGISTRATION: 'true'
     command: ['node', 'dist/queue-worker/queue-worker.js']
     volumes:
       - server-data:/app/packages/twenty-server/.local-storage
