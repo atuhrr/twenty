@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
-import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
   AuthButton,
@@ -17,15 +16,7 @@ import {
 } from '~/pages/auth/vokaAuthUi';
 
 export const VokaSignUpPage = () => {
-  const {
-    signUpWithCredentials,
-    signUpWithCredentialsInWorkspace,
-    signInWithGoogle,
-  } = useAuth();
-  // No domínio do workspace (single-workspace) o cadastro precisa ser
-  // "in workspace" — o redirect multi-workspace é no-op nesse modo e o
-  // usuário ficava preso em /cadastro já autenticado.
-  const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
+  const { signUpWithCredentialsInWorkspace, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { enqueueErrorSnackBar } = useSnackBar();
 
@@ -60,18 +51,16 @@ export const VokaSignUpPage = () => {
         JSON.stringify({ firstName: nome.trim(), lastName: sobrenome.trim() }),
       );
       const captchaToken = await readCaptchaToken();
-      const emailLimpo = email.trim().toLowerCase();
-      if (isOnAWorkspace) {
-        await signUpWithCredentialsInWorkspace({
-          email: emailLimpo,
-          password: senha,
-          captchaToken,
-        });
-      } else {
-        // Primeiro cadastro da instância (ainda sem workspace).
-        await signUpWithCredentials(emailLimpo, senha, captchaToken);
-      }
-      // Nenhum dos fluxos navega sozinho em single-workspace (o redirect
+      // Sempre "in workspace": em modo single-workspace é a única mutation
+      // que cria usuário E workspace juntos (permitida quando ainda não há
+      // workspace na instância). O signUp global cria usuário órfão, sem
+      // workspace — e o login passa a falhar com "Workspace not found".
+      await signUpWithCredentialsInWorkspace({
+        email: email.trim().toLowerCase(),
+        password: senha,
+        captchaToken,
+      });
+      // O fluxo não navega sozinho em single-workspace (o redirect
       // multi-workspace é no-op) — sem isso o usuário fica autenticado e
       // preso em /cadastro. O hook de rotas intercepta este destino e leva
       // ao passo certo do onboarding (criar perfil etc.).
