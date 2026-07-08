@@ -65,6 +65,8 @@ export const VokaTwoStepPage = () => {
       const captchaToken = await readCaptchaToken();
       await getAuthTokensFromOTP(codigo, tokenEfetivo, captchaToken);
     } catch {
+      // Token do Turnstile é de uso único — renova para a próxima tentativa.
+      void requestFreshCaptchaToken();
       enqueueErrorSnackBar({ message: 'Código inválido. Tente novamente.' });
       setValores(Array(DIGITOS).fill(''));
       document.getElementById('otp-0')?.focus();

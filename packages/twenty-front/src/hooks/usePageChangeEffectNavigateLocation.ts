@@ -1,3 +1,4 @@
+import { VOKA_AUTH_PATHS } from '@/app/constants/VokaAuthPaths';
 import { verifyEmailRedirectPathState } from '@/app/states/verifyEmailRedirectPathState';
 import { ONBOARDING_PATHS } from '@/auth/constants/OnboardingPaths';
 import { ONGOING_USER_CREATION_PATHS } from '@/auth/constants/OngoingUserCreationPaths';
@@ -77,14 +78,13 @@ export const usePageChangeEffectNavigateLocation = () => {
     : readReturnToPathFromUrlSearchParams();
 
   // FORK: Voka CRM — Fase A: telas de auth próprias (design TailAdmin)
-  const rotasAuthVoka = ['/entrar', '/cadastro', '/recuperar-senha', '/verificacao'];
   if (
     (!hasAccessTokenPair || !isOnAWorkspace || !isDefined(currentWorkspace)) &&
     !someMatchingLocationOf([
       ...ONGOING_USER_CREATION_PATHS,
       AppPath.ResetPassword,
     ]) &&
-    !rotasAuthVoka.includes(location.pathname)
+    !VOKA_AUTH_PATHS.includes(location.pathname)
   ) {
     return '/entrar';
   }

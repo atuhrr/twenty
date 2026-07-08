@@ -53,6 +53,8 @@ export const VokaSignInPage = () => {
         await signInWithCredentials(emailLimpo, senha, captchaToken);
       }
     } catch (err) {
+      // Token do Turnstile é de uso único — renova para a próxima tentativa.
+      void requestFreshCaptchaToken();
       enqueueErrorSnackBar({
         message:
           (err as Error)?.message ??
