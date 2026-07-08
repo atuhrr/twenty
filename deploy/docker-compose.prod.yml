@@ -27,6 +27,9 @@ services:
     build:
       context: ..
       dockerfile: packages/twenty-docker/twenty/Dockerfile
+      # Sem target, o Docker builda o último stage (twenty-app-dev, all-in-one
+      # de dev com Postgres/Redis embutidos). Produção usa o stage "twenty".
+      target: twenty
     restart: unless-stopped
     depends_on:
       db:
