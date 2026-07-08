@@ -9,6 +9,16 @@ export class FixSalesbotNullGraphFastInstanceCommand
   implements FastInstanceCommand
 {
   async up(queryRunner: QueryRunner): Promise<void> {
+    // Em instalação nova a tabela ainda não existe (é criada por um comando
+    // com timestamp posterior) — sem o guard, o upgrade inteiro aborta.
+    const [{ existe }] = await queryRunner.query(
+      `SELECT to_regclass('core.salesbot') IS NOT NULL AS existe`,
+    );
+
+    if (!existe) {
+      return;
+    }
+
     await queryRunner.query(`
       UPDATE core."salesbot"
       SET "graph" = '{"nodes":[],"edges":[]}'::jsonb
