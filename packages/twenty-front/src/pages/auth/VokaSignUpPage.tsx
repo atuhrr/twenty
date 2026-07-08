@@ -1,6 +1,7 @@
 // FORK: Voka CRM — Fase A: tela de cadastro (design signup.png), lógica do Twenty
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AppPath } from 'twenty-shared/types';
 
 import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
@@ -66,11 +67,12 @@ export const VokaSignUpPage = () => {
       await createWorkspace({
         displayName: `${nome.trim()} ${sobrenome.trim()}`,
       });
-      // O fluxo não navega sozinho em single-workspace (o redirect
-      // multi-workspace é no-op) — sem isso o usuário fica autenticado e
-      // preso em /cadastro. O hook de rotas intercepta este destino e leva
-      // ao passo certo do onboarding (criar perfil etc.).
-      navigate('/funil');
+      // Navegação explícita para a ativação (que constrói o schema do
+      // workspace): o fluxo não navega sozinho em single-workspace, e o
+      // hook de rotas só roda em mudança de rota — navegar para /funil
+      // antes do onboardingStatus carregar deixava a tela em branco sem
+      // nada que disparasse o redirect depois.
+      navigate(AppPath.WorkspaceActivation);
     } catch (err) {
       // Token do Turnstile é de uso único — renova para a próxima tentativa.
       void requestFreshCaptchaToken();
