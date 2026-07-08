@@ -1,10 +1,11 @@
 // FORK: Voka CRM — Fase A: tela de cadastro (design signup.png), lógica do Twenty
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useReadCaptchaToken } from '@/captcha/hooks/useReadCaptchaToken';
 import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
 import { useAuth } from '@/auth/hooks/useAuth';
+import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
   AuthButton,
@@ -16,7 +17,16 @@ import {
 } from '~/pages/auth/vokaAuthUi';
 
 export const VokaSignUpPage = () => {
-  const { signUpWithCredentials, signInWithGoogle } = useAuth();
+  const {
+    signUpWithCredentials,
+    signUpWithCredentialsInWorkspace,
+    signInWithGoogle,
+  } = useAuth();
+  // No domínio do workspace (single-workspace) o cadastro precisa ser
+  // "in workspace" — o redirect multi-workspace é no-op nesse modo e o
+  // usuário ficava preso em /cadastro já autenticado.
+  const { isOnAWorkspace } = useIsCurrentLocationOnAWorkspace();
+  const navigate = useNavigate();
   const { enqueueErrorSnackBar } = useSnackBar();
 
   const [nome, setNome] = useState('');
@@ -50,11 +60,22 @@ export const VokaSignUpPage = () => {
         JSON.stringify({ firstName: nome.trim(), lastName: sobrenome.trim() }),
       );
       const captchaToken = await readCaptchaToken();
-      await signUpWithCredentials(
-        email.trim().toLowerCase(),
-        senha,
-        captchaToken,
-      );
+      const emailLimpo = email.trim().toLowerCase();
+      if (isOnAWorkspace) {
+        await signUpWithCredentialsInWorkspace({
+          email: emailLimpo,
+          password: senha,
+          captchaToken,
+        });
+      } else {
+        // Primeiro cadastro da instância (ainda sem workspace).
+        await signUpWithCredentials(emailLimpo, senha, captchaToken);
+      }
+      // Nenhum dos fluxos navega sozinho em single-workspace (o redirect
+      // multi-workspace é no-op) — sem isso o usuário fica autenticado e
+      // preso em /cadastro. O hook de rotas intercepta este destino e leva
+      // ao passo certo do onboarding (criar perfil etc.).
+      navigate('/funil');
     } catch (err) {
       // Token do Turnstile é de uso único — renova para a próxima tentativa.
       void requestFreshCaptchaToken();
