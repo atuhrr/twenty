@@ -40,15 +40,19 @@ services:
       REDIS_URL: redis://redis:6379
       APP_SECRET: ${APP_SECRET}
       IS_MULTIWORKSPACE_ENABLED: ${IS_MULTIWORKSPACE_ENABLED:-false}
-      EMAIL_DRIVER: smtp
-      EMAIL_SMTP_HOST: ${SMTP_HOST}
+      # "logger" até o SMTP ser configurado; troque para "smtp" no .env
+      EMAIL_DRIVER: ${EMAIL_DRIVER:-logger}
+      EMAIL_SMTP_HOST: ${SMTP_HOST:-}
       EMAIL_SMTP_PORT: ${SMTP_PORT:-587}
-      EMAIL_SMTP_USER: ${SMTP_USER}
-      EMAIL_SMTP_PASSWORD: ${SMTP_PASSWORD}
-      EMAIL_FROM_ADDRESS: ${EMAIL_FROM}
-      CAPTCHA_DRIVER: ${CAPTCHA_DRIVER:-}
-      CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY:-}
-      CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY:-}
+      EMAIL_SMTP_USER: ${SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM:-}
+      # CAPTCHA: a validação do Twenty rejeita string vazia — as variáveis
+      # só podem existir quando houver chaves. Quando tiver as chaves do
+      # Turnstile, descomente e preencha no .env (CAPTCHA_DRIVER=turnstile).
+      # CAPTCHA_DRIVER: ${CAPTCHA_DRIVER}
+      # CAPTCHA_SITE_KEY: ${CAPTCHA_SITE_KEY}
+      # CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY}
       STORAGE_TYPE: ${STORAGE_TYPE:-local}
     volumes:
       - server-data:/app/packages/twenty-server/.local-storage
