@@ -8,6 +8,9 @@ import { QueryRunner } from 'typeorm';
 
 import { RegisteredInstanceCommand } from 'src/engine/core-modules/upgrade/decorators/registered-instance-command.decorator';
 import { FastInstanceCommand } from 'src/engine/core-modules/upgrade/interfaces/fast-instance-command.interface';
+// O schema do workspace não é persistido (core.dataSource fica vazia) —
+// é derivado do id, exatamente como o runtime faz.
+import { getWorkspaceSchemaName } from 'src/engine/workspace-datasource/utils/get-workspace-schema-name.util';
 
 // Mesmo universalIdentifier do registro STANDARD_OBJECTS (twenty-shared)
 const IS_UNCLASSIFIED_UNIVERSAL_IDENTIFIER =
@@ -18,18 +21,27 @@ export class AddIsUnclassifiedToOpportunityFastInstanceCommand
   implements FastInstanceCommand
 {
   async up(queryRunner: QueryRunner): Promise<void> {
-    const workspaces: Array<{ objectMetadataId: string; schema: string }> =
+    const workspaces: Array<{ objectMetadataId: string; workspaceId: string }> =
       await queryRunner.query(`
-        SELECT om.id AS "objectMetadataId", ds.schema
+        SELECT om.id AS "objectMetadataId", om."workspaceId" AS "workspaceId"
         FROM core."objectMetadata" om
-        JOIN core."dataSource" ds ON ds."workspaceId" = om."workspaceId"
         WHERE om."nameSingular" = 'opportunity'
-          AND ds.schema IS NOT NULL
       `);
 
     for (const ws of workspaces) {
+      const schemaName = getWorkspaceSchemaName(ws.workspaceId);
+
+      const [{ existe }] = await queryRunner.query(
+        `SELECT to_regclass($1) IS NOT NULL AS existe`,
+        [`${schemaName}.opportunity`],
+      );
+
+      if (!existe) {
+        continue;
+      }
+
       await queryRunner.query(`
-        ALTER TABLE ${queryRunner.connection.driver.escape(ws.schema)}."opportunity"
+        ALTER TABLE "${schemaName}"."opportunity"
           ADD COLUMN IF NOT EXISTS "isUnclassified" boolean NOT NULL DEFAULT false
       `);
 
