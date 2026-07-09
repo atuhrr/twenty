@@ -1,9 +1,9 @@
 #!/bin/sh
-# FORK: Voka CRM — backup diário do Postgres para Hetzner Object Storage
+# FORK: Zellate — backup diário do Postgres para Hetzner Object Storage
 # Retenção: 14 diários. Roda via cron no container "backup" (03:00 UTC).
 set -eu
 STAMP=$(date +%Y%m%d-%H%M%S)
-ARQ="/tmp/voka-${STAMP}.sql.gz"
+ARQ="/tmp/zellate-${STAMP}.sql.gz"
 
 pg_dump -h db -U voka -d voka | gzip > "$ARQ"
 
