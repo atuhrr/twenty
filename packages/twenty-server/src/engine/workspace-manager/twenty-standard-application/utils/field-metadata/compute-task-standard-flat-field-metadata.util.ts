@@ -193,25 +193,27 @@ export const buildTaskStandardFlatFieldMetadatas = ({
       icon: 'IconCheck',
       isNullable: true,
       defaultValue: "'TODO'",
+      // FORK: Voka CRM — valores alinhados ao enum PT-BR usado pelo front
+      // (TarefasPage/TaskDrawer) e ao workspace de dev.
       options: [
         {
           id: '20202020-3d31-4860-ad07-5c4603d44887',
           value: 'TODO',
-          label: i18nLabel(msg`To do`),
+          label: i18nLabel(msg`A fazer`),
           position: 0,
           color: 'sky',
         },
         {
           id: '20202020-c559-4f8e-8b8e-21136da8684d',
-          value: 'IN_PROGRESS',
-          label: i18nLabel(msg`In progress`),
+          value: 'EM_ANDAMENTO',
+          label: i18nLabel(msg`Em andamento`),
           position: 1,
           color: 'purple',
         },
         {
           id: '20202020-c7a7-43ff-8226-f6a97a32759e',
-          value: 'DONE',
-          label: i18nLabel(msg`Done`),
+          value: 'CONCLUIDO',
+          label: i18nLabel(msg`Concluído`),
           position: 2,
           color: 'green',
         },

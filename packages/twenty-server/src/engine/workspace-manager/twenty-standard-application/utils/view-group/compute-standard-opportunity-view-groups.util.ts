@@ -4,62 +4,64 @@ import {
   type CreateStandardViewGroupArgs,
 } from 'src/engine/workspace-manager/twenty-standard-application/utils/view-group/create-standard-view-group-flat-metadata.util';
 
-// FORK: Voka CRM — grupos do kanban alinhados às etapas Kommo do campo stage
+// FORK: Voka CRM — os fieldValues apontam para as etapas Kommo do campo stage
 // (compute-opportunity-standard-flat-field-metadata.util.ts, fonte das opções).
+// Os viewGroupNames são chaves do registro STANDARD_OBJECTS de twenty-shared
+// (IDs universais fixos) e não podem ser renomeados.
 export const computeStandardOpportunityViewGroups = (
   args: Omit<CreateStandardViewGroupArgs<'opportunity'>, 'context'>,
 ): Record<string, FlatViewGroup> => {
   return {
-    byStageLeadsRecebidos: createStandardViewGroupFlatMetadata({
+    byStageNew: createStandardViewGroupFlatMetadata({
       ...args,
       objectName: 'opportunity',
       context: {
         viewName: 'byStage',
-        viewGroupName: 'leadsRecebidos',
+        viewGroupName: 'new',
         isVisible: true,
         fieldValue: 'LEADS_RECEBIDOS',
         position: 0,
       },
     }),
-    byStageTomadaDecisao: createStandardViewGroupFlatMetadata({
+    byStageScreening: createStandardViewGroupFlatMetadata({
       ...args,
       objectName: 'opportunity',
       context: {
         viewName: 'byStage',
-        viewGroupName: 'tomadaDecisao',
+        viewGroupName: 'screening',
         isVisible: true,
         fieldValue: 'TOMADA_DECISAO',
         position: 1,
       },
     }),
-    byStageNegociacao: createStandardViewGroupFlatMetadata({
+    byStageMeeting: createStandardViewGroupFlatMetadata({
       ...args,
       objectName: 'opportunity',
       context: {
         viewName: 'byStage',
-        viewGroupName: 'negociacao',
+        viewGroupName: 'meeting',
         isVisible: true,
         fieldValue: 'NEGOCIACAO',
         position: 2,
       },
     }),
-    byStageDecisaoFinal: createStandardViewGroupFlatMetadata({
+    byStageProposal: createStandardViewGroupFlatMetadata({
       ...args,
       objectName: 'opportunity',
       context: {
         viewName: 'byStage',
-        viewGroupName: 'decisaoFinal',
+        viewGroupName: 'proposal',
         isVisible: true,
         fieldValue: 'DECISAO_FINAL',
         position: 3,
       },
     }),
-    byStageGanho: createStandardViewGroupFlatMetadata({
+    byStageCustomer: createStandardViewGroupFlatMetadata({
       ...args,
       objectName: 'opportunity',
       context: {
         viewName: 'byStage',
-        viewGroupName: 'ganho',
+        viewGroupName: 'customer',
         isVisible: true,
         fieldValue: 'GANHO',
         position: 4,
