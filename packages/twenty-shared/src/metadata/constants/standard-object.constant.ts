@@ -1725,6 +1725,10 @@ export const STANDARD_OBJECTS = {
         universalIdentifier: '20202020-527e-44d6-b1ac-c4158d307b97',
       },
       stage: { universalIdentifier: '20202020-6f76-477d-8551-28cd65b2b4b9' },
+      // FORK: Zellate — lead de entrada (Kommo) aguardando classificacao
+      isUnclassified: {
+        universalIdentifier: '20202020-4c1b-47e5-b52a-9e1d3fca8b06',
+      },
       position: {
         universalIdentifier: '20202020-806d-493a-bbc6-6313e62958e2',
       },

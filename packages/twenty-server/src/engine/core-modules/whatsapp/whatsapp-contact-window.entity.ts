@@ -30,6 +30,11 @@ export class WhatsappContactWindowEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   phoneNumber: string | null;
 
+  // FORK: Zellate — nome de perfil do WhatsApp (payload contacts[].profile.name);
+  // a Cloud API não expõe a FOTO de perfil, só o nome (added via migration)
+  @Column({ nullable: true, type: 'text' })
+  contactName: string | null;
+
   // FORK: Voka CRM — Fase 11: which user is handling this thread
   @Column({ nullable: true, type: 'uuid' })
   assignedUserId: string | null;

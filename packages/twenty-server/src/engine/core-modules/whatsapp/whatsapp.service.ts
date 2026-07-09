@@ -410,6 +410,7 @@ export class WhatsappService {
           m."createdAt",
           m."channelType",
           cw."phoneNumber",
+          cw."contactName",
           cw."assignedUserId",
           cw."assignedUserName"
        FROM "core"."whatsappMessage" m
@@ -441,6 +442,7 @@ export class WhatsappService {
     return rows.map((row) => ({
       contactId: row.contactId as string,
       phoneNumber: (row.phoneNumber as string | null) ?? null,
+      contactName: (row.contactName as string | null) ?? null,
       channelType: (row.channelType as ChannelType) ?? ChannelType.WHATSAPP,
       lastMessage: {
         id: row.id as string,

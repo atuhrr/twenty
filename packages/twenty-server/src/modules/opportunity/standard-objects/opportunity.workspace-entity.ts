@@ -26,6 +26,8 @@ export class OpportunityWorkspaceEntity extends BaseWorkspaceEntity {
   amount: CurrencyMetadata | null;
   closeDate: Date | null;
   stage: string;
+  // FORK: Zellate — lead de entrada (Kommo) aguardando classificacao
+  isUnclassified: boolean;
   position: number;
   createdBy: ActorMetadata;
   updatedBy: ActorMetadata;

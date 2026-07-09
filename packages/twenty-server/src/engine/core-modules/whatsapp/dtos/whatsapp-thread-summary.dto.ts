@@ -12,6 +12,10 @@ export class WhatsappThreadSummaryDTO {
   @Field(() => String, { nullable: true })
   phoneNumber: string | null;
 
+  // FORK: Zellate — nome de perfil do WhatsApp (a Cloud API nao expoe foto)
+  @Field(() => String, { nullable: true })
+  contactName: string | null;
+
   @Field(() => WhatsappMessageDTO)
   lastMessage: WhatsappMessageDTO;
 

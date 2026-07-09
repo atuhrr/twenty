@@ -18,6 +18,7 @@ import axios from 'axios';
 
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { WhatsappContactWindowEntity } from 'src/engine/core-modules/whatsapp/whatsapp-contact-window.entity';
+import { WhatsappQuickReplyEntity } from 'src/engine/core-modules/whatsapp/whatsapp-quick-reply.entity';
 import {
   WhatsappConnectionStatus,
   WhatsappInstanceEntity,
@@ -39,6 +40,7 @@ const mockInstanceRepo = {
   create: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 
 const mockMessageRepo = {
@@ -80,6 +82,7 @@ describe('WhatsappService', () => {
         { provide: getRepositoryToken(WhatsappInstanceEntity), useValue: mockInstanceRepo },
         { provide: getRepositoryToken(WhatsappMessageEntity), useValue: mockMessageRepo },
         { provide: getRepositoryToken(WhatsappContactWindowEntity), useValue: mockContactWindowRepo },
+        { provide: getRepositoryToken(WhatsappQuickReplyEntity), useValue: { find: jest.fn(), findOne: jest.fn(), save: jest.fn(), delete: jest.fn(), create: jest.fn() } },
         { provide: SecretEncryptionService, useValue: mockSecretEncryption },
       ],
     }).compile();
@@ -146,14 +149,17 @@ describe('WhatsappService', () => {
     });
 
     it('should update existing instance when one exists', async () => {
-      const existing = makeInstance({ wabaId: 'old-waba' });
+      const existing = makeInstance({ id: 'inst-1', wabaId: 'old-waba' } as Partial<WhatsappInstanceEntity>);
 
       mockInstanceRepo.findOne.mockResolvedValue(existing);
       mockInstanceRepo.save.mockResolvedValue({ ...existing, wabaId: 'new-waba' });
       mockInstanceRepo.update.mockResolvedValue(undefined);
       getAxios().get.mockResolvedValue({ data: { id: 'phone-123', verified_name: 'Test' } });
 
+      // Multi-número: a atualização de uma instância existente é explícita,
+      // via instanceId — sem ele, registerInstance cria uma nova instância.
       await service.registerInstance('ws-1', {
+        instanceId: existing.id,
         wabaId: 'new-waba',
         phoneNumberId: 'new-phone',
         accessToken: 'new-token',

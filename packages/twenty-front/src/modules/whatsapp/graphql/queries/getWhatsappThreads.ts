@@ -6,6 +6,7 @@ export const GET_WHATSAPP_THREADS = gql`
     whatsappThreads {
       contactId
       phoneNumber
+      contactName
       unreadCount
       channelType
       assignedUserId

@@ -219,6 +219,25 @@ export const buildOpportunityStandardFlatFieldMetadatas = ({
     twentyStandardApplicationId,
     now,
   }),
+  // FORK: Zellate — lead de entrada (Kommo) aguardando classificacao;
+  // fica fora do funil ate ser aceito em "Leads nao classificados"
+  isUnclassified: createStandardFieldFlatMetadata({
+    objectName,
+    workspaceId,
+    context: {
+      fieldName: 'isUnclassified',
+      type: FieldMetadataType.BOOLEAN,
+      label: i18nLabel(msg`Não classificado`),
+      description: i18nLabel(msg`Lead de entrada aguardando classificação`),
+      icon: 'IconInbox',
+      isNullable: false,
+      defaultValue: false,
+    },
+    standardObjectMetadataRelatedEntityIds,
+    dependencyFlatEntityMaps,
+    twentyStandardApplicationId,
+    now,
+  }),
   position: createStandardFieldFlatMetadata({
     objectName,
     workspaceId,

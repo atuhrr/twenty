@@ -41,4 +41,10 @@ describe('normalizeBrPhone', () => {
   it('should handle number with + prefix', () => {
     expect(normalizeBrPhone('+5511987654321')).toBe('5511987654321');
   });
+
+  // FORK: Zellate — numeros estrangeiros em formato internacional passam intactos
+  it('should NOT prepend 55 to foreign international numbers', () => {
+    expect(normalizeBrPhone('4917612345678')).toBe('4917612345678');
+    expect(normalizeBrPhone('447700900123')).toBe('447700900123');
+  });
 });

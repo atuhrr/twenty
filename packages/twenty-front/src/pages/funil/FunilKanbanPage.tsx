@@ -42,7 +42,8 @@ export function FunilKanbanPage() {
   // Fetch all leads
   const { records, loading } = useFindManyRecords({
     objectNameSingular: 'opportunity',
-    filter: {},
+    // Leads de entrada (nao classificados) ficam fora do funil ate o aceite
+    filter: { isUnclassified: { eq: false } },
     orderBy: [{ position: 'AscNullsLast' }],
     limit: 500,
     skip: false,

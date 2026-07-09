@@ -447,7 +447,10 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
   const visibleThreads = threads.filter((t) => {
     const matchesChannel =
       channelFilter === 'todos' || (t.channelType ?? 'whatsapp').toLowerCase() === channelFilter;
-    const matchesSearch = !search || (t.phoneNumber ?? '').includes(search);
+    const matchesSearch =
+      !search ||
+      (t.phoneNumber ?? '').includes(search) ||
+      (t.contactName ?? '').toLowerCase().includes(search.toLowerCase());
     return matchesChannel && matchesSearch;
   });
 
@@ -480,7 +483,19 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
           <div className="px-4 py-3 text-xs text-gray-400">Nenhuma conversa ainda.</div>
         ) : (
           visibleThreads.map((t, idx) => {
-            const initials = t.phoneNumber ? t.phoneNumber.replace(/\D/g, '').slice(-4, -2) : (t.channelType ?? 'WA').slice(0, 2);
+            // Nome de perfil do WhatsApp quando disponivel (a Cloud API nao expoe a foto)
+            const displayName = t.contactName ?? t.phoneNumber ?? `Contato #${idx + 1}`;
+            const initials = t.contactName
+              ? t.contactName
+                  .split(' ')
+                  .map((p) => p[0])
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()
+              : t.phoneNumber
+                ? t.phoneNumber.replace(/\D/g, '').slice(-4, -2)
+                : (t.channelType ?? 'WA').slice(0, 2);
             const isActive = t.contactId === effectiveId;
             return (
               <div
@@ -493,7 +508,7 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
                 <ConvAvatar initials={initials} paletteIdx={idx} channel={t.channelType ?? 'whatsapp'} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">
-                    {t.phoneNumber ?? `Contato #${idx + 1}`}
+                    {displayName}
                   </div>
                   <div className="text-[11.5px] text-gray-500 truncate">
                     {t.lastMessage?.content ?? '📎 Mídia'}

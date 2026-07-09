@@ -19,7 +19,11 @@ import {
 import { SalesbotExecutorService } from 'src/engine/core-modules/salesbot/salesbot-executor.service';
 import { NotificationsService } from 'src/engine/core-modules/notifications/notifications.service';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
-import { normalizeBrPhone } from 'src/engine/core-modules/whatsapp/utils/normalize-br-phone.util';
+import { normalizeWaId } from 'src/engine/core-modules/whatsapp/utils/normalize-wa-id.util';
+import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
+import { type OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
+import { type PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
 export type WhatsappMessageReceivedEvent = {
   workspaceId: string;
@@ -40,8 +44,14 @@ export type WhatsappWebhookPayload = {
 type MetaWebhookValue = {
   messaging_product: string;
   metadata?: { display_phone_number?: string; phone_number_id?: string };
+  contacts?: MetaContact[];
   messages?: MetaMessage[];
   statuses?: MetaStatus[];
+};
+
+type MetaContact = {
+  wa_id: string;
+  profile?: { name?: string };
 };
 
 type MetaMessage = {
@@ -73,6 +83,8 @@ export class WhatsappWebhookJob {
     private readonly notificationsService: NotificationsService,
     private readonly salesbotExecutorService: SalesbotExecutorService,
     private readonly eventEmitter: EventEmitter2,
+    // FORK: Zellate — criação automática de lead não classificado
+    private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
     @InjectRepository(WhatsappContactWindowEntity)
     private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
   ) {}
@@ -82,8 +94,15 @@ export class WhatsappWebhookJob {
     const { workspaceId, value } = data;
 
     if (value.messages?.length) {
+      // Nome de perfil do remetente (a Cloud API só expõe o nome, não a foto)
+      const profileNameByWaId = new Map(
+        (value.contacts ?? []).map((c) => [c.wa_id, c.profile?.name ?? null]),
+      );
+
       for (const msg of value.messages) {
-        await this.processInboundMessage(workspaceId, msg).catch((err) => {
+        const profileName = profileNameByWaId.get(msg.from) ?? null;
+
+        await this.processInboundMessage(workspaceId, msg, profileName).catch((err) => {
           this.logger.error(
             `Failed to process message ${msg.id}: ${err instanceof Error ? err.message : String(err)}`,
           );
@@ -105,8 +124,10 @@ export class WhatsappWebhookJob {
   private async processInboundMessage(
     workspaceId: string,
     msg: MetaMessage,
+    profileName: string | null,
   ): Promise<void> {
-    const normalizedPhone = normalizeBrPhone(msg.from);
+    // FORK: Zellate — wa_id já vem internacional; nunca prefixar código de país
+    const normalizedPhone = normalizeWaId(msg.from);
 
     // Derive a deterministic contactId from (workspaceId + normalizedPhone).
     // In EPIC 5 this will be replaced with a real workspace Person lookup.
@@ -140,12 +161,32 @@ export class WhatsappWebhookJob {
     }
 
     // FORK: Voka CRM — Fase 9: store phone for thread display
-    await this.upsertContactWindow(workspaceId, contactId, timestamp, normalizedPhone);
+    const isNewContact = await this.upsertContactWindow(
+      workspaceId,
+      contactId,
+      timestamp,
+      normalizedPhone,
+      profileName,
+    );
+
+    // FORK: Zellate — Kommo-style "Leads de entrada": primeira mensagem de um
+    // número desconhecido cria Contato + Lead em "Leads não classificados".
+    if (isNewContact) {
+      await this.createUnclassifiedLead(
+        workspaceId,
+        normalizedPhone,
+        profileName,
+      ).catch((err) => {
+        this.logger.error(
+          `Falha ao criar lead não classificado para ${normalizedPhone}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
 
     // FORK: Voka CRM — Fase C: notificação de nova mensagem no header
     await this.notificationsService
       .create(workspaceId, {
-        title: `Nova mensagem de ${normalizedPhone}`,
+        title: `Nova mensagem de ${profileName ?? normalizedPhone}`,
         body: content ?? '(mídia recebida)',
         type: 'WHATSAPP',
         link: '/inbox',
@@ -191,12 +232,14 @@ export class WhatsappWebhookJob {
     await this.whatsappService.updateMessageStatus(status.id, mappedStatus);
   }
 
+  /** @returns true quando a conversa é nova (primeiro contato do número) */
   private async upsertContactWindow(
     workspaceId: string,
     contactId: string,
     lastInboundAt: Date,
     phoneNumber?: string,
-  ): Promise<void> {
+    contactName?: string | null,
+  ): Promise<boolean> {
     const existing = await this.contactWindowRepo.findOne({
       where: { workspaceId, contactId },
     });
@@ -204,18 +247,84 @@ export class WhatsappWebhookJob {
     if (existing) {
       await this.contactWindowRepo.update(
         { workspaceId, contactId },
-        { lastInboundAt, ...(phoneNumber ? { phoneNumber } : {}) },
-      );
-    } else {
-      await this.contactWindowRepo.save(
-        this.contactWindowRepo.create({
-          workspaceId,
-          contactId,
+        {
           lastInboundAt,
-          phoneNumber: phoneNumber ?? null,
-        }),
+          ...(phoneNumber ? { phoneNumber } : {}),
+          ...(contactName ? { contactName } : {}),
+        },
       );
+
+      return false;
     }
+
+    await this.contactWindowRepo.save(
+      this.contactWindowRepo.create({
+        workspaceId,
+        contactId,
+        lastInboundAt,
+        phoneNumber: phoneNumber ?? null,
+        contactName: contactName ?? null,
+      }),
+    );
+
+    return true;
+  }
+
+  // FORK: Zellate — cria Contato + Lead não classificado no schema do
+  // workspace (comportamento "Leads de entrada" do Kommo). O lead fica em
+  // "Leads não classificados" até ser aceito (entra no funil) ou recusado.
+  private async createUnclassifiedLead(
+    workspaceId: string,
+    phone: string,
+    profileName: string | null,
+  ): Promise<void> {
+    const authContext = buildSystemAuthContext(workspaceId);
+    const displayName = profileName?.trim() || `WhatsApp +${phone}`;
+
+    await this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const personRepo =
+          await this.globalWorkspaceOrmManager.getRepository<PersonWorkspaceEntity>(
+            workspaceId,
+            'person',
+            { shouldBypassPermissionChecks: true },
+          );
+
+        const [firstName, ...rest] = displayName.split(' ');
+        const person = await personRepo.save({
+          name: { firstName, lastName: rest.join(' ') },
+          phones: {
+            primaryPhoneNumber: phone,
+            primaryPhoneCallingCode: '',
+            primaryPhoneCountryCode: '',
+          },
+          createdBy: { source: 'SYSTEM', name: 'WhatsApp' },
+          updatedBy: { source: 'SYSTEM', name: 'WhatsApp' },
+        } as never);
+
+        const opportunityRepo =
+          await this.globalWorkspaceOrmManager.getRepository<OpportunityWorkspaceEntity>(
+            workspaceId,
+            'opportunity',
+            { shouldBypassPermissionChecks: true },
+          );
+
+        await opportunityRepo.save({
+          name: displayName,
+          stage: 'LEADS_RECEBIDOS',
+          isUnclassified: true,
+          pointOfContactId: (person as { id: string }).id,
+          position: 0,
+          createdBy: { source: 'SYSTEM', name: 'WhatsApp' },
+          updatedBy: { source: 'SYSTEM', name: 'WhatsApp' },
+        } as never);
+      },
+      authContext,
+    );
+
+    this.logger.log(
+      `Lead não classificado criado para ${displayName} (${phone})`,
+    );
   }
 
   private resolveMessageType(rawType: string): WhatsappMessageType {

@@ -50,7 +50,8 @@ export function LeadsListPage() {
 
   const { records, loading } = useFindManyRecords({
     objectNameSingular: 'opportunity',
-    filter: {},
+    // Leads de entrada (nao classificados) ficam fora da lista ate o aceite
+    filter: { isUnclassified: { eq: false } },
     orderBy: [{ createdAt: 'DescNullsLast' }],
     limit: 200,
     skip: false,

@@ -10,6 +10,7 @@ import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 export type WhatsappThread = {
   contactId: string;
   phoneNumber: string | null;
+  contactName: string | null;
   unreadCount: number;
   channelType: string;
   lastMessage: WhatsappMessage;
