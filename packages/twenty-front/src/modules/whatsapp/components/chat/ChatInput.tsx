@@ -120,7 +120,7 @@ const StyledQrItem = styled.div<{ focused: boolean }>`
 `;
 
 const StyledQrShortcut = styled.span`
-  color: #7c3aed;
+  color: var(--color-brand-500);
   font-size: 12px;
   font-weight: 700;
   min-width: 55px;

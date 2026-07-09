@@ -335,7 +335,7 @@ const StyledBtn = styled.button`
   transition: opacity 120ms ease-out;
 
   &[data-variant='primary'] {
-    background: var(--t-color-purple-40, #7c3aed);
+    background: var(--color-brand-500);
     border: none;
     color: #fff;
   }
@@ -505,7 +505,7 @@ const StyledInput = styled.input`
   outline: none;
   padding: 9px 11px;
   width: 100%;
-  &:focus { border-color: var(--t-color-purple-40, #7c3aed); }
+  &:focus { border-color: var(--color-brand-500); }
 `;
 
 const StyledSelect = styled.select`
@@ -517,7 +517,7 @@ const StyledSelect = styled.select`
   outline: none;
   padding: 9px 11px;
   width: 100%;
-  &:focus { border-color: var(--t-color-purple-40, #7c3aed); }
+  &:focus { border-color: var(--color-brand-500); }
 `;
 
 const StyledTextarea = styled.textarea`
@@ -530,7 +530,7 @@ const StyledTextarea = styled.textarea`
   padding: 9px 11px;
   resize: vertical;
   width: 100%;
-  &:focus { border-color: var(--t-color-purple-40, #7c3aed); }
+  &:focus { border-color: var(--color-brand-500); }
 `;
 
 const StyledOverlay = styled.div`

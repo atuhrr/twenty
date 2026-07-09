@@ -16,7 +16,7 @@ const C = {
   inputBg: '#F9FAFB',
   avatarBg: '#EEF4FF',
   avatarTx: '#185FA5',
-  sendBg: '#7C3AED',
+  sendBg: 'var(--color-brand-500)',
 };
 
 // ─── Styled ───────────────────────────────────────────────────────────────────

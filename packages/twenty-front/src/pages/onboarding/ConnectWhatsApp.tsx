@@ -44,7 +44,7 @@ const StyledInput = styled.input`
   width: 100%;
   box-sizing: border-box;
   &:focus {
-    border-color: var(--t-color-brand, #7c3aed);
+    border-color: var(--color-brand-500);
     box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
   }
   &::placeholder {

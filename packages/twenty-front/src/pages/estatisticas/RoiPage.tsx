@@ -472,7 +472,7 @@ const StyledBtn = styled.button`
   transition: opacity var(--anim-duration-fast) var(--anim-ease-out);
 
   &[data-variant='primary'] {
-    background: var(--t-color-purple-40, #7c3aed);
+    background: var(--color-brand-500);
     border: none;
     color: #ffffff;
   }
@@ -793,7 +793,7 @@ const StyledInput = styled.input`
   width: 100%;
 
   &:focus {
-    border-color: var(--t-color-purple-40, #7c3aed);
+    border-color: var(--color-brand-500);
   }
 `;
 

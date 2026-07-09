@@ -1,12 +1,12 @@
 {
-  "short_name": "Voka CRM",
-  "name": "Voka CRM — CRM com WhatsApp Integrado",
+  "short_name": "Zellate",
+  "name": "Zellate — CRM com WhatsApp Integrado",
   "description": "Seu CRM completo com WhatsApp, automações e pipeline de vendas.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#7C3AED",
+  "theme_color": "#071689",
   "background_color": "#F2F4F7",
   "lang": "pt-BR",
   "shortcuts": [

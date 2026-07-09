@@ -16,7 +16,7 @@ type Props = {
 
 const StyledBtn = styled.button`
   align-items: center;
-  background: #7c3aed;
+  background: var(--color-brand-500);
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -114,7 +114,7 @@ const StyledFooter = styled.div`
 `;
 
 const StyledSendBtn = styled.button`
-  background: #7c3aed;
+  background: var(--color-brand-500);
   border: none;
   border-radius: 7px;
   color: #fff;

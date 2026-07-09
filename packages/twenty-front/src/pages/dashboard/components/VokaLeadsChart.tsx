@@ -5,6 +5,7 @@ import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { Dropdown } from '@/tailadmin/ui/Dropdown';
 import { DropdownItem } from '@/tailadmin/ui/DropdownItem';
 import { MoreDotIcon } from '@/tailadmin/icons';
+import { BRAND } from '~/brand/brand.config';
 
 const STAGE_LABELS: Record<string, string> = {
   NEW: 'Leads Recebidos',
@@ -39,7 +40,7 @@ export function VokaLeadsChart() {
   const data = stages.map((s) => counts[s] ?? 0);
 
   const options: ApexOptions = {
-    colors: ['#7C3AED'],
+    colors: [BRAND.primary],
     chart: {
       fontFamily: 'Outfit, sans-serif',
       type: 'bar',

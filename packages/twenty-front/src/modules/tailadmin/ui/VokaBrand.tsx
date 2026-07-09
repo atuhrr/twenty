@@ -1,5 +1,5 @@
-// FORK: Voka CRM — logo configurável: usa o logo do workspace (upload em
-// Configurações → Geral) quando existir; senão, a marca "Voka CRM" em texto.
+// FORK: Zellate — logo configurável: usa o logo do workspace (upload em
+// Configurações → Geral) quando existir; senão, o wordmark Zellate.
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { workspacePublicDataState } from '@/auth/states/workspacePublicDataState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
@@ -42,9 +42,12 @@ export const VokaBrand = ({ className = '', size = 32 }: VokaBrandProps) => {
           )}
         </>
       ) : (
-        <span className="font-bold tracking-tight text-brand-500">
-          Voka CRM
-        </span>
+        <img
+          src="/images/zellate-logo.png"
+          alt="Zellate"
+          style={{ height: size * 1.35 }}
+          className="rounded-lg"
+        />
       )}
     </span>
   );

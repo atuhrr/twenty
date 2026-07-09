@@ -16,7 +16,7 @@ const C = {
   qrBg: '#FFFFFF',
   qrBorder: '#EAECF0',
   qrHover: '#F9FAFB',
-  shortcut: '#7C3AED',
+  shortcut: 'var(--color-brand-500)',
 };
 
 const StyledComposerInput = styled.div`

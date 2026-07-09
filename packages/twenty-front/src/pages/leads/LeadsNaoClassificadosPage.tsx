@@ -37,7 +37,7 @@ const StyledTitle = styled.h1`
 `;
 
 const StyledCount = styled.span`
-  background: #7C3AED;
+  background: var(--color-brand-500);
   border-radius: 999px;
   color: #fff;
   font-size: 11px;

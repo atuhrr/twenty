@@ -5,6 +5,7 @@ import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { Dropdown } from '@/tailadmin/ui/Dropdown';
 import { DropdownItem } from '@/tailadmin/ui/DropdownItem';
 import { MoreDotIcon } from '@/tailadmin/icons';
+import { BRAND } from '~/brand/brand.config';
 
 const META_MENSAL = 50000;
 
@@ -33,7 +34,7 @@ export function VokaMetaMes() {
   const pct = Math.min(Math.round((receita / META_MENSAL) * 100), 100);
 
   const options: ApexOptions = {
-    colors: ['#7C3AED'],
+    colors: [BRAND.primary],
     chart: {
       fontFamily: 'Outfit, sans-serif',
       type: 'radialBar',
@@ -58,7 +59,7 @@ export function VokaMetaMes() {
         },
       },
     },
-    fill: { type: 'solid', colors: ['#7C3AED'] },
+    fill: { type: 'solid', colors: [BRAND.primary] },
     stroke: { lineCap: 'round' },
     labels: ['Progresso'],
   };

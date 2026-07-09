@@ -142,7 +142,7 @@ const StyledBellBtn = styled.button`
 `;
 
 const StyledBadge = styled.span`
-  background: #7c3aed;
+  background: var(--color-brand-500);
   border: 2px solid var(--t-background-primary);
   border-radius: 999px;
   color: #fff;

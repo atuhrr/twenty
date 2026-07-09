@@ -76,7 +76,7 @@ export const VARIAVEIS_DISPONIVEIS = [
   { token: '{{contact.name}}', label: 'Nome do contato' },
   { token: '{{contact.phone}}', label: 'Telefone do contato' },
   { token: '{{contact.email}}', label: 'E-mail do contato' },
-  { token: '{{profile.name}}', label: 'Seu nome (usuário Voka)' },
+  { token: '{{profile.name}}', label: 'Seu nome (usuário Zellate)' },
   { token: '{{profile.phone}}', label: 'Seu telefone' },
   { token: '{{workspace.name}}', label: 'Nome da empresa' },
   { token: '{{lead.title}}', label: 'Título do lead' },

@@ -38,19 +38,19 @@
   --color-white: #ffffff;
   --color-black: #101828;
 
-  /* Voka brand palette (roxo #7C3AED) */
-  --color-brand-25: #f5f0ff;
-  --color-brand-50: #ede9fe;
-  --color-brand-100: #ddd6fe;
-  --color-brand-200: #c4b5fd;
-  --color-brand-300: #a78bfa;
-  --color-brand-400: #8b5cf6;
-  --color-brand-500: #7C3AED;
-  --color-brand-600: #6d28d9;
-  --color-brand-700: #5b21b6;
-  --color-brand-800: #4c1d95;
-  --color-brand-900: #3b0764;
-  --color-brand-950: #2e1065;
+  /* Zellate brand palette — âncora #071689 (azul-marinho do logo) no 500 */
+  --color-brand-25: #f4f5fe;
+  --color-brand-50: #e8eafc;
+  --color-brand-100: #d0d4f8;
+  --color-brand-200: #a6adf0;
+  --color-brand-300: #7b84e4;
+  --color-brand-400: #4b54d6;
+  --color-brand-500: #071689;
+  --color-brand-600: #061272;
+  --color-brand-700: #050e5a;
+  --color-brand-800: #040b45;
+  --color-brand-900: #030832;
+  --color-brand-950: #020520;
 
   --color-blue-light-25: #f5fbff;
   --color-blue-light-50: #f0f9ff;

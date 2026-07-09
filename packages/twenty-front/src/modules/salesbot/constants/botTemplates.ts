@@ -187,7 +187,7 @@ const SUPPORT_AI: BotTemplate = {
   name: 'Suporte com IA',
   description: 'Agente de IA responde dúvidas automaticamente e escalona para humano quando necessário.',
   icon: 'Robot',
-  accentColor: '#7c3aed',
+  accentColor: '#071689',
   channels: ['WHATSAPP', 'WIDGET'],
   graph: {
     nodes: [

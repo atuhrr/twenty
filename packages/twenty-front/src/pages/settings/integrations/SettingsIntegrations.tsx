@@ -81,7 +81,7 @@ const Grid = styled.div`
 
 const Card = styled.div<{ installed?: boolean }>`
   background: #fff;
-  border: 1.5px solid ${({ installed }) => (installed ? '#7c3aed' : '#eaecf0')};
+  border: 1.5px solid ${({ installed }) => (installed ? 'var(--color-brand-500)' : '#eaecf0')};
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -108,7 +108,7 @@ const Logo = styled.img`
 const LogoPlaceholder = styled.div`
   width: 36px;
   height: 36px;
-  background: #7c3aed;
+  background: var(--color-brand-500);
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -128,7 +128,7 @@ const InstalledBadge = styled.span`
   margin-left: auto;
   font-size: 11px;
   font-weight: 600;
-  color: #7c3aed;
+  color: var(--color-brand-500);
   background: #f3eeff;
   border-radius: 999px;
   padding: 2px 8px;
@@ -154,11 +154,11 @@ const Btn = styled.button<{ variant?: 'primary' | 'ghost' | 'danger' }>`
   font-weight: 500;
   cursor: pointer;
   border: 1px solid;
-  background: ${({ variant }) => (variant === 'primary' ? '#7c3aed' : '#fff')};
+  background: ${({ variant }) => (variant === 'primary' ? 'var(--color-brand-500)' : '#fff')};
   color: ${({ variant }) =>
     variant === 'primary' ? '#fff' : variant === 'danger' ? '#f04438' : '#344054'};
   border-color: ${({ variant }) =>
-    variant === 'primary' ? '#7c3aed' : variant === 'danger' ? '#f04438' : '#eaecf0'};
+    variant === 'primary' ? 'var(--color-brand-500)' : variant === 'danger' ? '#f04438' : '#eaecf0'};
   &:hover { opacity: 0.88; }
 `;
 
@@ -182,11 +182,11 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%; padding: 8px 11px; border: 1px solid #eaecf0; border-radius: 7px;
   font-size: 14px; color: #101828; outline: none; box-sizing: border-box;
-  &:focus { border-color: #7c3aed; }
+  &:focus { border-color: var(--color-brand-500); }
 `;
 const ModalFooter = styled.div`display:flex;gap:10px;justify-content:flex-end;margin-top:22px;`;
 const ExternalLink = styled.a`
-  font-size: 13px; color: #7c3aed; text-decoration: none;
+  font-size: 13px; color: var(--color-brand-500); text-decoration: none;
   display: inline-block; margin-top: 8px;
   &:hover { text-decoration: underline; }
 `;

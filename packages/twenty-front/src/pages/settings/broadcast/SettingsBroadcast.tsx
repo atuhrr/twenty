@@ -22,7 +22,7 @@ const C = {
   border: '#EAECF0',
   txt: '#101828',
   muted: '#667085',
-  brand: '#7C3AED',
+  brand: 'var(--color-brand-500)',
   success: '#12B76A',
   danger: '#F04438',
   warn: '#F79009',
