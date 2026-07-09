@@ -51,6 +51,8 @@ services:
       EMAIL_SMTP_USER: ${SMTP_USER:-}
       EMAIL_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM:-}
+      # Webhook do WhatsApp (Meta Cloud API) — token do handshake de verificação
+      META_VERIFY_TOKEN: ${META_VERIFY_TOKEN:-twenty-whatsapp-verify}
       # CAPTCHA (Cloudflare Turnstile) — a validação do Twenty rejeita string
       # vazia, então o default precisa ser um driver válido, nunca "".
       CAPTCHA_DRIVER: ${CAPTCHA_DRIVER:-turnstile}
