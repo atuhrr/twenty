@@ -70,6 +70,11 @@ export const useSendWhatsappMessage = (
       if (msg.includes('WINDOW_EXPIRED')) {
         return { errorMessage: 'Janela de 24h encerrada. Use um template para retomar a conversa.' };
       }
+      // FORK: Zellate — expõe a mensagem real da Meta (ex.: display name pendente)
+      const metaIdx = msg.indexOf('META_ERROR: ');
+      if (metaIdx !== -1) {
+        return { errorMessage: `WhatsApp recusou o envio: ${msg.slice(metaIdx + 'META_ERROR: '.length)}` };
+      }
       return { errorMessage: 'Erro ao enviar mensagem. Tente novamente.' };
     }
   };

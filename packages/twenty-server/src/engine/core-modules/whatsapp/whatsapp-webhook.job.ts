@@ -3,7 +3,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { Repository } from 'typeorm';
-import { v5 as uuidv5 } from 'uuid';
 
 import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
 import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
@@ -20,6 +19,7 @@ import { SalesbotExecutorService } from 'src/engine/core-modules/salesbot/salesb
 import { NotificationsService } from 'src/engine/core-modules/notifications/notifications.service';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { normalizeWaId } from 'src/engine/core-modules/whatsapp/utils/normalize-wa-id.util';
+import { getWhatsappContactId } from 'src/engine/core-modules/whatsapp/utils/whatsapp-contact-id.util';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { type OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
@@ -32,8 +32,6 @@ export type WhatsappMessageReceivedEvent = {
   text: string;
 };
 
-// Deterministic UUID namespace for deriving contactId from phone+workspace
-const WHATSAPP_CONTACT_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
 export type WhatsappWebhookPayload = {
   workspaceId: string;
@@ -129,12 +127,8 @@ export class WhatsappWebhookJob {
     // FORK: Zellate — wa_id já vem internacional; nunca prefixar código de país
     const normalizedPhone = normalizeWaId(msg.from);
 
-    // Derive a deterministic contactId from (workspaceId + normalizedPhone).
-    // In EPIC 5 this will be replaced with a real workspace Person lookup.
-    const contactId = uuidv5(
-      `${workspaceId}:${normalizedPhone}`,
-      WHATSAPP_CONTACT_NAMESPACE,
-    );
+    // contactId deterministico por (workspace + telefone) — util compartilhado
+    const contactId = getWhatsappContactId(workspaceId, normalizedPhone);
 
     const type = this.resolveMessageType(msg.type);
     const content = msg.text?.body ?? null;

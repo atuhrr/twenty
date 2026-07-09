@@ -5,10 +5,11 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { styled } from '@linaria/react';
 
 import { useWhatsappQuickReplies } from '@/whatsapp/hooks/useWhatsappQuickReplies';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { TemplatePickerButton } from '@/whatsapp/components/chat/TemplatePickerButton';
 
 type ChatInputProps = {
-  onSend: (text: string) => void | Promise<unknown>;
+  onSend: (text: string) => void | Promise<{ errorMessage?: string } | unknown>;
   disabled: boolean;
   sending: boolean;
   windowClosed?: boolean;
@@ -155,6 +156,7 @@ export const ChatInput = ({ onSend, disabled, sending, windowClosed, contactId, 
   const [focusedIdx, setFocusedIdx] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { quickReplies } = useWhatsappQuickReplies();
+  const { enqueueErrorSnackBar } = useSnackBar();
 
   const filtered = quickReplies.filter(
     (qr) =>
@@ -180,13 +182,24 @@ export const ChatInput = ({ onSend, disabled, sending, windowClosed, contactId, 
     textareaRef.current?.focus();
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = text.trim();
 
     if (!trimmed || sending) return;
-    onSend(trimmed);
     setText('');
     setShowQr(false);
+
+    // FORK: Zellate — falha de envio era engolida (a mensagem otimista some
+    // no rollback do Apollo e o usuario nao via nada). Mostra o erro e
+    // devolve o texto ao campo para nao perder o que foi digitado.
+    const result = await onSend(trimmed);
+    const errorMessage = (result as { errorMessage?: string } | undefined)
+      ?.errorMessage;
+
+    if (errorMessage) {
+      enqueueErrorSnackBar({ message: errorMessage });
+      setText(trimmed);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

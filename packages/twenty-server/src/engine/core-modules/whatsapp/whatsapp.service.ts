@@ -183,6 +183,17 @@ export class WhatsappService {
           'WINDOW_EXPIRED: A janela de 24h está encerrada. Use um template para retomar a conversa.',
         );
       }
+
+      // FORK: Zellate — expõe a mensagem real da Meta ao usuário em vez de
+      // um AxiosError generico (ex.: 131037 display name pendente).
+      const metaMessage = (
+        err as { response?: { data?: { error?: { message?: string } } } }
+      )?.response?.data?.error?.message;
+
+      if (metaMessage) {
+        throw new BadRequestException(`META_ERROR: ${metaMessage}`);
+      }
+
       throw err;
     }
   }

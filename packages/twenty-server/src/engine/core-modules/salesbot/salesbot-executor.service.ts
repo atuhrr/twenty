@@ -9,6 +9,13 @@ import { Repository } from 'typeorm';
 
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { WhatsappInstanceEntity } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
+import {
+  WhatsappMessageDirection,
+  WhatsappMessageEntity,
+  WhatsappMessageStatus,
+  WhatsappMessageType,
+} from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
+import { getWhatsappContactId } from 'src/engine/core-modules/whatsapp/utils/whatsapp-contact-id.util';
 import { SalesbotEntity } from 'src/engine/core-modules/salesbot/salesbot.entity';
 import { SalesbotService } from 'src/engine/core-modules/salesbot/salesbot.service';
 import { SalesbotSessionEntity } from 'src/engine/core-modules/salesbot/salesbot-session.entity';
@@ -30,6 +37,9 @@ export class SalesbotExecutorService {
     private readonly secretEncryptionService: SecretEncryptionService,
     @InjectRepository(WhatsappInstanceEntity)
     private readonly instanceRepo: Repository<WhatsappInstanceEntity>,
+    // FORK: Zellate — persiste as mensagens enviadas pelo bot na conversa
+    @InjectRepository(WhatsappMessageEntity)
+    private readonly messageRepo: Repository<WhatsappMessageEntity>,
   ) {}
 
   async handleInboundMessage(
@@ -596,7 +606,7 @@ Se não souber responder, diga que vai transferir para um atendente.`;
         instance.accessTokenEncrypted,
       );
 
-      await axios.post(
+      const { data } = await axios.post(
         `https://graph.facebook.com/v19.0/${instance.phoneNumberId}/messages`,
         {
           messaging_product: 'whatsapp',
@@ -605,6 +615,25 @@ Se não souber responder, diga que vai transferir para um atendente.`;
           text: { body: text },
         },
         { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      // FORK: Zellate — grava a resposta do bot na mesma conversa do Inbox
+      const externalMessageId =
+        (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ??
+        `bot_${Date.now()}`;
+
+      await this.messageRepo.save(
+        this.messageRepo.create({
+          workspaceId,
+          contactId: getWhatsappContactId(workspaceId, phone),
+          direction: WhatsappMessageDirection.OUTBOUND,
+          type: WhatsappMessageType.TEXT,
+          content: text,
+          mediaUrl: null,
+          externalMessageId,
+          status: WhatsappMessageStatus.SENT,
+          timestamp: new Date(),
+        }),
       );
     } catch (err) {
       this.logger.warn(

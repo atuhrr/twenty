@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { SecretEncryptionModule } from 'src/engine/core-modules/secret-encryption/secret-encryption.module';
 import { WhatsappInstanceEntity } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
+import { WhatsappMessageEntity } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
 import { SalesbotEntity } from 'src/engine/core-modules/salesbot/salesbot.entity';
 import { SalesbotSessionEntity } from 'src/engine/core-modules/salesbot/salesbot-session.entity';
 import { SalesbotService } from 'src/engine/core-modules/salesbot/salesbot.service';
@@ -17,6 +18,7 @@ import { BotGraphValidationService } from 'src/engine/core-modules/salesbot/sale
       SalesbotEntity,
       SalesbotSessionEntity,
       WhatsappInstanceEntity,
+      WhatsappMessageEntity,
     ]),
     SecretEncryptionModule,
   ],
