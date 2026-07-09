@@ -90,6 +90,7 @@ import { CreateWebFormTablesFastInstanceCommand } from './2-16/2-16-instance-com
 import { CreateIntegrationTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783123200000-create-integration-tables';
 import { MigrateSalesbotToGraphFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783209600000-migrate-salesbot-to-graph';
 import { FixSalesbotNullGraphFastInstanceCommand } from './2-16/2-16-instance-command-fast-1751068800000-fix-salesbot-null-graph';
+import { CreateTemplateTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783296000000-create-template-table';
 import { CreateRoiRelatorioTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783382400000-create-roi-relatorio-table';
 import { CreateVokaCrmObjectsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783468800000-create-voka-crm-objects';
 import { AddMultiNumberToWhatsappInstanceFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783555200000-add-multi-number-to-whatsapp-instance';
@@ -187,6 +188,7 @@ export const INSTANCE_COMMANDS = [
   CreateIntegrationTablesFastInstanceCommand,
   MigrateSalesbotToGraphFastInstanceCommand,
   FixSalesbotNullGraphFastInstanceCommand,
+  CreateTemplateTableFastInstanceCommand,
   CreateRoiRelatorioTableFastInstanceCommand,
   CreateVokaCrmObjectsFastInstanceCommand,
   AddMultiNumberToWhatsappInstanceFastInstanceCommand,
