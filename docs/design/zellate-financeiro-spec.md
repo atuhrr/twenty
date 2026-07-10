@@ -26,10 +26,27 @@ app do banco, gera um Pix na mão, cola na conversa e depois vive perguntando
    sozinho → notificação no sininho → receita aparece nas Estatísticas;
 4. Não pagou → lembrete automático de vencimento/atraso pelo WhatsApp.
 
-**Fluxo do dinheiro:** cada workspace conecta a **própria conta Asaas** (chave
-de API do cliente). O dinheiro cai direto na conta do cliente — o Zellate
-**nunca intermedia valores** (zero risco regulatório/KYC para nós) e não cobra
-nada em cima; nosso ganho é a assinatura do CRM.
+**Fluxo do dinheiro — modelo ZELLATE PAY (subcontas white-label):** o Zellate
+tem uma **conta raiz** no Asaas e abre uma **subconta em nome de cada cliente
+via API**, por dentro do produto — o cliente nunca visita o site do Asaas. O
+dinheiro das vendas dele cai na subconta **dele** (segregação financeira por
+CNPJ/CPF preservada), e cada cobrança carrega um **split automático** para a
+carteira raiz: a taxa Zellate por transação vira **segunda linha de receita**
+além da assinatura.
+
+Consequências assumidas: (a) o white-label precisa ser **habilitado pelo
+gerente de contas do Asaas** na conta raiz (contato comercial antes da F1);
+(b) o KYC continua existindo — os documentos do cliente são enviados pelo
+onboarding do Asaas (link/URL embutível na nossa tela), e o Asaas pode
+**bloquear a criação de novas subcontas** quando limites regulatórios de
+quantidade/valor são atingidos até a documentação ser avaliada — a UI trata
+os estados "pendente de documentos" e "em análise" como cidadãos de primeira
+classe; (c) a `apiKey` da subconta é retornada **UMA única vez** na criação —
+persistir cifrada imediatamente ou a conta fica órfã.
+
+Caminho secundário mantido: cliente que **já tem** conta Asaas pode conectar
+colando a própria chave (sem split — vira argumento para migrar para a
+subconta Zellate Pay, onde tudo é gerenciado por nós).
 
 ---
 
@@ -50,6 +67,14 @@ quando a cobrança é **efetivamente paga**; emissão não paga é grátis):
 | **Boleto** | **R$ 1,99** (promo: R$ 0,99 nos 3 primeiros meses) | compensação 1–2 dias úteis |
 | **Cartão de crédito** | percentual sobre a venda + fixo por transação (varia à vista/parcelado) | ver tabela vigente no link abaixo |
 
+**Taxa Zellate (split):** sobre cada cobrança recebida via subconta Zellate
+Pay, um split fixo configurável (ex.: **R$ 0,50/transação**, definido em
+configuração da instância — env `ZELLATE_PAY_TAXA_CENTAVOS`) é transferido
+automaticamente à carteira raiz. A tela de custos do cliente exibe as duas
+linhas separadas ("taxa do provedor Asaas" e "taxa Zellate Pay") — nunca
+misturar. Taxas white-label da conta raiz são negociáveis com o comercial do
+Asaas; renegociar com volume.
+
 > ⚠️ Valores de referência coletados em **10/07/2026** na página oficial
 > <https://www.asaas.com/precos-e-taxas> (ver também
 > <https://blog.asaas.com/taxas-asaas/> e <https://www.asaas.com/link-pagamento>).
@@ -68,8 +93,16 @@ o consumidor final conhece), Efí/Gerencianet (Pix de custo mínimo).
 
 ```
 core."financeiroConta"    — 1..n por workspace
-  id, workspaceId, provider ('ASAAS'), apiKeyEncrypted, ambiente ('SANDBOX'|'PRODUCAO'),
-  webhookToken, status ('CONECTADA'|'ERRO'), nomeConta, createdAt/updatedAt
+  id, workspaceId, provider ('ASAAS'),
+  tipo ('SUBCONTA_ZELLATE'|'CONTA_PROPRIA'),
+  apiKeyEncrypted (da SUBconta; retornada 1x na criação — cifrar na hora),
+  walletId (para o split), asaasAccountId,
+  ambiente ('SANDBOX'|'PRODUCAO'), webhookToken,
+  statusConta ('PENDENTE_DOCUMENTOS'|'EM_ANALISE'|'APROVADA'|'REPROVADA'|'ERRO'),
+  onboardingUrl (link de envio de documentos do Asaas),
+  dadosCadastrais jsonb (nome/razão, cpfCnpj, email, telefone, endereço,
+  tipo de empresa — o que foi enviado no POST /accounts),
+  createdAt/updatedAt
 
 core."fatura"             — a cobrança
   id, workspaceId, numero (sequencial por workspace: ZLT-0001…),
@@ -112,10 +145,26 @@ real.
 **Backend:**
 1. Módulo `core-modules/financeiro`: entidades acima (`financeiroConta`,
    `fatura`, `faturaEvento`) + migrations fast instance command.
-2. `FinanceiroProvider` (interface): `criarCliente`, `criarCobranca`,
-   `obterPix`, `cancelarCobranca`, `validarWebhook`, `testarConexao`.
+2. `FinanceiroProvider` (interface): `criarSubconta`, `statusSubconta`,
+   `criarCliente`, `criarCobranca` (com `split[]`), `obterPix`,
+   `cancelarCobranca`, `validarWebhook`, `testarConexao`.
    `AsaasProvider` implementa contra `https://api-sandbox.asaas.com/v3`
    (sandbox) e `https://api.asaas.com/v3` (produção) — header `access_token`.
+   **Duas chaves em jogo:** a chave RAIZ (env `ZELLATE_PAY_ROOT_API_KEY` +
+   `ZELLATE_PAY_ROOT_WALLET_ID`, só no servidor) é usada apenas para
+   `POST /accounts` (criar subconta) e consultas de plataforma; TODAS as
+   operações de cobrança usam a chave da SUBconta do workspace.
+2b. **Onboarding Zellate Pay** (mutation `ativarZellatePay(dados)`):
+   `POST /accounts` com os dados cadastrais do cliente → resposta traz
+   `apiKey` (cifrar e persistir IMEDIATAMENTE — só vem uma vez) + `walletId`
+   + `accountId` → configurar webhooks da subconta via API em seguida →
+   persistir `onboardingUrl` de envio de documentos → statusConta
+   'PENDENTE_DOCUMENTOS'. Webhooks de status de conta (aprovação/reprovação)
+   atualizam `statusConta` e notificam o sininho. Falha em passo posterior à
+   criação NÃO pode perder a apiKey (persistir antes de qualquer outro passo).
+2c. **Split:** toda cobrança criada por subconta Zellate Pay inclui
+   `split: [{ walletId: RAIZ, fixedValue: taxa }]`. Contas do tipo
+   CONTA_PROPRIA não têm split.
 3. Fluxo criar fatura: upsert de cliente no Asaas (nome + CPF/CNPJ opcional +
    telefone do lead vinculado) → `POST /payments` com `billingType`
    conforme escolha do usuário (`PIX` | `CREDIT_CARD` | `BOLETO` |
@@ -139,13 +188,23 @@ real.
    `conectarFinanceiro(apiKey, ambiente)`, `financeiroStatus`.
 
 **Frontend:**
-8. **Configurações → Financeiro**: conectar Asaas (campo chave API +
-   sandbox/produção + botão "Testar conexão"), instruções de onde gerar a
-   chave, e o **quadro de custos da Seção 2 visível** (com link para a tabela
-   oficial e a frase "cobrados pelo Asaas por cobrança recebida — o Zellate
-   não cobra nada sobre seus recebimentos"). Mostrar URL do webhook para o
-   cliente colar no painel Asaas (ou criar via API `POST /webhooks` na
-   conexão — preferível).
+8. **Configurações → Financeiro — "Ativar recebimentos" (Zellate Pay)**:
+   formulário guiado em passos, tudo dentro do produto:
+   - Passo 1 — dados do negócio: nome/razão social, CPF/CNPJ, e-mail,
+     telefone, endereço, tipo de empresa (MEI/ME/etc.);
+   - Passo 2 — criação instantânea da conta de recebimento (POST /accounts
+     por baixo; o cliente não vê o Asaas);
+   - Passo 3 — **envio de documentos** (KYC): botão que abre o
+     `onboardingUrl` do Asaas; a tela mostra o status em tempo real
+     ("Pendente de documentos" → "Em análise" → "Aprovada ✓"), atualizado
+     por webhook, com aviso honesto de que a aprovação é do provedor;
+   - Quadro de custos SEMPRE visível com as duas linhas separadas:
+     taxa do provedor (tabela Seção 2) e **taxa Zellate Pay
+     (R$ X,XX/transação recebida)** — transparência é feature;
+   - Enquanto statusConta ≠ APROVADA: pode criar fatura em rascunho, não
+     pode enviar cobrança (CTA explica o porquê);
+   - Link discreto "Já tenho conta Asaas" → fluxo alternativo de colar a
+     chave própria (tipo CONTA_PROPRIA, sem split).
 9. **Página `/faturas`** fiel a `fatura.png`, em PT-BR:
    - Cards do overview: **Vencidas (R$)** · **A vencer em 30 dias (R$)** ·
      **Tempo médio para receber (dias)** · **Recebido no mês (R$)**;
@@ -167,7 +226,9 @@ real.
 **Sem conta conectada:** a página `/faturas` mostra empty-state com o pitch e
 botão para Configurações → Financeiro (não esconder o menu).
 
-**DoD F1:** criar fatura sandbox no fluxo lead→WhatsApp; pagar no sandbox;
+**DoD F1:** ativar Zellate Pay no sandbox cria subconta e persiste
+apiKey/walletId cifrados; split da taxa Zellate presente na cobrança de teste;
+criar fatura sandbox no fluxo lead→WhatsApp; pagar no sandbox;
 ver status virar Paga sem refresh manual (polling 60s na página é aceitável na
 F1); lead move para Ganho; cards do overview batem com a tabela; zero inglês;
 typecheck + build + verificação de artefato no domínio (ritual de deploy).
@@ -277,7 +338,15 @@ no builder de automações.
 
 ## 6. Pré-requisitos do fundador antes da F1
 
-1. Criar conta em <https://www.asaas.com> (grátis) e gerar a **chave de API
-   do Sandbox** (Painel → Integrações → API).
-2. Confirmar a tabela de taxas vigente na conta criada (Seção 2).
-3. OK explícito para iniciar a F1 (contrato CLAUDE.md §7).
+1. Criar a **conta raiz** do Zellate no Asaas (PJ, em nome da sua empresa)
+   em <https://www.asaas.com> e completar o cadastro/verificação dela.
+2. **Falar com o comercial/gerente de contas do Asaas** e pedir a habilitação
+   de **criação de subcontas white-label** na conta raiz (é liberação
+   comercial, não técnica) — aproveitar para negociar as taxas white-label
+   e entender os limites regulatórios de criação de subcontas
+   (docs: <https://docs.asaas.com/docs/criacao-de-subcontas-whitelabel>).
+3. Gerar a **chave de API do Sandbox** da conta raiz (Painel → Integrações →
+   API) e me enviar junto com o **walletId** da raiz.
+4. Definir a **taxa Zellate Pay** por transação (sugestão inicial:
+   R$ 0,50 fixo — simples de comunicar; revisitar com volume).
+5. OK explícito para iniciar a F1 (contrato CLAUDE.md §7).
