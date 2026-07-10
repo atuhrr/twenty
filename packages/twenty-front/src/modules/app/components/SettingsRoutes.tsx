@@ -9,6 +9,12 @@ import { getSettingsPath } from 'twenty-shared/utils';
 import { PermissionFlagType } from '~/generated-metadata/graphql';
 
 // FORK: WhatsApp integration
+const SettingsFinanceiro = lazy(() =>
+  import('~/pages/settings/financeiro/SettingsFinanceiro').then((module) => ({
+    default: module.SettingsFinanceiro,
+  })),
+);
+
 const SettingsWhatsapp = lazy(() =>
   import('~/pages/settings/whatsapp/SettingsWhatsapp').then((module) => ({
     default: module.SettingsWhatsapp,
@@ -726,6 +732,8 @@ export const SettingsRoutes = ({ isAdminPageEnabled }: SettingsRoutesProps) => (
         />
         {/* FORK: WhatsApp integration */}
         <Route path={SettingsPath.Whatsapp} element={<SettingsWhatsapp />} />
+        {/* FORK: Zellate — F1 Financeiro */}
+        <Route path={SettingsPath.Financeiro} element={<SettingsFinanceiro />} />
         {/* FORK: Voka CRM — Fase 12: broadcast */}
         <Route path={SettingsPath.Broadcast} element={<SettingsBroadcast />} />
         {/* FORK: Voka CRM — Fase 16: Integration Marketplace */}

@@ -51,6 +51,7 @@ const GRUPOS: GrupoNav[] = [
     titulo: 'Canais',
     itens: [
       { label: 'WhatsApp', path: getSettingsPath(SettingsPath.Whatsapp) },
+      { label: 'Financeiro', path: getSettingsPath(SettingsPath.Financeiro) },
       { label: 'Campanhas', path: getSettingsPath(SettingsPath.Broadcast) },
       {
         label: 'Canais conectados',

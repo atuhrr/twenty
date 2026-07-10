@@ -198,6 +198,13 @@ const WebFormsPage = lazy(() =>
   })),
 );
 
+// FORK: Zellate — F1 Financeiro: página de Faturas
+const FaturasPage = lazy(() =>
+  import('~/pages/faturas/FaturasPage').then((module) => ({
+    default: module.FaturasPage,
+  })),
+);
+
 // FORK: Zellate — Calendário do usuário (eventos + tarefas com prazo)
 const CalendarioPage = lazy(() =>
   import('~/pages/calendario/CalendarioPage').then((module) => ({
@@ -619,6 +626,14 @@ export const useCreateAppRouter = (
               element={
                 <LazyRoute>
                   <CalendarioPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/faturas"
+              element={
+                <LazyRoute>
+                  <FaturasPage />
                 </LazyRoute>
               }
             />

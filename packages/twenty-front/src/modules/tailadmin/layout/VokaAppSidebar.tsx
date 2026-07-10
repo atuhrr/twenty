@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CalendarDays,
+import { Receipt, CalendarDays,
   Bot,
   Building2,
   ChevronDown,
@@ -43,6 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Caixa de Entrada', to: '/inbox', Icon: Inbox },
       { label: 'Tarefas', to: '/tarefas', Icon: ListChecks },
       { label: 'Calendário', to: '/calendario', Icon: CalendarDays },
+      { label: 'Faturas', to: '/faturas', Icon: Receipt },
       {
         label: 'Leads não classificados',
         to: '/leads-nao-classificados',

@@ -405,6 +405,16 @@ function ContactDarkPanel({
             )}
           </div>
 
+          {thread.opportunityId && (
+            <Link
+              to={`/faturas?nova=1&leadId=${thread.opportunityId}&leadNome=${encodeURIComponent(displayName)}&valorCentavos=${Math.round((Number(lead?.amount?.amountMicros ?? 0) || 0) / 10_000)}&telefone=${thread.phoneNumber ?? ''}`}
+              className="block w-full rounded px-2 py-2 text-center text-white text-xs font-bold"
+              style={{ background: '#12B76A' }}
+            >
+              💰 Cobrar este lead
+            </Link>
+          )}
+
           <div className="pt-2 space-y-1.5" style={{ borderTop: `1px solid ${PANEL_LINE}` }}>
             {thread.personId && (
               <Link
