@@ -73,6 +73,9 @@ export function RecordTimeline({
 }: RecordTimelineProps) {
   const [aba, setAba] = useState<AbaTimeline>('tudo');
   const [novaNota, setNovaNota] = useState('');
+  const [modoComposer, setModoComposer] = useState<'nota' | 'tarefa'>('nota');
+  const [novaTarefa, setNovaTarefa] = useState('');
+  const [prazoTarefa, setPrazoTarefa] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   const filtroTarget = { [targetField]: { eq: recordId } };
@@ -88,7 +91,8 @@ export function RecordTimeline({
       limit: 50,
     });
 
-  const { records: taskTargets } = useFindManyRecords<TaskTarget>({
+  const { records: taskTargets, refetch: refetchTarefas } =
+    useFindManyRecords<TaskTarget>({
     objectNameSingular: 'taskTarget',
     filter: filtroTarget,
     recordGqlFields: {
@@ -110,6 +114,13 @@ export function RecordTimeline({
   const { createOneRecord: criarNoteTarget } = useCreateOneRecord({
     objectNameSingular: 'noteTarget',
   });
+  // FORK: Zellate — criação de tarefa vinculada direto na timeline do registro
+  const { createOneRecord: criarTarefa } = useCreateOneRecord({
+    objectNameSingular: 'task',
+  });
+  const { createOneRecord: criarTaskTarget } = useCreateOneRecord({
+    objectNameSingular: 'taskTarget',
+  });
 
   const salvarNota = async () => {
     const titulo = novaNota.trim();
@@ -121,6 +132,27 @@ export function RecordTimeline({
       await criarNoteTarget({ noteId, [targetField]: recordId });
       setNovaNota('');
       await refetchNotas();
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const salvarTarefa = async () => {
+    const titulo = novaTarefa.trim();
+    if (titulo === '') return;
+    setSalvando(true);
+    try {
+      const taskId = uuidv4();
+      await criarTarefa({
+        id: taskId,
+        title: titulo,
+        status: 'TODO',
+        ...(prazoTarefa ? { dueAt: new Date(prazoTarefa).toISOString() } : {}),
+      });
+      await criarTaskTarget({ taskId, [targetField]: recordId });
+      setNovaTarefa('');
+      setPrazoTarefa('');
+      await refetchTarefas();
     } finally {
       setSalvando(false);
     }
@@ -170,24 +202,69 @@ export function RecordTimeline({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5">
-      {/* Nova nota */}
+      {/* Composer: nota ou tarefa vinculada ao registro */}
       <div className="mb-4">
-        <textarea
-          value={novaNota}
-          onChange={(e) => setNovaNota(e.target.value)}
-          placeholder="Escreva uma nota..."
-          rows={2}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        />
-        <div className="flex justify-end mt-2">
-          <button
-            onClick={salvarNota}
-            disabled={salvando || novaNota.trim() === ''}
-            className="px-3 py-1.5 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
-          >
-            {salvando ? 'Salvando…' : 'Salvar nota'}
-          </button>
+        <div className="flex gap-1.5 mb-2">
+          {(['nota', 'tarefa'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setModoComposer(m)}
+              className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                modoComposer === m
+                  ? 'bg-brand-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+              }`}
+            >
+              {m === 'nota' ? '+ Nota' : '+ Tarefa'}
+            </button>
+          ))}
         </div>
+
+        {modoComposer === 'nota' ? (
+          <>
+            <textarea
+              value={novaNota}
+              onChange={(e) => setNovaNota(e.target.value)}
+              placeholder="Escreva uma nota..."
+              rows={2}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={salvarNota}
+                disabled={salvando || novaNota.trim() === ''}
+                className="px-3 py-1.5 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                {salvando ? 'Salvando…' : 'Salvar nota'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <input
+              value={novaTarefa}
+              onChange={(e) => setNovaTarefa(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && void salvarTarefa()}
+              placeholder="Título da tarefa..."
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            />
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <input
+                type="date"
+                value={prazoTarefa}
+                onChange={(e) => setPrazoTarefa(e.target.value)}
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
+              />
+              <button
+                onClick={() => void salvarTarefa()}
+                disabled={salvando || novaTarefa.trim() === ''}
+                className="px-3 py-1.5 text-sm font-medium bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                {salvando ? 'Criando…' : 'Criar tarefa'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Abas */}

@@ -7,6 +7,9 @@ export const GET_WHATSAPP_THREADS = gql`
       contactId
       phoneNumber
       contactName
+      personId
+      opportunityId
+      botPaused
       unreadCount
       channelType
       assignedUserId

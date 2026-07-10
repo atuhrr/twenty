@@ -10,6 +10,7 @@ import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadata
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { LeadKanbanCard } from '@/funil/LeadKanbanCard';
+import { useWhatsappThreads } from '@/whatsapp/hooks/useWhatsappThreads';
 
 // FORK: Voka CRM — T-13: a faixa de 4px lê a cor da opção da etapa via CSS var
 // do tema (--t-color-{nome}), sem hex hardcodado (CLAUDE.md § 3.2).
@@ -50,6 +51,21 @@ export function FunilKanbanPage() {
   } as any);
 
   const { updateOneRecord } = useUpdateOneRecord();
+
+  // FORK: Zellate — conversas do WhatsApp por lead (badge de não lidas)
+  const { threads } = useWhatsappThreads();
+  const threadByOpportunity = useMemo(() => {
+    const map = new Map<string, { contactId: string; unreadCount: number }>();
+    for (const t of threads) {
+      if (t.opportunityId) {
+        map.set(t.opportunityId, {
+          contactId: t.contactId,
+          unreadCount: t.unreadCount,
+        });
+      }
+    }
+    return map;
+  }, [threads]);
 
   const leads = records as any[];
 
@@ -250,6 +266,11 @@ export function FunilKanbanPage() {
                                     index={idx}
                                     provided={dragProvided}
                                     snapshot={dragSnapshot}
+                                    unreadCount={threadByOpportunity.get(lead.id)?.unreadCount ?? 0}
+                                    onOpenChat={() => {
+                                      const chat = threadByOpportunity.get(lead.id);
+                                      if (chat) navigate(`/inbox?contactId=${chat.contactId}`);
+                                    }}
                                   />
                                 )}
                               </Draggable>

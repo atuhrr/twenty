@@ -11,6 +11,9 @@ export type WhatsappThread = {
   contactId: string;
   phoneNumber: string | null;
   contactName: string | null;
+  personId: string | null;
+  opportunityId: string | null;
+  botPaused: boolean;
   unreadCount: number;
   channelType: string;
   lastMessage: WhatsappMessage;

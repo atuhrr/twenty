@@ -8,6 +8,8 @@ import { Repository } from 'typeorm';
 
 import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-thread-summary.dto';
 
+import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
 import { ConnectWhatsappInput } from 'src/engine/core-modules/whatsapp/dtos/connect-whatsapp.input';
 import { CreateWhatsappQuickReplyInput } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-quick-reply.dto';
@@ -44,6 +46,8 @@ export class WhatsappService {
     @InjectRepository(WhatsappQuickReplyEntity)
     private readonly quickReplyRepo: Repository<WhatsappQuickReplyEntity>,
     private readonly secretEncryptionService: SecretEncryptionService,
+    // FORK: Zellate — atualiza o lead vinculado (responsável) ao atribuir
+    private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
   ) {}
 
   private getMetaClient(accessToken: string): AxiosInstance {
@@ -422,6 +426,9 @@ export class WhatsappService {
           m."channelType",
           cw."phoneNumber",
           cw."contactName",
+          cw."personId",
+          cw."opportunityId",
+          cw."botPaused",
           cw."assignedUserId",
           cw."assignedUserName"
        FROM "core"."whatsappMessage" m
@@ -454,6 +461,9 @@ export class WhatsappService {
       contactId: row.contactId as string,
       phoneNumber: (row.phoneNumber as string | null) ?? null,
       contactName: (row.contactName as string | null) ?? null,
+      personId: (row.personId as string | null) ?? null,
+      opportunityId: (row.opportunityId as string | null) ?? null,
+      botPaused: Boolean(row.botPaused),
       channelType: (row.channelType as ChannelType) ?? ChannelType.WHATSAPP,
       lastMessage: {
         id: row.id as string,
@@ -550,6 +560,73 @@ export class WhatsappService {
     await this.contactWindowRepo.update(
       { workspaceId, contactId },
       { assignedUserId, assignedUserName },
+    );
+
+    // FORK: Zellate — reflete a atribuição no LEAD vinculado (responsável
+    // do negócio = workspaceMember), para relatórios e "meus leads".
+    const window = await this.contactWindowRepo.findOne({
+      where: { workspaceId, contactId },
+    });
+
+    if (window?.opportunityId) {
+      const authContext = buildSystemAuthContext(workspaceId);
+
+      await this.globalWorkspaceOrmManager
+        .executeInWorkspaceContext(async () => {
+          const opportunityRepo =
+            await this.globalWorkspaceOrmManager.getRepository(
+              workspaceId,
+              'opportunity',
+              { shouldBypassPermissionChecks: true },
+            );
+
+          await opportunityRepo.update(window.opportunityId as string, {
+            ownerId: assignedUserId,
+          } as never);
+        }, authContext)
+        .catch((err) => {
+          this.logger.warn(
+            `Falha ao atualizar responsável do lead: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+    }
+  }
+
+  // FORK: Zellate — zera o não-lido da conversa (mensagens recebidas viram
+  // READ no nosso banco) e envia o recibo de leitura da última à Meta.
+  async markThreadRead(workspaceId: string, contactId: string): Promise<void> {
+    const lastInbound = await this.messageRepo.findOne({
+      where: {
+        workspaceId,
+        contactId,
+        direction: WhatsappMessageDirection.INBOUND,
+      },
+      order: { timestamp: 'DESC' },
+    });
+
+    await this.messageRepo.update(
+      {
+        workspaceId,
+        contactId,
+        direction: WhatsappMessageDirection.INBOUND,
+      },
+      { status: WhatsappMessageStatus.READ },
+    );
+
+    if (lastInbound?.externalMessageId) {
+      await this.markAsRead(workspaceId, '', lastInbound.externalMessageId);
+    }
+  }
+
+  // FORK: Zellate — pausa/retoma o salesbot para UMA conversa (humano assume)
+  async setBotPaused(
+    workspaceId: string,
+    contactId: string,
+    paused: boolean,
+  ): Promise<void> {
+    await this.contactWindowRepo.update(
+      { workspaceId, contactId },
+      { botPaused: paused },
     );
   }
 

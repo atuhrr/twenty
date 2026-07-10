@@ -129,6 +129,29 @@ export class WhatsappResolver {
     return true;
   }
 
+  // FORK: Zellate — zera o não-lido ao abrir a conversa no Inbox
+  @Mutation(() => Boolean)
+  async markWhatsappThreadRead(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('contactId') contactId: string,
+  ): Promise<boolean> {
+    await this.whatsappService.markThreadRead(workspace.id, contactId);
+
+    return true;
+  }
+
+  // FORK: Zellate — pausa/retoma o salesbot para uma conversa específica
+  @Mutation(() => Boolean)
+  async setWhatsappBotPaused(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('contactId') contactId: string,
+    @Args('paused') paused: boolean,
+  ): Promise<boolean> {
+    await this.whatsappService.setBotPaused(workspace.id, contactId, paused);
+
+    return true;
+  }
+
   @Mutation(() => WhatsappConnectionStatusDTO)
   async connectWhatsapp(
     @AuthWorkspace() workspace: WorkspaceEntity,

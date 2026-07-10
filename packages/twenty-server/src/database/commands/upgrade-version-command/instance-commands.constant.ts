@@ -98,6 +98,7 @@ import { CreateTeamsLossReasonsFastInstanceCommand } from './2-16/2-16-instance-
 import { TranslateStandardFieldLabelsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1783728000000-translate-standard-field-labels';
 import { AddContactNameToWhatsappWindowFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784073600000-add-contact-name-to-whatsapp-window';
 import { AddIsUnclassifiedToOpportunityFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784160000000-add-is-unclassified-to-opportunity';
+import { LinkWhatsappWindowToCrmFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784246400000-link-whatsapp-window-to-crm';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -194,6 +195,7 @@ export const INSTANCE_COMMANDS = [
   CreateRoiRelatorioTableFastInstanceCommand,
   AddContactNameToWhatsappWindowFastInstanceCommand,
   AddIsUnclassifiedToOpportunityFastInstanceCommand,
+  LinkWhatsappWindowToCrmFastInstanceCommand,
   CreateVokaCrmObjectsFastInstanceCommand,
   AddMultiNumberToWhatsappInstanceFastInstanceCommand,
   CreateTeamsLossReasonsFastInstanceCommand,

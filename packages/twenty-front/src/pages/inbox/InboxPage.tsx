@@ -1,8 +1,13 @@
 // T-5: Caixa de Entrada — Linaria styled → Tailwind CSS, lógica inalterada
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@apollo/client/react';
 
+import { useLeadTasks } from '@/funil/hooks/useLeadTasks';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
+import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
+import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { IS_WHATSAPP_MOCK } from '@/whatsapp/mocks/whatsappMockData';
 import { useWhatsappThreads, type WhatsappThread } from '@/whatsapp/hooks/useWhatsappThreads';
 import { useWhatsappMessages } from '@/whatsapp/hooks/useWhatsappMessages';
@@ -10,6 +15,8 @@ import { useSendWhatsappMessage } from '@/whatsapp/hooks/useSendWhatsappMessage'
 import { QuickReplyComposer } from '@/whatsapp/components/chat/QuickReplyComposer';
 import { TeamChatPanel } from '@/team-chat/components/TeamChatPanel';
 import { ASSIGN_WHATSAPP_THREAD } from '@/whatsapp/graphql/mutations/assignWhatsappThread';
+import { MARK_WHATSAPP_THREAD_READ } from '@/whatsapp/graphql/mutations/markWhatsappThreadRead';
+import { SET_WHATSAPP_BOT_PAUSED } from '@/whatsapp/graphql/mutations/setWhatsappBotPaused';
 import { GET_WHATSAPP_THREADS } from '@/whatsapp/graphql/queries/getWhatsappThreads';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -175,274 +182,399 @@ function ConvListShell({
 }
 
 // ─── Contact Dark Panel ───────────────────────────────────────────────────────
+// FORK: Zellate — painel "card do lead" real (estilo Kommo): dados do lead e
+// do contato vinculados, responsável de verdade, tarefas, estatísticas e
+// pausa do bot. Nada decorativo.
+
+const PANEL_MUTED = '#7C97A2';
+const PANEL_LINE = '#2C4A56';
+const PANEL_FIELD = '#19303A';
+
+function formatBRLMicros(micros: number | null | undefined): string | null {
+  const v = Number(micros ?? 0);
+  if (!v) return null;
+  return (v / 1_000_000).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+type PanelTab = 'principal' | 'tarefas' | 'estatisticas' | 'config';
+
+type LeadRecordLite = {
+  id: string;
+  name: string | null;
+  stage: string | null;
+  isUnclassified: boolean | null;
+  amount: { amountMicros: number | null } | null;
+};
+
+type PersonRecordLite = {
+  id: string;
+  emails: { primaryEmail: string | null } | null;
+};
 
 function ContactDarkPanel({
-  name,
-  phone,
-  email,
-  role,
-  value,
-  responsible,
-  stage,
-  onEditResponsible,
-  editingResponsible,
-  responsibleDraft,
-  setResponsibleDraft,
-  onSaveResponsible,
-  onNavigateToRecord,
+  thread,
+  onThreadsChanged,
 }: {
-  name: string;
-  phone?: string | null;
-  email?: string | null;
-  role?: string | null;
-  value?: string | null;
-  responsible?: string | null;
-  stage?: string | null;
-  onEditResponsible?: () => void;
-  editingResponsible?: boolean;
-  responsibleDraft?: string;
-  setResponsibleDraft?: (v: string) => void;
-  onSaveResponsible?: () => void;
-  onNavigateToRecord?: () => void;
+  thread: WhatsappThread;
+  onThreadsChanged: () => void;
 }) {
+  const [tab, setTab] = useState<PanelTab>('principal');
+
+  // ── Lead e contato reais vinculados à conversa ──
+  const { record: lead } = useFindOneRecord<LeadRecordLite>({
+    objectNameSingular: 'opportunity',
+    objectRecordId: thread.opportunityId ?? '',
+    recordGqlFields: {
+      id: true,
+      name: true,
+      stage: true,
+      isUnclassified: true,
+      amount: { amountMicros: true, currencyCode: true },
+    },
+    skip: !thread.opportunityId,
+  });
+  const { record: person } = useFindOneRecord<PersonRecordLite>({
+    objectNameSingular: 'person',
+    objectRecordId: thread.personId ?? '',
+    recordGqlFields: { id: true, name: true, emails: true },
+    skip: !thread.personId,
+  });
+
+  // Etapas do funil vindas do metadata (mesma fonte do kanban)
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular: 'opportunity',
+  });
+  const stageOptions = useMemo(() => {
+    const field = objectMetadataItem.fields.find((f) => f.name === 'stage');
+    return [...(field?.options ?? [])].sort((a, b) => a.position - b.position);
+  }, [objectMetadataItem]);
+  const { updateOneRecord } = useUpdateOneRecord();
+
+  // Membros reais do workspace para atribuição
+  const { records: members } = useFindManyRecords<{
+    id: string;
+    name: { firstName: string | null; lastName: string | null };
+  }>({
+    objectNameSingular: 'workspaceMember',
+    recordGqlFields: { id: true, name: true },
+    limit: 50,
+  });
+
+  const [assignThread] = useMutation(ASSIGN_WHATSAPP_THREAD);
+  const [setBotPausedMutation, { loading: pausing }] = useMutation(
+    SET_WHATSAPP_BOT_PAUSED,
+  );
+
+  // Tarefas do lead
+  const { tasks, createTask, toggleTaskDone, creating } = useLeadTasks(
+    thread.opportunityId,
+  );
+  const [novaTarefa, setNovaTarefa] = useState('');
+  const [novoPrazo, setNovoPrazo] = useState('');
+
+  // Estatísticas a partir das mensagens da conversa
+  const { messages } = useWhatsappMessages(thread.contactId);
+  const recebidas = messages.filter((m) => m.direction === 'INBOUND').length;
+  const enviadas = messages.length - recebidas;
+  const primeira = messages[0]?.timestamp ?? null;
+  const ultima = messages[messages.length - 1]?.timestamp ?? null;
+
+  const displayName =
+    thread.contactName ?? lead?.name ?? thread.phoneNumber ?? 'WhatsApp';
+  const memberName = (m: { name: { firstName: string | null; lastName: string | null } }) =>
+    [m.name?.firstName, m.name?.lastName].filter(Boolean).join(' ') || '(sem nome)';
+
+  const handleAssign = async (memberId: string) => {
+    const member = members.find((m) => m.id === memberId) ?? null;
+    await assignThread({
+      variables: {
+        input: {
+          contactId: thread.contactId,
+          assignedUserId: member?.id ?? null,
+          assignedUserName: member ? memberName(member) : null,
+        },
+      },
+    });
+    onThreadsChanged();
+  };
+
+  const handleStageChange = async (stage: string) => {
+    if (!lead) return;
+    await updateOneRecord({
+      objectNameSingular: 'opportunity',
+      idToUpdate: lead.id,
+      updateOneRecordInput: { stage, isUnclassified: false },
+    });
+  };
+
+  const handleTogglePause = async () => {
+    await setBotPausedMutation({
+      variables: { contactId: thread.contactId, paused: !thread.botPaused },
+    });
+    onThreadsChanged();
+  };
+
+  const handleCreateTask = async () => {
+    if (novaTarefa.trim() === '') return;
+    await createTask(novaTarefa, novoPrazo || null);
+    setNovaTarefa('');
+    setNovoPrazo('');
+  };
+
+  const selectClass = 'w-full rounded px-2 py-1.5 text-white text-xs outline-none appearance-none cursor-pointer';
+  const selectStyle = { background: PANEL_FIELD, border: `1px solid ${PANEL_LINE}` };
+
+  const tabs: Array<{ key: PanelTab; label: string }> = [
+    { key: 'principal', label: 'Principal' },
+    { key: 'tarefas', label: 'Tarefas' },
+    { key: 'estatisticas', label: 'Estatísticas' },
+    { key: 'config', label: 'Configuração' },
+  ];
+
   return (
     <div
       className="w-[270px] flex-shrink-0 flex flex-col overflow-y-auto p-4"
       style={{ background: '#203D49', color: '#E6EDF0' }}
     >
-      {/* Name */}
-      <div className="text-white text-base font-bold mb-2 truncate">{name}</div>
-
-      {/* Add tags */}
-      <div
-        className="inline-block mb-3 px-2 py-0.5 text-[10px] rounded"
-        style={{ border: '1px dashed #4A6470', color: '#9FB6C0' }}
-      >
-        + ADICIONAR TAGS
-      </div>
-
-      {/* Stage selector */}
-      <div
-        className="flex items-center justify-between rounded-lg px-3 py-2 mb-3 text-sm"
-        style={{ background: '#19303A' }}
-      >
-        <div>
-          <div className="text-[10px]" style={{ color: '#7C97A2' }}>Funil de vendas</div>
-          <div className="text-white">{stage ?? 'Leads Recebidos'}</div>
+      {/* Nome + situação */}
+      <div className="text-white text-base font-bold truncate">{displayName}</div>
+      {lead?.isUnclassified === true && (
+        <div className="mt-1 mb-1 inline-block self-start px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: '#F79009', color: '#1a1a1a' }}>
+          Lead não classificado
         </div>
-        <svg className="w-3.5 h-3.5" style={{ color: '#7C97A2' }} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      )}
+
+      {/* Etapa real do funil (edita o lead) */}
+      <div className="rounded-lg px-3 py-2 my-3 text-sm" style={{ background: PANEL_FIELD }}>
+        <div className="text-[10px] mb-1" style={{ color: PANEL_MUTED }}>Funil de vendas — etapa</div>
+        {lead ? (
+          <select
+            className={selectClass}
+            style={selectStyle}
+            value={lead.stage ?? ''}
+            onChange={(e) => void handleStageChange(e.target.value)}
+          >
+            {stageOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="text-xs" style={{ color: PANEL_MUTED }}>Sem lead vinculado a esta conversa.</div>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-3.5 text-xs mb-3 pb-2" style={{ borderBottom: '1px solid #2C4A56' }}>
-        <span className="text-white font-semibold" style={{ borderBottom: '2px solid #FFE247', paddingBottom: 6 }}>Principal</span>
-        <span className="cursor-pointer" style={{ color: '#7C97A2' }}>Estatísticas</span>
-        <span className="cursor-pointer" style={{ color: '#7C97A2' }}>Configuração</span>
-      </div>
-
-      {/* Fields */}
-      <div className="space-y-2.5 text-xs">
-        <div>
-          <div className="mb-0.5" style={{ color: '#7C97A2' }}>Responsável</div>
-          {editingResponsible ? (
-            <div className="flex gap-1.5 mt-1">
-              <input
-                className="flex-1 rounded px-2 py-1 text-white text-xs outline-none"
-                style={{ background: '#19303A', border: '1px solid #2C4A56' }}
-                value={responsibleDraft ?? ''}
-                onChange={(e) => setResponsibleDraft?.(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && onSaveResponsible?.()}
-                autoFocus
-              />
-              <button
-                className="rounded px-2 py-1 text-white text-xs font-medium"
-                style={{ background: '#437EDD' }}
-                onClick={onSaveResponsible}
-              >
-                OK
-              </button>
-            </div>
-          ) : (
-            <div
-              className="text-white cursor-pointer"
-              style={{ textDecoration: 'underline dotted' }}
-              onClick={onEditResponsible}
-            >
-              {responsible ?? '— Atribuir'}
-            </div>
-          )}
-        </div>
-
-        {value && (
-          <div>
-            <div className="mb-0.5" style={{ color: '#7C97A2' }}>Valor</div>
-            <div className="text-white text-base font-bold">{value}</div>
-          </div>
-        )}
-
-        <div style={{ borderTop: '1px solid #2C4A56', paddingTop: 10, marginTop: 10 }}>
-          {phone && (
-            <div className="mb-2.5">
-              <div className="mb-0.5" style={{ color: '#7C97A2' }}>Telefone</div>
-              <div className="text-white">{phone}</div>
-            </div>
-          )}
-          {email && (
-            <div className="mb-2.5">
-              <div className="mb-0.5" style={{ color: '#7C97A2' }}>E-mail</div>
-              <div className="text-white truncate">{email}</div>
-            </div>
-          )}
-          {role && (
-            <div>
-              <div className="mb-0.5" style={{ color: '#7C97A2' }}>Cargo</div>
-              <div className="text-white">{role}</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-auto pt-4">
-        {onNavigateToRecord && (
-          <button
-            onClick={onNavigateToRecord}
-            className="w-full text-left text-[11px] font-medium hover:underline"
-            style={{ color: '#7C97A2' }}
+      <div className="flex gap-3 text-xs mb-3 pb-2 flex-wrap" style={{ borderBottom: `1px solid ${PANEL_LINE}` }}>
+        {tabs.map((t) => (
+          <span
+            key={t.key}
+            className={`cursor-pointer ${tab === t.key ? 'text-white font-semibold' : ''}`}
+            style={tab === t.key ? { borderBottom: '2px solid #FFE247', paddingBottom: 6 } : { color: PANEL_MUTED }}
+            onClick={() => setTab(t.key)}
           >
-            + Adicionar contato / Ver perfil
-          </button>
-        )}
+            {t.label}
+          </span>
+        ))}
       </div>
-    </div>
-  );
-}
 
-// ─── Chat Panel ───────────────────────────────────────────────────────────────
+      {tab === 'principal' && (
+        <div className="space-y-3 text-xs">
+          <div>
+            <div className="mb-1" style={{ color: PANEL_MUTED }}>Responsável</div>
+            <select
+              className={selectClass}
+              style={selectStyle}
+              value={thread.assignedUserId ?? ''}
+              onChange={(e) => void handleAssign(e.target.value)}
+            >
+              <option value="">— Atribuir</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>{memberName(m)}</option>
+              ))}
+            </select>
+          </div>
 
-function ChatPanel({
-  contactId,
-  phoneNumber,
-  name,
-}: {
-  contactId: string;
-  phoneNumber: string | null;
-  name: string;
-}) {
-  const { messages } = useWhatsappMessages(contactId);
-  const { send, loading: sending } = useSendWhatsappMessage(contactId, phoneNumber ?? '');
-  const bottomRef = useRef<HTMLDivElement>(null);
+          {formatBRLMicros(lead?.amount?.amountMicros) && (
+            <div>
+              <div className="mb-0.5" style={{ color: PANEL_MUTED }}>Valor</div>
+              <div className="text-white text-base font-bold">{formatBRLMicros(lead?.amount?.amountMicros)}</div>
+            </div>
+          )}
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+          <div style={{ borderTop: `1px solid ${PANEL_LINE}`, paddingTop: 10 }}>
+            {thread.phoneNumber && (
+              <div className="mb-2.5">
+                <div className="mb-0.5" style={{ color: PANEL_MUTED }}>Telefone</div>
+                <div className="text-white">+{thread.phoneNumber}</div>
+              </div>
+            )}
+            {person?.emails?.primaryEmail && (
+              <div className="mb-2.5">
+                <div className="mb-0.5" style={{ color: PANEL_MUTED }}>E-mail</div>
+                <div className="text-white truncate">{person.emails.primaryEmail}</div>
+              </div>
+            )}
+          </div>
 
-  return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-gray-900">
-      {/* Chat header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div>
-          <div className="text-sm font-semibold text-gray-900 dark:text-white">{name}</div>
-          {phoneNumber && (
-            <div className="text-xs text-gray-400">{phoneNumber}</div>
+          <div className="pt-2 space-y-1.5" style={{ borderTop: `1px solid ${PANEL_LINE}` }}>
+            {thread.personId && (
+              <Link
+                to={`/contatos/${thread.personId}`}
+                className="block w-full text-left text-[11px] font-medium hover:underline text-white"
+              >
+                Ver contato →
+              </Link>
+            )}
+            {thread.opportunityId && (
+              <Link
+                to={`/leads/${thread.opportunityId}`}
+                className="block w-full text-left text-[11px] font-medium hover:underline text-white"
+              >
+                Ver lead →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'tarefas' && (
+        <div className="space-y-3 text-xs">
+          {!thread.opportunityId ? (
+            <div style={{ color: PANEL_MUTED }}>Sem lead vinculado — tarefas ficam no lead.</div>
+          ) : (
+            <>
+              {tasks.length === 0 && (
+                <div style={{ color: PANEL_MUTED }}>Nenhuma tarefa para este lead.</div>
+              )}
+              {tasks.map((tt) => {
+                const task = tt.task;
+                if (!task) return null;
+                const done = task.status === 'CONCLUIDO';
+                const overdue = !done && task.dueAt != null && new Date(task.dueAt) < new Date();
+                return (
+                  <label key={task.id} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={done}
+                      onChange={() => void toggleTaskDone(task.id, task.status)}
+                      className="mt-0.5"
+                    />
+                    <span className={`flex-1 ${done ? 'line-through' : 'text-white'}`} style={done ? { color: PANEL_MUTED } : undefined}>
+                      {task.title}
+                      {task.dueAt && (
+                        <span className="block text-[10px]" style={{ color: overdue ? '#F97066' : PANEL_MUTED }}>
+                          {new Date(task.dueAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+
+              <div className="pt-2 space-y-1.5" style={{ borderTop: `1px solid ${PANEL_LINE}` }}>
+                <input
+                  className="w-full rounded px-2 py-1.5 text-white text-xs outline-none"
+                  style={selectStyle}
+                  placeholder="Nova tarefa…"
+                  value={novaTarefa}
+                  onChange={(e) => setNovaTarefa(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && void handleCreateTask()}
+                />
+                <input
+                  type="date"
+                  className="w-full rounded px-2 py-1.5 text-white text-xs outline-none"
+                  style={selectStyle}
+                  value={novoPrazo}
+                  onChange={(e) => setNovoPrazo(e.target.value)}
+                />
+                <button
+                  className="w-full rounded px-2 py-1.5 text-white text-xs font-medium disabled:opacity-50"
+                  style={{ background: '#437EDD' }}
+                  disabled={creating || novaTarefa.trim() === ''}
+                  onClick={() => void handleCreateTask()}
+                >
+                  {creating ? 'Criando…' : 'Criar tarefa'}
+                </button>
+              </div>
+            </>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        {messages.map((msg) =>
-          msg.direction === 'OUTBOUND' ? (
-            <div key={msg.id} className="flex justify-end">
-              <div
-                className="rounded-xl rounded-tr-sm px-3 py-2 text-[12.5px] leading-relaxed text-white max-w-[72%]"
-                style={{ background: '#2E90FA' }}
-              >
-                {msg.content ?? '📎'}
-              </div>
-            </div>
-          ) : (
-            <div key={msg.id} className="flex justify-start">
-              <div className="rounded-xl rounded-tl-sm px-3 py-2 text-[12.5px] leading-relaxed text-gray-800 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 max-w-[72%]">
-                {msg.content ?? '📎'}
-              </div>
-            </div>
-          ),
-        )}
-        <div ref={bottomRef} />
-      </div>
+      {tab === 'estatisticas' && (
+        <div className="space-y-2.5 text-xs">
+          <div className="flex justify-between"><span style={{ color: PANEL_MUTED }}>Mensagens recebidas</span><span className="text-white font-semibold">{recebidas}</span></div>
+          <div className="flex justify-between"><span style={{ color: PANEL_MUTED }}>Mensagens enviadas</span><span className="text-white font-semibold">{enviadas}</span></div>
+          {primeira && (
+            <div className="flex justify-between"><span style={{ color: PANEL_MUTED }}>Primeira interação</span><span className="text-white">{new Date(primeira).toLocaleDateString('pt-BR')}</span></div>
+          )}
+          {ultima && (
+            <div className="flex justify-between"><span style={{ color: PANEL_MUTED }}>Última interação</span><span className="text-white">{new Date(ultima).toLocaleDateString('pt-BR')}</span></div>
+          )}
+          {formatBRLMicros(lead?.amount?.amountMicros) && (
+            <div className="flex justify-between"><span style={{ color: PANEL_MUTED }}>Valor do lead</span><span className="text-white font-semibold">{formatBRLMicros(lead?.amount?.amountMicros)}</span></div>
+          )}
+        </div>
+      )}
 
-      {/* Composer */}
-      <div className="border-t border-gray-100 dark:border-gray-800 px-4 pt-3 pb-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          <strong>Chat</strong> via WhatsApp
-        </div>
-        <QuickReplyComposer
-          placeholder={phoneNumber ? `Mensagem para ${phoneNumber}… (/ para respostas rápidas)` : 'Selecione um contato'}
-          onSend={send}
-          disabled={!phoneNumber}
-          sending={sending}
-        />
-      </div>
-    </div>
-  );
-}
-
-function MockChatPanel({ conv }: { conv: MockConv }) {
-  return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-gray-900">
-      <div className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="text-sm font-semibold text-gray-900 dark:text-white">{conv.name}</div>
-      </div>
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        {MOCK_MESSAGES.map((msg) => {
-          if (msg.type === 'day') return (
-            <div key={msg.id} className="text-center text-[10.5px] text-gray-400">{msg.text}</div>
-          );
-          if (msg.type === 'out') return (
-            <div key={msg.id} className="flex justify-end">
-              <div className="rounded-xl rounded-tr-sm px-3 py-2 text-[12.5px] text-white max-w-[72%]" style={{ background: '#2E90FA' }}>{msg.text}</div>
+      {tab === 'config' && (
+        <div className="space-y-3 text-xs">
+          <div>
+            <div className="text-white font-semibold mb-1">Assistente virtual (bot)</div>
+            <p style={{ color: PANEL_MUTED }}>
+              Pause o bot quando um humano assumir esta conversa — as mensagens
+              continuam chegando, mas o bot para de responder este cliente.
+            </p>
+          </div>
+          <button
+            className="w-full rounded px-2 py-2 text-white text-xs font-medium disabled:opacity-50"
+            style={{ background: thread.botPaused ? '#12B76A' : '#F04438' }}
+            disabled={pausing}
+            onClick={() => void handleTogglePause()}
+          >
+            {thread.botPaused ? '▶ Retomar bot nesta conversa' : '⏸ Pausar bot nesta conversa'}
+          </button>
+          {thread.botPaused && (
+            <div className="text-[11px]" style={{ color: '#F79009' }}>
+              Bot pausado — este cliente não recebe respostas automáticas.
             </div>
-          );
-          return (
-            <div key={msg.id} className="flex justify-start">
-              <div className="rounded-xl rounded-tl-sm px-3 py-2 text-[12.5px] text-gray-800 bg-gray-100 max-w-[72%]">{msg.text}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="border-t border-gray-100 px-4 pt-3 pb-4">
-        <div className="text-xs text-gray-500 mb-2"><strong>Chat</strong> com {conv.contact.responsible}</div>
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01" /></svg>
-          <span className="flex-1">Escreva uma mensagem para {conv.name}…</span>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+          )}
         </div>
-        <div className="flex gap-2 mt-2.5">
-          <button className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white" style={{ background: '#D0D5DD' }}>Enviar</button>
-          <span className="text-xs text-gray-500 py-1.5 cursor-pointer">Cancelar</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
 
 // ─── Real-data mode ───────────────────────────────────────────────────────────
 
-function RealInbox({ threads }: { threads: WhatsappThread[] }) {
-  const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState('');
+function RealInbox({
+  threads,
+  refetchThreads,
+}: {
+  threads: WhatsappThread[];
+  refetchThreads: () => void;
+}) {
+  const [searchParams] = useSearchParams();
+  const [selectedId, setSelectedId] = useState(
+    () => searchParams.get('contactId') ?? '',
+  );
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('todos');
   const [search, setSearch] = useState('');
-  const [editingResponsible, setEditingResponsible] = useState(false);
-  const [responsibleDraft, setResponsibleDraft] = useState('');
-
-  const [assignThread] = useMutation(ASSIGN_WHATSAPP_THREAD, {
-    refetchQueries: [{ query: GET_WHATSAPP_THREADS }],
-  });
 
   const effectiveId = selectedId || threads[0]?.contactId || '';
   const selectedThread = threads.find((t) => t.contactId === effectiveId) ?? threads[0];
+
+  // FORK: Zellate — abrir a conversa zera o não-lido (banco + recibo à Meta)
+  const [markThreadRead] = useMutation(MARK_WHATSAPP_THREAD_READ, {
+    refetchQueries: [{ query: GET_WHATSAPP_THREADS }],
+  });
+
+  useEffect(() => {
+    const current = threads.find((t) => t.contactId === effectiveId);
+    if (current && current.unreadCount > 0) {
+      void markThreadRead({ variables: { contactId: current.contactId } });
+    }
+  }, [effectiveId, threads, markThreadRead]);
 
   const visibleThreads = threads.filter((t) => {
     const matchesChannel =
@@ -455,14 +587,6 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
   });
 
   const activeTab = CHANNEL_TABS.find((t) => t.key === channelFilter);
-
-  const handleSaveResponsible = async () => {
-    if (!selectedThread) return;
-    await assignThread({
-      variables: { input: { contactId: selectedThread.contactId, assignedUserName: responsibleDraft.trim() || null } },
-    });
-    setEditingResponsible(false);
-  };
 
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -531,15 +655,9 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
       {/* Col 2 */}
       {selectedThread ? (
         <ContactDarkPanel
-          name={selectedThread.phoneNumber ?? 'WhatsApp'}
-          phone={selectedThread.phoneNumber}
-          responsible={selectedThread.assignedUserName}
-          editingResponsible={editingResponsible}
-          responsibleDraft={responsibleDraft}
-          setResponsibleDraft={setResponsibleDraft}
-          onEditResponsible={() => { setResponsibleDraft(selectedThread.assignedUserName ?? ''); setEditingResponsible(true); }}
-          onSaveResponsible={() => void handleSaveResponsible()}
-          onNavigateToRecord={() => navigate(`/objects/people/${selectedThread.contactId}`)}
+          key={selectedThread.contactId}
+          thread={selectedThread}
+          onThreadsChanged={refetchThreads}
         />
       ) : (
         <div className="w-[270px] flex-shrink-0" style={{ background: '#203D49' }} />
@@ -550,7 +668,7 @@ function RealInbox({ threads }: { threads: WhatsappThread[] }) {
         <ChatPanel
           contactId={selectedThread.contactId}
           phoneNumber={selectedThread.phoneNumber}
-          name={selectedThread.phoneNumber ?? 'WhatsApp'}
+          name={selectedThread.contactName ?? selectedThread.phoneNumber ?? 'WhatsApp'}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-sm text-gray-400 bg-white dark:bg-gray-900">
@@ -630,11 +748,15 @@ function MockInbox() {
 // ─── Page entry ───────────────────────────────────────────────────────────────
 
 export const InboxPage = () => {
-  const { threads } = useWhatsappThreads();
+  const { threads, refetch } = useWhatsappThreads();
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden p-4">
-      {IS_WHATSAPP_MOCK ? <MockInbox /> : <RealInbox threads={threads} />}
+      {IS_WHATSAPP_MOCK ? (
+        <MockInbox />
+      ) : (
+        <RealInbox threads={threads} refetchThreads={() => void refetch()} />
+      )}
     </div>
   );
 };

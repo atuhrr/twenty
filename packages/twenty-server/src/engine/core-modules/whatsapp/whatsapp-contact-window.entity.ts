@@ -35,6 +35,19 @@ export class WhatsappContactWindowEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   contactName: string | null;
 
+  // FORK: Zellate — vínculo com o CRM: Contato (person) e Lead (opportunity)
+  // do schema do workspace (added via migration)
+  @Column({ nullable: true, type: 'uuid' })
+  personId: string | null;
+
+  @Column({ nullable: true, type: 'uuid' })
+  opportunityId: string | null;
+
+  // FORK: Zellate — quando true, o salesbot não responde esta conversa
+  // (um humano assumiu o atendimento) (added via migration)
+  @Column({ nullable: false, type: 'boolean', default: false })
+  botPaused: boolean;
+
   // FORK: Voka CRM — Fase 11: which user is handling this thread
   @Column({ nullable: true, type: 'uuid' })
   assignedUserId: string | null;

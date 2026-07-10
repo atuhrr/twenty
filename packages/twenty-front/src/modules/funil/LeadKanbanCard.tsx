@@ -41,6 +41,9 @@ interface LeadKanbanCardProps {
   index: number;
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
+  // FORK: Zellate — mensagens não lidas no WhatsApp deste lead
+  unreadCount?: number;
+  onOpenChat?: () => void;
 }
 
 export function LeadKanbanCard({
@@ -48,6 +51,8 @@ export function LeadKanbanCard({
   index,
   provided,
   snapshot,
+  unreadCount = 0,
+  onOpenChat,
 }: LeadKanbanCardProps) {
   const navigate = useNavigate();
   const didDragRef = useRef(false);
@@ -73,8 +78,26 @@ export function LeadKanbanCard({
       onMouseMove={() => { didDragRef.current = true; }}
       onClick={() => { if (!didDragRef.current) navigate(`/leads/${lead.id}`); }}
     >
-      {/* Name */}
-      <p className="font-semibold text-sm text-gray-900 truncate mb-1">{name}</p>
+      {/* Name + badge de mensagens não lidas (WhatsApp) */}
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <p className="font-semibold text-sm text-gray-900 truncate">{name}</p>
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            title={`${unreadCount} mensagem(ns) não lida(s) — abrir conversa`}
+            className="flex-shrink-0 inline-flex items-center gap-1 rounded-full bg-success-500 px-1.5 py-0.5 text-[10px] font-bold text-white hover:opacity-90"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenChat?.();
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+              <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
+            </svg>
+            {unreadCount}
+          </button>
+        )}
+      </div>
 
       {/* Company */}
       {companyName && (

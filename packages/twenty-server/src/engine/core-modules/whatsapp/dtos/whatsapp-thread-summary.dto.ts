@@ -16,6 +16,17 @@ export class WhatsappThreadSummaryDTO {
   @Field(() => String, { nullable: true })
   contactName: string | null;
 
+  // FORK: Zellate — vínculo com o CRM (person/opportunity do workspace)
+  @Field(() => String, { nullable: true })
+  personId: string | null;
+
+  @Field(() => String, { nullable: true })
+  opportunityId: string | null;
+
+  // FORK: Zellate — bot pausado para esta conversa (humano assumiu)
+  @Field(() => Boolean)
+  botPaused: boolean;
+
   @Field(() => WhatsappMessageDTO)
   lastMessage: WhatsappMessageDTO;
 
