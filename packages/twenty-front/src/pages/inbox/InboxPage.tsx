@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@apollo/client/react';
 
 import { useLeadTasks } from '@/funil/hooks/useLeadTasks';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
@@ -198,17 +199,19 @@ function formatBRLMicros(micros: number | null | undefined): string | null {
 
 type PanelTab = 'principal' | 'tarefas' | 'estatisticas' | 'config';
 
-type LeadRecordLite = {
-  id: string;
-  name: string | null;
-  stage: string | null;
-  isUnclassified: boolean | null;
-  amount: { amountMicros: number | null } | null;
+type LeadRecordLite = ObjectRecord & {
+  name?: string | null;
+  stage?: string | null;
+  isUnclassified?: boolean | null;
+  amount?: { amountMicros: number | null } | null;
 };
 
-type PersonRecordLite = {
-  id: string;
-  emails: { primaryEmail: string | null } | null;
+type PersonRecordLite = ObjectRecord & {
+  emails?: { primaryEmail: string | null } | null;
+};
+
+type MemberRecordLite = ObjectRecord & {
+  name?: { firstName: string | null; lastName: string | null } | null;
 };
 
 function ContactDarkPanel({
@@ -251,10 +254,7 @@ function ContactDarkPanel({
   const { updateOneRecord } = useUpdateOneRecord();
 
   // Membros reais do workspace para atribuição
-  const { records: members } = useFindManyRecords<{
-    id: string;
-    name: { firstName: string | null; lastName: string | null };
-  }>({
+  const { records: members } = useFindManyRecords<MemberRecordLite>({
     objectNameSingular: 'workspaceMember',
     recordGqlFields: { id: true, name: true },
     limit: 50,
@@ -281,7 +281,7 @@ function ContactDarkPanel({
 
   const displayName =
     thread.contactName ?? lead?.name ?? thread.phoneNumber ?? 'WhatsApp';
-  const memberName = (m: { name: { firstName: string | null; lastName: string | null } }) =>
+  const memberName = (m: MemberRecordLite) =>
     [m.name?.firstName, m.name?.lastName].filter(Boolean).join(' ') || '(sem nome)';
 
   const handleAssign = async (memberId: string) => {
@@ -545,6 +545,115 @@ function ContactDarkPanel({
   );
 }
 
+// ─── Chat Panel ───────────────────────────────────────────────────────────────
+
+function ChatPanel({
+  contactId,
+  phoneNumber,
+  name,
+}: {
+  contactId: string;
+  phoneNumber: string | null;
+  name: string;
+}) {
+  const { messages } = useWhatsappMessages(contactId);
+  const { send, loading: sending } = useSendWhatsappMessage(contactId, phoneNumber ?? '');
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-gray-900">
+      {/* Chat header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div>
+          <div className="text-sm font-semibold text-gray-900 dark:text-white">{name}</div>
+          {phoneNumber && (
+            <div className="text-xs text-gray-400">{phoneNumber}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        {messages.map((msg) =>
+          msg.direction === 'OUTBOUND' ? (
+            <div key={msg.id} className="flex justify-end">
+              <div
+                className="rounded-xl rounded-tr-sm px-3 py-2 text-[12.5px] leading-relaxed text-white max-w-[72%]"
+                style={{ background: '#2E90FA' }}
+              >
+                {msg.content ?? '📎'}
+              </div>
+            </div>
+          ) : (
+            <div key={msg.id} className="flex justify-start">
+              <div className="rounded-xl rounded-tl-sm px-3 py-2 text-[12.5px] leading-relaxed text-gray-800 bg-gray-100 dark:bg-gray-800 dark:text-gray-100 max-w-[72%]">
+                {msg.content ?? '📎'}
+              </div>
+            </div>
+          ),
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Composer */}
+      <div className="border-t border-gray-100 dark:border-gray-800 px-4 pt-3 pb-4">
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          <strong>Chat</strong> via WhatsApp
+        </div>
+        <QuickReplyComposer
+          placeholder={phoneNumber ? `Mensagem para ${phoneNumber}… (/ para respostas rápidas)` : 'Selecione um contato'}
+          onSend={send}
+          disabled={!phoneNumber}
+          sending={sending}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MockChatPanel({ conv }: { conv: MockConv }) {
+  return (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">{conv.name}</div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        {MOCK_MESSAGES.map((msg) => {
+          if (msg.type === 'day') return (
+            <div key={msg.id} className="text-center text-[10.5px] text-gray-400">{msg.text}</div>
+          );
+          if (msg.type === 'out') return (
+            <div key={msg.id} className="flex justify-end">
+              <div className="rounded-xl rounded-tr-sm px-3 py-2 text-[12.5px] text-white max-w-[72%]" style={{ background: '#2E90FA' }}>{msg.text}</div>
+            </div>
+          );
+          return (
+            <div key={msg.id} className="flex justify-start">
+              <div className="rounded-xl rounded-tl-sm px-3 py-2 text-[12.5px] text-gray-800 bg-gray-100 max-w-[72%]">{msg.text}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+        <div className="text-xs text-gray-500 mb-2"><strong>Chat</strong> com {conv.contact.responsible}</div>
+        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01" /></svg>
+          <span className="flex-1">Escreva uma mensagem para {conv.name}…</span>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+        </div>
+        <div className="flex gap-2 mt-2.5">
+          <button className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white" style={{ background: '#D0D5DD' }}>Enviar</button>
+          <span className="text-xs text-gray-500 py-1.5 cursor-pointer">Cancelar</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Real-data mode ───────────────────────────────────────────────────────────
 
 function RealInbox({
@@ -728,16 +837,26 @@ function MockInbox() {
         })}
       </ConvListShell>
 
-      {/* Col 2 */}
-      <ContactDarkPanel
-        name={selectedConv.name}
-        phone={selectedConv.contact.phone}
-        email={selectedConv.contact.email}
-        role={selectedConv.contact.role}
-        value={selectedConv.contact.value}
-        responsible={selectedConv.contact.responsible}
-        stage={selectedConv.contact.stage}
-      />
+      {/* Col 2 — painel simplificado (mock não tem lead/contato reais) */}
+      <div
+        className="w-[270px] flex-shrink-0 flex flex-col overflow-y-auto p-4 text-xs"
+        style={{ background: '#203D49', color: '#E6EDF0' }}
+      >
+        <div className="text-white text-base font-bold mb-3 truncate">{selectedConv.name}</div>
+        {([
+          ['Etapa', selectedConv.contact.stage],
+          ['Responsável', selectedConv.contact.responsible],
+          ['Valor', selectedConv.contact.value],
+          ['Telefone', selectedConv.contact.phone],
+          ['E-mail', selectedConv.contact.email],
+          ['Cargo', selectedConv.contact.role],
+        ] as const).map(([rotulo, valor]) => (
+          <div key={rotulo} className="mb-2.5">
+            <div className="mb-0.5" style={{ color: PANEL_MUTED }}>{rotulo}</div>
+            <div className="text-white">{valor}</div>
+          </div>
+        ))}
+      </div>
 
       {/* Col 3 */}
       <MockChatPanel conv={selectedConv} />

@@ -6,10 +6,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
+import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
 
-export type LeadTask = {
-  id: string;
-  task: {
+export type LeadTask = ObjectRecord & {
+  task?: {
     id: string;
     title: string;
     status: string | null;
