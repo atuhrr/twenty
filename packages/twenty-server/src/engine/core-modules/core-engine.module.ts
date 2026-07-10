@@ -75,6 +75,7 @@ import { WorkspaceEventEmitterModule } from 'src/engine/workspace-event-emitter/
 import { ChannelSyncModule } from 'src/modules/connected-account/channel-sync/channel-sync.module';
 import { DashboardModule } from 'src/modules/dashboard/dashboard.module';
 import { SendEmailModule } from 'src/modules/messaging/message-outbound-manager/send-email.module';
+import { AgendaModule } from 'src/engine/core-modules/agenda/agenda.module';
 import { WhatsappModule } from 'src/engine/core-modules/whatsapp/whatsapp.module';
 import { OmniChannelModule } from 'src/engine/core-modules/omni-channel/omni-channel.module';
 import { TeamChatModule } from 'src/engine/core-modules/team-chat/team-chat.module';
@@ -176,6 +177,7 @@ import { FileModule } from './file/file.module';
     EventLogsViewerModule,
     PreInstalledAppsModule,
     AppBillingModule,
+    AgendaModule,
     WhatsappModule,
     OmniChannelModule,
     TeamChatModule,

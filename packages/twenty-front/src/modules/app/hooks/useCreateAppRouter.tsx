@@ -198,7 +198,14 @@ const WebFormsPage = lazy(() =>
   })),
 );
 
-// FORK: Voka CRM — Fase 17: Tarefas (lista + calendário)
+// FORK: Zellate — Calendário do usuário (eventos + tarefas com prazo)
+const CalendarioPage = lazy(() =>
+  import('~/pages/calendario/CalendarioPage').then((module) => ({
+    default: module.CalendarioPage,
+  })),
+);
+
+// FORK: Voka CRM — Fase 17: Tarefas (kanban)
 const TarefasPage = lazy(() =>
   import('~/pages/tarefas/TarefasPage').then((module) => ({
     default: module.TarefasPage,
@@ -604,6 +611,14 @@ export const useCreateAppRouter = (
               element={
                 <LazyRoute>
                   <TarefasPage />
+                </LazyRoute>
+              }
+            />
+            <Route
+              path="/calendario"
+              element={
+                <LazyRoute>
+                  <CalendarioPage />
                 </LazyRoute>
               }
             />

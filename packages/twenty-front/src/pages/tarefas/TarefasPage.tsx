@@ -1,538 +1,695 @@
-// FORK: Voka CRM — T-6: Tarefas (lista + FullCalendar)
-import { useState, useMemo, useCallback } from 'react';
-import { isNonEmptyString } from '@sniptt/guards';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import listPlugin from '@fullcalendar/list';
-import interactionPlugin from '@fullcalendar/interaction';
-import type { EventClickArg } from '@fullcalendar/core';
-import ptBrLocale from '@fullcalendar/core/locales/pt-br';
+// FORK: Zellate — Tarefas em kanban (referências: tarefa.png, add-task.png).
+// Colunas por status com drag & drop, criação/edição em modal central com
+// associação a lead, e abertura via URL (?novaTarefa=1&leadId=…) para o
+// fluxo "criar tarefa a partir do Inbox/lead".
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  type DropResult,
+} from '@hello-pangea/dnd';
+import { CalendarDays, Plus, User, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
+import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
-import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
-import { CoreObjectNameSingular } from 'twenty-shared/types';
 import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { TaskDrawer } from '~/modules/tailadmin/ui/TaskDrawer';
+import { getCssCompatibleDraggableProps } from '@/ui/layout/draggable-list/utils/getCssCompatibleDraggableProps';
 
 export type TaskStatus = 'TODO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
-type FilterTab = 'todas' | 'hoje' | 'esta-semana' | 'atrasadas';
 
 export type TaskRecord = ObjectRecord & {
   title?: string | null;
   status?: TaskStatus | null;
   dueAt?: string | null;
+  assigneeId?: string | null;
   assignee?: {
     id: string;
-    name: { firstName: string; lastName: string };
+    name: { firstName: string | null; lastName: string | null };
   } | null;
 };
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
-
-const isSameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
-
-const startOfDay = (d: Date) => {
-  const c = new Date(d);
-  c.setHours(0, 0, 0, 0);
-  return c;
+type TargetRecord = ObjectRecord & {
+  taskId?: string | null;
+  targetOpportunity?: { id: string; name: string | null } | null;
 };
 
-const formatDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
+type MemberRecord = ObjectRecord & {
+  name?: { firstName: string | null; lastName: string | null } | null;
+};
 
-function eventColor(status: TaskStatus | null | undefined): string {
-  if (status === 'CONCLUIDO') return 'var(--color-success-500)';
-  if (status === 'EM_ANDAMENTO') return 'var(--color-warning-500)';
-  return 'var(--color-brand-500)';
+type LeadOption = ObjectRecord & { name?: string | null };
+
+const COLUNAS: Array<{ status: TaskStatus; titulo: string; cor: string }> = [
+  { status: 'TODO', titulo: 'A fazer', cor: 'bg-gray-400' },
+  { status: 'EM_ANDAMENTO', titulo: 'Em andamento', cor: 'bg-warning-500' },
+  { status: 'CONCLUIDO', titulo: 'Concluídas', cor: 'bg-success-500' },
+];
+
+const nomeDoMembro = (m: {
+  name?: { firstName: string | null; lastName: string | null } | null;
+}) =>
+  [m.name?.firstName, m.name?.lastName].filter(Boolean).join(' ') ||
+  '(sem nome)';
+
+const iniciais = (nome: string) =>
+  nome
+    .split(' ')
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+function estaAtrasada(t: TaskRecord): boolean {
+  return (
+    t.status !== 'CONCLUIDO' &&
+    t.dueAt != null &&
+    new Date(t.dueAt) < new Date()
+  );
 }
 
-// ─── TaskItem ─────────────────────────────────────────────────────────────────
+// ─── Card ─────────────────────────────────────────────────────────────────────
 
-interface TaskItemProps {
-  task: TaskRecord;
-  onToggle: (task: TaskRecord) => void;
-  onEdit: (task: TaskRecord) => void;
-}
-
-const TaskItem = ({ task, onToggle, onEdit }: TaskItemProps) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const isDone = task.status === 'CONCLUIDO';
-  const dueDate = task.dueAt ? new Date(task.dueAt) : null;
-  const isOverdue =
-    dueDate !== null && dueDate < todayStart && !isSameDay(dueDate, todayStart);
-  const isToday = dueDate !== null && isSameDay(dueDate, todayStart);
-
-  const datePillClass = isOverdue
-    ? 'bg-red-50 text-red-600'
-    : isToday
-      ? 'bg-orange-50 text-orange-600'
-      : 'bg-gray-100 text-gray-500';
-
-  const initials = task.assignee
-    ? `${task.assignee.name.firstName[0] ?? ''}${task.assignee.name.lastName[0] ?? ''}`.toUpperCase()
-    : null;
+function TarefaCard({
+  tarefa,
+  lead,
+  onEditar,
+}: {
+  tarefa: TaskRecord;
+  lead: { id: string; name: string | null } | null;
+  onEditar: () => void;
+}) {
+  const atrasada = estaAtrasada(tarefa);
+  const concluida = tarefa.status === 'CONCLUIDO';
 
   return (
-    <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2.5 hover:border-gray-300 dark:hover:border-gray-600 transition-colors group">
-      {/* Checkbox */}
-      <button
-        onClick={() => onToggle(task)}
-        aria-label={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
-        className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-          isDone
-            ? 'bg-emerald-500 border-emerald-500'
-            : 'border-gray-300 hover:border-brand-400'
+    <div
+      onClick={onEditar}
+      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 cursor-pointer shadow-theme-xs hover:shadow-theme-sm transition-shadow"
+    >
+      <p
+        className={`text-sm font-medium mb-2 ${
+          concluida
+            ? 'text-gray-400 line-through'
+            : 'text-gray-900 dark:text-white'
         }`}
       >
-        {isDone && (
-          <svg
-            className="w-2.5 h-2.5 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {tarefa.title || '(sem título)'}
+      </p>
+
+      {lead && (
+        <Link
+          to={`/leads/${lead.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="inline-block mb-2 max-w-full truncate rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-600 hover:underline dark:bg-brand-900 dark:text-brand-300"
+        >
+          {lead.name ?? 'Lead'}
+        </Link>
+      )}
+
+      <div className="flex items-center justify-between">
+        {tarefa.dueAt ? (
+          <span
+            className={`inline-flex items-center gap-1 text-xs ${
+              atrasada ? 'text-error-500 font-medium' : 'text-gray-400'
+            }`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={3}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+            <CalendarDays size={13} />
+            {new Date(tarefa.dueAt).toLocaleDateString('pt-BR')}
+          </span>
+        ) : (
+          <span />
         )}
-      </button>
 
-      {/* Title */}
-      <span
-        onClick={() => onEdit(task)}
-        className={`flex-1 text-sm cursor-pointer min-w-0 truncate transition-colors ${
-          isDone
-            ? 'line-through text-gray-400'
-            : 'text-gray-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400'
-        }`}
-      >
-        {task.title || 'Sem título'}
-      </span>
-
-      {/* Date pill */}
-      {dueDate && (
-        <span
-          className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${datePillClass}`}
-        >
-          {formatDate(task.dueAt!)}
-        </span>
-      )}
-
-      {/* Assignee avatar */}
-      {initials && (
-        <span className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
-          {initials}
-        </span>
-      )}
-
-      {/* 3-dot menu */}
-      <div className="relative flex-shrink-0">
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.5" />
-            <circle cx="12" cy="12" r="1.5" />
-            <circle cx="12" cy="19" r="1.5" />
-          </svg>
-        </button>
-        {menuOpen && (
-          <div
-            className="absolute right-0 top-7 z-20 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1"
-            onMouseLeave={() => setMenuOpen(false)}
+        {tarefa.assignee ? (
+          <span
+            title={nomeDoMembro(tarefa.assignee)}
+            className="w-6 h-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-semibold"
           >
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(task);
-              }}
-              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onToggle(task);
-              }}
-              className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              {isDone ? 'Reabrir' : 'Concluir'}
-            </button>
-          </div>
+            {iniciais(nomeDoMembro(tarefa.assignee))}
+          </span>
+        ) : (
+          <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center dark:bg-gray-700">
+            <User size={12} />
+          </span>
         )}
       </div>
     </div>
   );
-};
-
-// ─── ListView ─────────────────────────────────────────────────────────────────
-
-interface ListViewProps {
-  tasks: TaskRecord[];
-  filter: FilterTab;
-  onToggleDone: (task: TaskRecord) => void;
-  onEditTask: (task: TaskRecord) => void;
 }
 
-const ListView = ({
-  tasks,
-  filter,
-  onToggleDone,
-  onEditTask,
-}: ListViewProps) => {
-  const [doneOpen, setDoneOpen] = useState(false);
+// ─── Modal (add-task.png) ─────────────────────────────────────────────────────
 
-  const todayStart = startOfDay(new Date());
-  const weekEnd = new Date(todayStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
+const inputClass =
+  'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-  const filteredTasks = useMemo(() => {
-    if (filter === 'hoje')
-      return tasks.filter(
-        (t) =>
-          isNonEmptyString(t.dueAt) && isSameDay(new Date(t.dueAt), todayStart),
-      );
-    if (filter === 'atrasadas')
-      return tasks.filter(
-        (t) =>
-          t.status !== 'CONCLUIDO' &&
-          isNonEmptyString(t.dueAt) &&
-          new Date(t.dueAt) < todayStart &&
-          !isSameDay(new Date(t.dueAt), todayStart),
-      );
-    if (filter === 'esta-semana')
-      return tasks.filter((t) => {
-        if (!isNonEmptyString(t.dueAt)) return false;
-        const d = new Date(t.dueAt);
-        return d >= todayStart && d < weekEnd;
-      });
-    return tasks;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, filter]);
-
-  const pending = filteredTasks.filter((t) => t.status !== 'CONCLUIDO');
-  const overdue = pending.filter(
-    (t) =>
-      isNonEmptyString(t.dueAt) &&
-      new Date(t.dueAt) < todayStart &&
-      !isSameDay(new Date(t.dueAt), todayStart),
+function TarefaModal({
+  tarefa,
+  leadInicial,
+  leadAtual,
+  members,
+  onFechar,
+  onSalvar,
+  onExcluir,
+  salvando,
+}: {
+  tarefa: TaskRecord | null;
+  leadInicial: { id: string; nome: string } | null;
+  leadAtual: { id: string; name: string | null } | null;
+  members: MemberRecord[];
+  onFechar: () => void;
+  onSalvar: (dados: {
+    titulo: string;
+    prazo: string;
+    status: TaskStatus;
+    assigneeId: string;
+    leadId: string;
+  }) => Promise<void>;
+  onExcluir: (() => Promise<void>) | null;
+  salvando: boolean;
+}) {
+  const editando = tarefa != null;
+  const [titulo, setTitulo] = useState(tarefa?.title ?? '');
+  const [prazo, setPrazo] = useState(
+    tarefa?.dueAt ? tarefa.dueAt.slice(0, 10) : '',
   );
-  const today = pending.filter(
-    (t) =>
-      isNonEmptyString(t.dueAt) && isSameDay(new Date(t.dueAt), todayStart),
-  );
-  const thisWeek = pending.filter((t) => {
-    if (!isNonEmptyString(t.dueAt)) return false;
-    const d = new Date(t.dueAt);
-    return d > todayStart && d < weekEnd && !isSameDay(d, todayStart);
-  });
-  const future = pending.filter(
-    (t) => isNonEmptyString(t.dueAt) && new Date(t.dueAt) >= weekEnd,
-  );
-  const noDue = pending.filter((t) => !t.dueAt);
-  const done = filteredTasks
-    .filter((t) => t.status === 'CONCLUIDO')
-    .slice(0, 30);
+  const [status, setStatus] = useState<TaskStatus>(tarefa?.status ?? 'TODO');
+  const [assigneeId, setAssigneeId] = useState(tarefa?.assigneeId ?? '');
+  const [leadId, setLeadId] = useState(leadInicial?.id ?? leadAtual?.id ?? '');
+  const [buscaLead, setBuscaLead] = useState('');
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
-  const renderGroup = (
-    label: string,
-    labelClass: string,
-    items: TaskRecord[],
-  ) => {
-    if (items.length === 0) return null;
-    return (
-      <div key={label} className="mb-6">
-        <div
-          className={`text-xs font-semibold uppercase tracking-wider mb-2 ${labelClass}`}
-        >
-          {label} ({items.length})
-        </div>
-        <div className="space-y-1">
-          {items.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onToggle={onToggleDone}
-              onEdit={onEditTask}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  if (filteredTasks.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
-        <svg
-          className="w-10 h-10"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-          />
-        </svg>
-        <span className="text-sm">Nenhuma tarefa encontrada</span>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      {renderGroup('Atrasadas', 'text-red-500', overdue)}
-      {renderGroup('Hoje', 'text-orange-500', today)}
-      {renderGroup('Esta semana', 'text-brand-500', thisWeek)}
-      {renderGroup('Futuras', 'text-gray-500', future)}
-      {renderGroup('Sem prazo', 'text-gray-400', noDue)}
-
-      {/* Concluídas — collapsible */}
-      {done.length > 0 && (
-        <div className="mb-6">
-          <button
-            onClick={() => setDoneOpen((o) => !o)}
-            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-emerald-500 mb-2 hover:opacity-80 transition-opacity"
-          >
-            <svg
-              className={`w-3 h-3 transition-transform ${doneOpen ? 'rotate-90' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-            Concluídas ({done.length})
-          </button>
-          {doneOpen && (
-            <div className="space-y-1">
-              {done.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggle={onToggleDone}
-                  onEdit={onEditTask}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
-export const TarefasPage = () => {
-  const [view, setView] = useState<'lista' | 'calendario'>('lista');
-  const [filter, setFilter] = useState<FilterTab>('todas');
-  const [drawerTask, setDrawerTask] = useState<TaskRecord | null>(null);
-
-  const openCreateTask = useOpenCreateActivityDrawer({
-    activityObjectNameSingular: CoreObjectNameSingular.Task,
-  });
-
-  const { records: tasks, loading } = useFindManyRecords<TaskRecord>({
-    objectNameSingular: CoreObjectNameSingular.Task,
-    recordGqlFields: {
-      id: true,
-      title: true,
-      status: true,
-      dueAt: true,
-      assignee: { id: true, name: { firstName: true, lastName: true } },
-    },
-    orderBy: [{ dueAt: 'AscNullsLast' }],
+  // Leads para associação (o modal é montado sob demanda)
+  const { records: leads } = useFindManyRecords<LeadOption>({
+    objectNameSingular: 'opportunity',
+    filter: {},
+    recordGqlFields: { id: true, name: true },
+    orderBy: [{ name: 'AscNullsLast' }],
     limit: 200,
   });
 
-  const { updateOneRecord } = useUpdateOneRecord();
-
-  const handleToggleDone = useCallback(
-    async (task: TaskRecord) => {
-      const newStatus: TaskStatus =
-        task.status === 'CONCLUIDO' ? 'TODO' : 'CONCLUIDO';
-      await updateOneRecord({
-        objectNameSingular: CoreObjectNameSingular.Task,
-        idToUpdate: task.id,
-        updateOneRecordInput: { status: newStatus },
-      });
-    },
-    [updateOneRecord],
-  );
-
-  const calendarEvents = useMemo(
-    () =>
-      tasks
-        .filter((t) => t.dueAt)
-        .map((t) => ({
-          id: t.id,
-          title: t.title || 'Tarefa',
-          date: t.dueAt!,
-          backgroundColor: eventColor(t.status),
-          borderColor: eventColor(t.status),
-        })),
-    [tasks],
-  );
-
-  const handleEventClick = useCallback(
-    (arg: EventClickArg) => {
-      const task = tasks.find((t) => t.id === arg.event.id);
-      if (task) setDrawerTask(task);
-    },
-    [tasks],
-  );
-
-  const filterLabels: Array<{ key: FilterTab; label: string }> = [
-    { key: 'todas', label: 'Todas' },
-    { key: 'hoje', label: 'Hoje' },
-    { key: 'esta-semana', label: 'Esta semana' },
-    { key: 'atrasadas', label: 'Atrasadas' },
-  ];
+  const leadsVisiveis = useMemo(() => {
+    const q = buscaLead.trim().toLowerCase();
+    const lista = q
+      ? leads.filter((l) => (l.name ?? '').toLowerCase().includes(q))
+      : leads;
+    return lista.slice(0, 50);
+  }, [leads, buscaLead]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Title + count */}
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-shrink-0">
-            Tarefas
-            {!loading && (
-              <span className="ml-2 text-sm font-normal text-gray-400">
-                ({tasks.length})
-              </span>
-            )}
-          </h1>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+      onClick={onFechar}
+    >
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-1">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            {editando ? 'Editar tarefa' : 'Nova tarefa'}
+          </h2>
+          <button
+            onClick={onFechar}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+            aria-label="Fechar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mb-5">
+          Tarefas vinculadas a um lead aparecem no card e no painel da conversa.
+        </p>
 
-          {/* View tabs */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <button
-              onClick={() => setView('lista')}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                view === 'lista'
-                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
-                  : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
-              }`}
-            >
-              Lista
-            </button>
-            <button
-              onClick={() => setView('calendario')}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                view === 'calendario'
-                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400'
-                  : 'text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
-              }`}
-            >
-              Calendário
-            </button>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Título
+            </label>
+            <input
+              autoFocus
+              className={inputClass}
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Ex.: Ligar para o cliente"
+            />
           </div>
 
-          {/* Filter chips — list view only */}
-          {view === 'lista' && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {filterLabels.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    filter === key
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="flex-1" />
-
-          {/* Nova Tarefa */}
-          <button
-            onClick={() => openCreateTask({ targetableObjects: [] })}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Prazo
+              </label>
+              <input
+                type="date"
+                className={inputClass}
+                value={prazo}
+                onChange={(e) => setPrazo(e.target.value)}
               />
-            </svg>
-            Nova Tarefa
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Status
+              </label>
+              <select
+                className={inputClass}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as TaskStatus)}
+              >
+                <option value="TODO">A fazer</option>
+                <option value="EM_ANDAMENTO">Em andamento</option>
+                <option value="CONCLUIDO">Concluída</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Responsável
+            </label>
+            <select
+              className={inputClass}
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+            >
+              <option value="">— Sem responsável</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {nomeDoMembro(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Associar ao lead
+            </label>
+            {leadInicial ? (
+              <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 dark:bg-brand-900 dark:text-brand-300">
+                {leadInicial.nome}
+              </div>
+            ) : (
+              <>
+                <input
+                  className={`${inputClass} mb-1.5`}
+                  value={buscaLead}
+                  onChange={(e) => setBuscaLead(e.target.value)}
+                  placeholder="Buscar lead pelo nome…"
+                />
+                <select
+                  className={inputClass}
+                  value={leadId}
+                  onChange={(e) => setLeadId(e.target.value)}
+                >
+                  <option value="">— Sem lead</option>
+                  {leadsVisiveis.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name ?? '(sem nome)'}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-2">
+          {onExcluir ? (
+            confirmandoExclusao ? (
+              <button
+                onClick={() => void onExcluir()}
+                className="rounded-lg bg-error-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Confirmar exclusão
+              </button>
+            ) : (
+              <button
+                onClick={() => setConfirmandoExclusao(true)}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-error-500 hover:bg-error-50 dark:hover:bg-gray-800"
+              >
+                Excluir
+              </button>
+            )
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={onFechar}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              Cancelar
+            </button>
+            <button
+              disabled={salvando || titulo.trim() === ''}
+              onClick={() =>
+                void onSalvar({ titulo, prazo, status, assigneeId, leadId })
+              }
+              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            >
+              {salvando
+                ? 'Salvando…'
+                : editando
+                  ? 'Salvar alterações'
+                  : 'Criar tarefa'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Página ───────────────────────────────────────────────────────────────────
+
+export const TarefasPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [abaFiltro, setAbaFiltro] = useState<'todas' | TaskStatus>('todas');
+  const [modalAberto, setModalAberto] = useState(false);
+  const [tarefaEditando, setTarefaEditando] = useState<TaskRecord | null>(null);
+  const [leadPre, setLeadPre] = useState<{ id: string; nome: string } | null>(
+    null,
+  );
+  const [salvando, setSalvando] = useState(false);
+
+  const { records: tasks, refetch: refetchTasks } =
+    useFindManyRecords<TaskRecord>({
+      objectNameSingular: 'task',
+      recordGqlFields: {
+        id: true,
+        title: true,
+        status: true,
+        dueAt: true,
+        assigneeId: true,
+        assignee: { id: true, name: { firstName: true, lastName: true } },
+      },
+      orderBy: [{ dueAt: 'AscNullsLast' }],
+      limit: 300,
+    });
+
+  const { records: targets, refetch: refetchTargets } =
+    useFindManyRecords<TargetRecord>({
+      objectNameSingular: 'taskTarget',
+      filter: {},
+      recordGqlFields: {
+        id: true,
+        taskId: true,
+        targetOpportunity: { id: true, name: true },
+      },
+      limit: 500,
+    });
+
+  // Tarefas criadas em outras telas (Inbox, detalhe do lead) chegam aqui —
+  // o cache do Apollo pode estar frio; força uma leitura fresca ao montar.
+  useEffect(() => {
+    void refetchTasks();
+    void refetchTargets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { records: members } = useFindManyRecords<MemberRecord>({
+    objectNameSingular: 'workspaceMember',
+    recordGqlFields: { id: true, name: true },
+    limit: 50,
+  });
+
+  const { createOneRecord: criarTask } = useCreateOneRecord({
+    objectNameSingular: 'task',
+  });
+  const { createOneRecord: criarTarget } = useCreateOneRecord({
+    objectNameSingular: 'taskTarget',
+  });
+  const { updateOneRecord } = useUpdateOneRecord();
+  const { deleteOneRecord: excluirTask } = useDeleteOneRecord({
+    objectNameSingular: 'task',
+  });
+  const { deleteOneRecord: excluirTarget } = useDeleteOneRecord({
+    objectNameSingular: 'taskTarget',
+  });
+
+  // Lead vinculado por tarefa (primeiro alvo com opportunity)
+  const leadPorTarefa = useMemo(() => {
+    const map = new Map<
+      string,
+      { targetId: string; lead: { id: string; name: string | null } }
+    >();
+    for (const t of targets) {
+      if (t.taskId && t.targetOpportunity && !map.has(t.taskId)) {
+        map.set(t.taskId, { targetId: t.id, lead: t.targetOpportunity });
+      }
+    }
+    return map;
+  }, [targets]);
+
+  // Abertura via URL (Inbox / detalhe do lead)
+  useEffect(() => {
+    if (searchParams.get('novaTarefa') === '1') {
+      const leadId = searchParams.get('leadId');
+      const leadNome = searchParams.get('leadNome');
+      setLeadPre(leadId ? { id: leadId, nome: leadNome ?? 'Lead' } : null);
+      setTarefaEditando(null);
+      setModalAberto(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const porStatus = useMemo(() => {
+    const grupos: Record<TaskStatus, TaskRecord[]> = {
+      TODO: [],
+      EM_ANDAMENTO: [],
+      CONCLUIDO: [],
+    };
+    for (const t of tasks) {
+      grupos[(t.status as TaskStatus) ?? 'TODO']?.push(t);
+    }
+    return grupos;
+  }, [tasks]);
+
+  const handleDragEnd = async (result: DropResult) => {
+    const destino = result.destination?.droppableId as TaskStatus | undefined;
+    if (!destino || destino === result.source.droppableId) return;
+    await updateOneRecord({
+      objectNameSingular: 'task',
+      idToUpdate: result.draggableId,
+      updateOneRecordInput: { status: destino },
+    });
+    await refetchTasks();
+  };
+
+  const abrirNova = () => {
+    setTarefaEditando(null);
+    setLeadPre(null);
+    setModalAberto(true);
+  };
+
+  const salvar = async (dados: {
+    titulo: string;
+    prazo: string;
+    status: TaskStatus;
+    assigneeId: string;
+    leadId: string;
+  }) => {
+    setSalvando(true);
+    try {
+      const input = {
+        title: dados.titulo.trim(),
+        status: dados.status,
+        dueAt: dados.prazo ? new Date(dados.prazo).toISOString() : null,
+        assigneeId: dados.assigneeId || null,
+      };
+
+      if (tarefaEditando) {
+        await updateOneRecord({
+          objectNameSingular: 'task',
+          idToUpdate: tarefaEditando.id,
+          updateOneRecordInput: input,
+        });
+        // Associação alterada: substitui o vínculo
+        const vinculoAtual = leadPorTarefa.get(tarefaEditando.id) ?? null;
+        if ((vinculoAtual?.lead.id ?? '') !== dados.leadId) {
+          if (vinculoAtual) await excluirTarget(vinculoAtual.targetId);
+          if (dados.leadId) {
+            await criarTarget({
+              taskId: tarefaEditando.id,
+              targetOpportunityId: dados.leadId,
+            });
+          }
+        }
+      } else {
+        const taskId = uuidv4();
+        await criarTask({ id: taskId, ...input });
+        if (dados.leadId) {
+          await criarTarget({ taskId, targetOpportunityId: dados.leadId });
+        }
+      }
+
+      await Promise.all([refetchTasks(), refetchTargets()]);
+      setModalAberto(false);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const excluir = async () => {
+    if (!tarefaEditando) return;
+    await excluirTask(tarefaEditando.id);
+    await refetchTasks();
+    setModalAberto(false);
+  };
+
+  const colunasVisiveis =
+    abaFiltro === 'todas'
+      ? COLUNAS
+      : COLUNAS.filter((c) => c.status === abaFiltro);
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 p-4 gap-4">
+      {/* Header: abas de contagem + ações (task-list.png) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+          {(
+            [
+              { key: 'todas', rotulo: 'Todas', n: tasks.length },
+              { key: 'TODO', rotulo: 'A fazer', n: porStatus.TODO.length },
+              {
+                key: 'EM_ANDAMENTO',
+                rotulo: 'Em andamento',
+                n: porStatus.EM_ANDAMENTO.length,
+              },
+              {
+                key: 'CONCLUIDO',
+                rotulo: 'Concluídas',
+                n: porStatus.CONCLUIDO.length,
+              },
+            ] as const
+          ).map((aba) => (
+            <button
+              key={aba.key}
+              onClick={() => setAbaFiltro(aba.key)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                abaFiltro === aba.key
+                  ? 'bg-white text-gray-900 shadow-theme-xs dark:bg-gray-700 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              {aba.rotulo}
+              <span className="ml-1.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                {aba.n}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            to="/calendario"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <CalendarDays size={15} />
+            Calendário
+          </Link>
+          <button
+            onClick={abrirNova}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          >
+            Nova tarefa
+            <Plus size={15} />
           </button>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-auto p-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
-            Carregando…
-          </div>
-        ) : view === 'lista' ? (
-          <ListView
-            tasks={tasks}
-            filter={filter}
-            onToggleDone={handleToggleDone}
-            onEditTask={setDrawerTask}
-          />
-        ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-            <FullCalendar
-              plugins={[
-                dayGridPlugin,
-                timeGridPlugin,
-                listPlugin,
-                interactionPlugin,
-              ]}
-              initialView="dayGridMonth"
-              locale={ptBrLocale}
-              events={calendarEvents}
-              eventClick={handleEventClick}
-              headerToolbar={{
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listWeek',
-              }}
-              height="auto"
-              aspectRatio={1.8}
-            />
-          </div>
-        )}
-      </div>
+      {/* Kanban (tarefa.png) */}
+      <DragDropContext onDragEnd={(r) => void handleDragEnd(r)}>
+        <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto">
+          {colunasVisiveis.map((col) => (
+            <div
+              key={col.status}
+              className="flex w-80 flex-shrink-0 flex-col rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-white/[0.02]"
+            >
+              <div className="flex items-center gap-2 px-4 py-3">
+                <span className={`h-2 w-2 rounded-full ${col.cor}`} />
+                <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                  {col.titulo}
+                </span>
+                <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  {porStatus[col.status].length}
+                </span>
+              </div>
 
-      {/* Task Drawer */}
-      <TaskDrawer task={drawerTask} onClose={() => setDrawerTask(null)} />
+              <Droppable droppableId={col.status}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    // eslint-disable-next-line react/jsx-props-no-spreading
+                    {...provided.droppableProps}
+                    className="flex-1 space-y-3 overflow-y-auto px-3 pb-3"
+                  >
+                    {porStatus[col.status].length === 0 && (
+                      <p className="px-1 py-2 text-xs text-gray-400">
+                        Nenhuma tarefa aqui.
+                      </p>
+                    )}
+                    {porStatus[col.status].map((tarefa, idx) => (
+                      <Draggable
+                        key={tarefa.id}
+                        draggableId={tarefa.id}
+                        index={idx}
+                      >
+                        {(dragProvided) => (
+                          <div
+                            ref={(el) => dragProvided.innerRef(el)}
+                            // eslint-disable-next-line react/jsx-props-no-spreading
+                            {...getCssCompatibleDraggableProps(
+                              dragProvided.draggableProps,
+                            )}
+                            // eslint-disable-next-line react/jsx-props-no-spreading
+                            {...dragProvided.dragHandleProps}
+                          >
+                            <TarefaCard
+                              tarefa={tarefa}
+                              lead={leadPorTarefa.get(tarefa.id)?.lead ?? null}
+                              onEditar={() => {
+                                setTarefaEditando(tarefa);
+                                setLeadPre(null);
+                                setModalAberto(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </div>
+          ))}
+        </div>
+      </DragDropContext>
+
+      {modalAberto && (
+        <TarefaModal
+          key={tarefaEditando?.id ?? 'nova'}
+          tarefa={tarefaEditando}
+          leadInicial={leadPre}
+          leadAtual={
+            tarefaEditando
+              ? (leadPorTarefa.get(tarefaEditando.id)?.lead ?? null)
+              : null
+          }
+          members={members}
+          onFechar={() => setModalAberto(false)}
+          onSalvar={salvar}
+          onExcluir={tarefaEditando ? excluir : null}
+          salvando={salvando}
+        />
+      )}
     </div>
   );
 };

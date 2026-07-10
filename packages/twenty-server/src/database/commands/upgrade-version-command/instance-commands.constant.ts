@@ -99,6 +99,7 @@ import { TranslateStandardFieldLabelsFastInstanceCommand } from './2-16/2-16-ins
 import { AddContactNameToWhatsappWindowFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784073600000-add-contact-name-to-whatsapp-window';
 import { AddIsUnclassifiedToOpportunityFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784160000000-add-is-unclassified-to-opportunity';
 import { LinkWhatsappWindowToCrmFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784246400000-link-whatsapp-window-to-crm';
+import { CreateAgendaEventoTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784332800000-create-agenda-evento-table';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -196,6 +197,7 @@ export const INSTANCE_COMMANDS = [
   AddContactNameToWhatsappWindowFastInstanceCommand,
   AddIsUnclassifiedToOpportunityFastInstanceCommand,
   LinkWhatsappWindowToCrmFastInstanceCommand,
+  CreateAgendaEventoTableFastInstanceCommand,
   CreateVokaCrmObjectsFastInstanceCommand,
   AddMultiNumberToWhatsappInstanceFastInstanceCommand,
   CreateTeamsLossReasonsFastInstanceCommand,

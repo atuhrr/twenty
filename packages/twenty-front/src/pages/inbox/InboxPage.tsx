@@ -265,12 +265,8 @@ function ContactDarkPanel({
     SET_WHATSAPP_BOT_PAUSED,
   );
 
-  // Tarefas do lead
-  const { tasks, createTask, toggleTaskDone, creating } = useLeadTasks(
-    thread.opportunityId,
-  );
-  const [novaTarefa, setNovaTarefa] = useState('');
-  const [novoPrazo, setNovoPrazo] = useState('');
+  // Tarefas do lead (criação acontece na tela de Tarefas, já vinculada)
+  const { tasks, toggleTaskDone } = useLeadTasks(thread.opportunityId);
 
   // Estatísticas a partir das mensagens da conversa
   const { messages } = useWhatsappMessages(thread.contactId);
@@ -312,13 +308,6 @@ function ContactDarkPanel({
       variables: { contactId: thread.contactId, paused: !thread.botPaused },
     });
     onThreadsChanged();
-  };
-
-  const handleCreateTask = async () => {
-    if (novaTarefa.trim() === '') return;
-    await createTask(novaTarefa, novoPrazo || null);
-    setNovaTarefa('');
-    setNovoPrazo('');
   };
 
   const selectClass = 'w-full rounded px-2 py-1.5 text-white text-xs outline-none appearance-none cursor-pointer';
@@ -471,30 +460,14 @@ function ContactDarkPanel({
                 );
               })}
 
-              <div className="pt-2 space-y-1.5" style={{ borderTop: `1px solid ${PANEL_LINE}` }}>
-                <input
-                  className="w-full rounded px-2 py-1.5 text-white text-xs outline-none"
-                  style={selectStyle}
-                  placeholder="Nova tarefa…"
-                  value={novaTarefa}
-                  onChange={(e) => setNovaTarefa(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && void handleCreateTask()}
-                />
-                <input
-                  type="date"
-                  className="w-full rounded px-2 py-1.5 text-white text-xs outline-none"
-                  style={selectStyle}
-                  value={novoPrazo}
-                  onChange={(e) => setNovoPrazo(e.target.value)}
-                />
-                <button
-                  className="w-full rounded px-2 py-1.5 text-white text-xs font-medium disabled:opacity-50"
+              <div className="pt-2" style={{ borderTop: `1px solid ${PANEL_LINE}` }}>
+                <Link
+                  to={`/tarefas?novaTarefa=1&leadId=${thread.opportunityId}&leadNome=${encodeURIComponent(displayName)}`}
+                  className="block w-full rounded px-2 py-1.5 text-center text-white text-xs font-medium"
                   style={{ background: '#437EDD' }}
-                  disabled={creating || novaTarefa.trim() === ''}
-                  onClick={() => void handleCreateTask()}
                 >
-                  {creating ? 'Criando…' : 'Criar tarefa'}
-                </button>
+                  Criar tarefa para este lead →
+                </Link>
               </div>
             </>
           )}
