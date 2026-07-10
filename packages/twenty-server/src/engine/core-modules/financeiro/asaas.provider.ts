@@ -27,6 +27,20 @@ export type CriarCobrancaParams = {
   descricao: string;
   // PIX | CREDIT_CARD | BOLETO | UNDEFINED (cliente escolhe no link)
   billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED';
+  // F2: encargos de atraso e desconto por antecipação (opcionais)
+  jurosPercent?: number | null;
+  multaPercent?: number | null;
+  descontoCentavos?: number | null;
+};
+
+export type CriarAssinaturaParams = {
+  clienteId: string;
+  valorCentavos: number;
+  proximoVencimento: string; // YYYY-MM-DD
+  descricao: string;
+  billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED';
+  jurosPercent?: number | null;
+  multaPercent?: number | null;
 };
 
 export interface FinanceiroProvider {
@@ -61,6 +75,17 @@ export interface FinanceiroProvider {
     apiKey: string,
     ambiente: string,
     cobrancaId: string,
+  ): Promise<void>;
+  // F2: recorrência
+  criarAssinatura(
+    apiKey: string,
+    ambiente: string,
+    params: CriarAssinaturaParams,
+  ): Promise<{ id: string }>;
+  cancelarAssinatura(
+    apiKey: string,
+    ambiente: string,
+    assinaturaId: string,
   ): Promise<void>;
   // ── Reservados para a F5 (Zellate Pay) ──
   criarSubconta?(...args: unknown[]): Promise<unknown>;
@@ -135,6 +160,7 @@ export class AsaasProvider implements FinanceiroProvider {
         authToken,
         sendType: 'SEQUENTIALLY',
         events: [
+          'PAYMENT_CREATED',
           'PAYMENT_RECEIVED',
           'PAYMENT_CONFIRMED',
           'PAYMENT_OVERDUE',
@@ -195,6 +221,21 @@ export class AsaasProvider implements FinanceiroProvider {
         value: params.valorCentavos / 100,
         dueDate: params.vencimento,
         description: params.descricao,
+        ...(params.multaPercent
+          ? { fine: { value: params.multaPercent, type: 'PERCENTAGE' } }
+          : {}),
+        ...(params.jurosPercent
+          ? { interest: { value: params.jurosPercent } }
+          : {}),
+        ...(params.descontoCentavos
+          ? {
+              discount: {
+                value: params.descontoCentavos / 100,
+                dueDateLimitDays: 0,
+                type: 'FIXED',
+              },
+            }
+          : {}),
       });
       const d = data as {
         id: string;
@@ -246,6 +287,50 @@ export class AsaasProvider implements FinanceiroProvider {
       await this.client(apiKey, ambiente).delete(`/payments/${cobrancaId}`);
     } catch (err) {
       this.lancarErroAmigavel(err, 'cancelarCobranca');
+    }
+  }
+
+  async criarAssinatura(
+    apiKey: string,
+    ambiente: string,
+    params: CriarAssinaturaParams,
+  ): Promise<{ id: string }> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).post(
+        '/subscriptions',
+        {
+          customer: params.clienteId,
+          billingType: params.billingType,
+          value: params.valorCentavos / 100,
+          nextDueDate: params.proximoVencimento,
+          cycle: 'MONTHLY',
+          description: params.descricao,
+          ...(params.multaPercent
+            ? { fine: { value: params.multaPercent, type: 'PERCENTAGE' } }
+            : {}),
+          ...(params.jurosPercent
+            ? { interest: { value: params.jurosPercent } }
+            : {}),
+        },
+      );
+
+      return { id: (data as { id: string }).id };
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'criarAssinatura');
+    }
+  }
+
+  async cancelarAssinatura(
+    apiKey: string,
+    ambiente: string,
+    assinaturaId: string,
+  ): Promise<void> {
+    try {
+      await this.client(apiKey, ambiente).delete(
+        `/subscriptions/${assinaturaId}`,
+      );
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'cancelarAssinatura');
     }
   }
 }

@@ -101,6 +101,7 @@ import { AddIsUnclassifiedToOpportunityFastInstanceCommand } from './2-16/2-16-i
 import { LinkWhatsappWindowToCrmFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784246400000-link-whatsapp-window-to-crm';
 import { CreateAgendaEventoTableFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784332800000-create-agenda-evento-table';
 import { CreateFinanceiroTablesFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784419200000-create-financeiro-tables';
+import { FinanceiroF2FastInstanceCommand } from './2-16/2-16-instance-command-fast-1784505600000-financeiro-f2';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -200,6 +201,7 @@ export const INSTANCE_COMMANDS = [
   LinkWhatsappWindowToCrmFastInstanceCommand,
   CreateAgendaEventoTableFastInstanceCommand,
   CreateFinanceiroTablesFastInstanceCommand,
+  FinanceiroF2FastInstanceCommand,
   CreateVokaCrmObjectsFastInstanceCommand,
   AddMultiNumberToWhatsappInstanceFastInstanceCommand,
   CreateTeamsLossReasonsFastInstanceCommand,

@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AsaasProvider } from 'src/engine/core-modules/financeiro/asaas.provider';
+import { AssinaturaEntity } from 'src/engine/core-modules/financeiro/assinatura.entity';
+import { FinanceiroLembretesCronJob } from 'src/engine/core-modules/financeiro/crons/financeiro-lembretes.cron.job';
 import { FaturaEntity } from 'src/engine/core-modules/financeiro/fatura.entity';
 import { FaturaEventoEntity } from 'src/engine/core-modules/financeiro/fatura-evento.entity';
 import { FinanceiroContaEntity } from 'src/engine/core-modules/financeiro/financeiro-conta.entity';
@@ -21,6 +23,7 @@ import { WhatsappModule } from 'src/engine/core-modules/whatsapp/whatsapp.module
       FinanceiroContaEntity,
       FaturaEntity,
       FaturaEventoEntity,
+      AssinaturaEntity,
       WhatsappContactWindowEntity,
     ]),
     SecretEncryptionModule,
@@ -33,6 +36,8 @@ import { WhatsappModule } from 'src/engine/core-modules/whatsapp/whatsapp.module
     FinanceiroService,
     FinanceiroResolver,
     FinanceiroWebhookJob,
+    FinanceiroLembretesCronJob,
   ],
+  exports: [FinanceiroService],
 })
 export class FinanceiroModule {}

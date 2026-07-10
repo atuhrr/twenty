@@ -7,11 +7,16 @@ import {
   FaturaMeios,
 } from 'src/engine/core-modules/financeiro/fatura.entity';
 import {
+  AssinaturaDTO,
+  AtualizarFinanceiroConfigInput,
   ConectarFinanceiroInput,
+  CriarAssinaturaInput,
   CriarFaturaInput,
   FaturaDTO,
   FaturaResumoDTO,
+  FinanceiroConfigDTO,
   FinanceiroStatusDTO,
+  ReceitaStatsDTO,
 } from 'src/engine/core-modules/financeiro/dtos/financeiro.dto';
 import {
   FinanceiroService,
@@ -118,6 +123,125 @@ export class FinanceiroResolver {
     await this.financeiroService.cancelarFatura(workspace.id, faturaId);
 
     return true;
+  }
+
+  // ── F2: configuração de cobrança automática ──
+  @Query(() => FinanceiroConfigDTO)
+  async financeiroConfig(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<FinanceiroConfigDTO> {
+    const conta = await this.financeiroService.status(workspace.id);
+    const regua = conta?.reguaLembretes ?? {
+      ativo: true,
+      diasAntes: [1],
+      diasDepois: [1, 3, 7],
+    };
+
+    return {
+      jurosPadraoPercent:
+        conta?.jurosPadraoPercent != null
+          ? Number(conta.jurosPadraoPercent)
+          : null,
+      multaPadraoPercent:
+        conta?.multaPadraoPercent != null
+          ? Number(conta.multaPadraoPercent)
+          : null,
+      reguaAtiva: regua.ativo,
+      reguaDiasAntes: regua.diasAntes ?? [],
+      reguaDiasDepois: regua.diasDepois ?? [],
+      templateLembrete: conta?.templateLembrete ?? null,
+    };
+  }
+
+  @Mutation(() => Boolean)
+  async atualizarFinanceiroConfig(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: AtualizarFinanceiroConfigInput,
+  ): Promise<boolean> {
+    const atual = await this.financeiroService.status(workspace.id);
+    const reguaAtual = atual?.reguaLembretes ?? {
+      ativo: true,
+      diasAntes: [1],
+      diasDepois: [1, 3, 7],
+    };
+
+    await this.financeiroService.atualizarConfig(workspace.id, {
+      jurosPadraoPercent: input.jurosPadraoPercent,
+      multaPadraoPercent: input.multaPadraoPercent,
+      templateLembrete: input.templateLembrete,
+      reguaLembretes: {
+        ativo: input.reguaAtiva ?? reguaAtual.ativo,
+        diasAntes: input.reguaDiasAntes ?? reguaAtual.diasAntes,
+        diasDepois: input.reguaDiasDepois ?? reguaAtual.diasDepois,
+      },
+    });
+
+    return true;
+  }
+
+  // ── F2: assinaturas (recorrência) ──
+  @Query(() => [AssinaturaDTO])
+  async assinaturas(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<AssinaturaDTO[]> {
+    return this.financeiroService.listarAssinaturas(workspace.id);
+  }
+
+  @Mutation(() => AssinaturaDTO)
+  async criarAssinatura(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: CriarAssinaturaInput,
+  ): Promise<AssinaturaDTO> {
+    return this.financeiroService.criarAssinatura(workspace.id, {
+      ...input,
+      meios: (input.meios as FaturaMeios) ?? FaturaMeios.TODOS,
+    });
+  }
+
+  @Mutation(() => Boolean)
+  async pausarAssinatura(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('assinaturaId') assinaturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.pausarAssinatura(workspace.id, assinaturaId);
+
+    return true;
+  }
+
+  @Mutation(() => Boolean)
+  async retomarAssinatura(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('assinaturaId') assinaturaId: string,
+    @Args('proximoVencimento') proximoVencimento: string,
+  ): Promise<boolean> {
+    await this.financeiroService.retomarAssinatura(
+      workspace.id,
+      assinaturaId,
+      proximoVencimento,
+    );
+
+    return true;
+  }
+
+  @Mutation(() => Boolean)
+  async cancelarAssinatura(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('assinaturaId') assinaturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.cancelarAssinatura(
+      workspace.id,
+      assinaturaId,
+    );
+
+    return true;
+  }
+
+  // ── F2: estatísticas de receita ──
+  @Query(() => ReceitaStatsDTO)
+  async receitaStats(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<ReceitaStatsDTO> {
+    return this.financeiroService.receitaStats(workspace.id);
   }
 
   @Mutation(() => Boolean)

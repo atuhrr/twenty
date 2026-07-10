@@ -55,6 +55,25 @@ export class FinanceiroContaEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   nomeConta: string | null;
 
+  // ── F2: cobrança automática ──
+  @Column({ nullable: true, type: 'numeric', precision: 5, scale: 2 })
+  jurosPadraoPercent: number | null;
+
+  @Column({ nullable: true, type: 'numeric', precision: 5, scale: 2 })
+  multaPadraoPercent: number | null;
+
+  // { ativo: boolean, diasAntes: number[], diasDepois: number[] }
+  @Column({
+    nullable: false,
+    type: 'jsonb',
+    default: () => `'{"ativo": true, "diasAntes": [1], "diasDepois": [1, 3, 7]}'`,
+  })
+  reguaLembretes: { ativo: boolean; diasAntes: number[]; diasDepois: number[] };
+
+  // Nome do template aprovado da Meta usado fora da janela de 24h
+  @Column({ nullable: true, type: 'text' })
+  templateLembrete: string | null;
+
   // ── Reservados para a F5 (Zellate Pay) ──
   @Column({ nullable: true, type: 'text' })
   walletId: string | null;

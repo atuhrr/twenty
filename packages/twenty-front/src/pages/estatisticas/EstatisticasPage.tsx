@@ -8,6 +8,7 @@ import { AbaConversao } from '~/pages/estatisticas/components/AbaConversao';
 import { AbaEquipe } from '~/pages/estatisticas/components/AbaEquipe';
 import { AbaFunil } from '~/pages/estatisticas/components/AbaFunil';
 import { AbaRoi } from '~/pages/estatisticas/components/AbaRoi';
+import { AbaReceita } from '~/pages/estatisticas/components/AbaReceita';
 import { AbaVisaoGeral } from '~/pages/estatisticas/components/AbaVisaoGeral';
 import {
   baixarCsv,
@@ -18,7 +19,7 @@ import {
   type LeadRecord,
 } from '~/pages/estatisticas/estatisticasShared';
 
-type Aba = 'visao-geral' | 'funil' | 'conversao' | 'equipe' | 'roi';
+type Aba = 'visao-geral' | 'funil' | 'conversao' | 'equipe' | 'roi' | 'receita';
 
 const ABAS: { key: Aba; label: string }[] = [
   { key: 'visao-geral', label: 'Visão Geral' },
@@ -26,6 +27,7 @@ const ABAS: { key: Aba; label: string }[] = [
   { key: 'conversao', label: 'Conversão' },
   { key: 'equipe', label: 'Equipe' },
   { key: 'roi', label: 'ROI' },
+  { key: 'receita', label: 'Receita' },
 ];
 
 export function EstatisticasPage() {
@@ -209,6 +211,7 @@ export function EstatisticasPage() {
         )}
         {aba === 'equipe' && <AbaEquipe leads={leads} loading={leadsLoading} />}
         {aba === 'roi' && <AbaRoi />}
+        {aba === 'receita' && <AbaReceita />}
       </div>
     </div>
   );

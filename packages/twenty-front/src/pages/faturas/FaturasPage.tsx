@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@apollo/client/react';
 import {
   Copy,
   Download,
+  Repeat,
   ExternalLink,
   MessageCircle,
   Plus,
@@ -17,13 +18,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import {
+  ASSINATURAS,
+  CANCELAR_ASSINATURA,
   CANCELAR_FATURA,
+  CRIAR_ASSINATURA,
   CRIAR_FATURA,
   ENVIAR_FATURA_WHATSAPP,
   FATURA_RESUMO,
   FATURAS,
+  FINANCEIRO_CONFIG,
+  FINANCEIRO_STATUS,
+  PAUSAR_ASSINATURA,
+  RETOMAR_ASSINATURA,
 } from '@/financeiro/graphql/financeiroQueries';
-import { FINANCEIRO_STATUS } from '@/financeiro/graphql/financeiroQueries';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
@@ -103,6 +110,466 @@ const STATUS_CHIP: Record<string, { rotulo: string; classe: string }> = {
 const inputClass =
   'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
+type Assinatura = {
+  id: string;
+  leadId: string | null;
+  clienteNome: string;
+  descricao: string;
+  valorCentavos: number;
+  ciclo: string;
+  proximoVencimento: string;
+  meios: string;
+  status: string;
+  createdAt: string;
+};
+
+const ASSINATURA_CHIP: Record<string, { rotulo: string; classe: string }> = {
+  ATIVA: {
+    rotulo: 'Ativa',
+    classe:
+      'bg-success-50 text-success-600 dark:bg-success-500/10 dark:text-success-400',
+  },
+  PAUSADA: {
+    rotulo: 'Pausada',
+    classe:
+      'bg-warning-50 text-warning-600 dark:bg-warning-500/10 dark:text-warning-400',
+  },
+  CANCELADA: {
+    rotulo: 'Cancelada',
+    classe: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+  },
+};
+
+// ─── F2: Modal de nova assinatura ────────────────────────────────────────────
+
+function AssinaturaModal({
+  onFechar,
+  onCriada,
+}: {
+  onFechar: () => void;
+  onCriada: () => void;
+}) {
+  const { enqueueErrorSnackBar } = useSnackBar();
+  const [clienteNome, setClienteNome] = useState('');
+  const [clienteTelefone, setClienteTelefone] = useState('');
+  const [clienteCpfCnpj, setClienteCpfCnpj] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [valor, setValor] = useState('');
+  const [primeiraCobranca, setPrimeiraCobranca] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    return d.toISOString().slice(0, 10);
+  });
+  const [meios, setMeios] = useState('TODOS');
+  const [leadId, setLeadId] = useState('');
+  const [buscaLead, setBuscaLead] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  const [criarAssinatura] = useMutation(CRIAR_ASSINATURA);
+
+  const { records: leads } = useFindManyRecords<LeadOption>({
+    objectNameSingular: 'opportunity',
+    filter: {},
+    recordGqlFields: { id: true, name: true },
+    orderBy: [{ name: 'AscNullsLast' }],
+    limit: 200,
+  });
+
+  const leadsVisiveis = useMemo(() => {
+    const q = buscaLead.trim().toLowerCase();
+    const lista = q
+      ? leads.filter((l) => (l.name ?? '').toLowerCase().includes(q))
+      : leads;
+    return lista.slice(0, 50);
+  }, [leads, buscaLead]);
+
+  const valorCentavos = Math.round(Number(valor.replace(',', '.')) * 100) || 0;
+  const valido =
+    clienteNome.trim() !== '' &&
+    descricao.trim() !== '' &&
+    valorCentavos >= 100;
+
+  const handleCriar = async () => {
+    setSalvando(true);
+    try {
+      await criarAssinatura({
+        variables: {
+          input: {
+            leadId: leadId || null,
+            clienteNome: clienteNome.trim(),
+            clienteCpfCnpj: clienteCpfCnpj.trim() || null,
+            clienteTelefone: clienteTelefone.trim() || null,
+            descricao: descricao.trim(),
+            valorCentavos,
+            proximoVencimento: primeiraCobranca,
+            meios,
+          },
+        },
+      });
+      onCriada();
+    } catch (err) {
+      const msg = (err as Error)?.message ?? '';
+      const idx = msg.indexOf('ASAAS_ERROR: ');
+      enqueueErrorSnackBar({
+        message:
+          idx !== -1
+            ? `Provedor recusou: ${msg.slice(idx + 'ASAAS_ERROR: '.length)}`
+            : 'Não foi possível criar a assinatura.',
+      });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+      onClick={onFechar}
+    >
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-1 flex items-start justify-between">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            Nova assinatura (mensal)
+          </h2>
+          <button
+            onClick={onFechar}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+            aria-label="Fechar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <p className="mb-5 text-xs text-gray-500">
+          O provedor gera a cobrança todo mês sozinho — cada fatura aparece na
+          lista e segue a régua de lembretes.
+        </p>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Nome do cliente
+              </label>
+              <input
+                className={inputClass}
+                value={clienteNome}
+                onChange={(e) => setClienteNome(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Telefone (WhatsApp)
+              </label>
+              <input
+                className={inputClass}
+                value={clienteTelefone}
+                onChange={(e) => setClienteTelefone(e.target.value)}
+                placeholder="Com DDD"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                CPF/CNPJ (opcional)
+              </label>
+              <input
+                className={inputClass}
+                value={clienteCpfCnpj}
+                onChange={(e) => setClienteCpfCnpj(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Primeira cobrança
+              </label>
+              <input
+                type="date"
+                className={inputClass}
+                value={primeiraCobranca}
+                onChange={(e) => setPrimeiraCobranca(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Descrição
+            </label>
+            <input
+              className={inputClass}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Ex.: Mensalidade — plano padrão"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Valor mensal (R$)
+              </label>
+              <input
+                className={inputClass}
+                value={valor}
+                onChange={(e) => setValor(e.target.value)}
+                placeholder="0,00"
+                inputMode="decimal"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                Meios de pagamento
+              </label>
+              <select
+                className={inputClass}
+                value={meios}
+                onChange={(e) => setMeios(e.target.value)}
+              >
+                <option value="TODOS">Cliente escolhe</option>
+                <option value="PIX">Somente Pix</option>
+                <option value="CARTAO">Somente cartão</option>
+                <option value="BOLETO">Somente boleto</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Vincular a um lead (opcional)
+            </label>
+            <input
+              className={`${inputClass} mb-1.5`}
+              value={buscaLead}
+              onChange={(e) => setBuscaLead(e.target.value)}
+              placeholder="Buscar lead pelo nome…"
+            />
+            <select
+              className={inputClass}
+              value={leadId}
+              onChange={(e) => setLeadId(e.target.value)}
+            >
+              <option value="">— Sem lead</option>
+              {leadsVisiveis.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name ?? '(sem nome)'}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onFechar}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Cancelar
+          </button>
+          <button
+            disabled={salvando || !valido}
+            onClick={() => void handleCriar()}
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {salvando ? 'Criando…' : 'Criar assinatura'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── F2: Assinaturas ─────────────────────────────────────────────────────────
+
+function AssinaturasView() {
+  const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
+  const [modalAberto, setModalAberto] = useState(false);
+  const [retomandoId, setRetomandoId] = useState<string | null>(null);
+  const [dataRetomada, setDataRetomada] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  });
+
+  const { data, refetch } = useQuery<{ assinaturas: Assinatura[] }>(
+    ASSINATURAS,
+    { fetchPolicy: 'cache-and-network' },
+  );
+  const assinaturas = data?.assinaturas ?? [];
+
+  const [pausar] = useMutation(PAUSAR_ASSINATURA);
+  const [retomar] = useMutation(RETOMAR_ASSINATURA);
+  const [cancelar] = useMutation(CANCELAR_ASSINATURA);
+
+  const acao = async (fn: () => Promise<unknown>, sucesso: string) => {
+    try {
+      await fn();
+      await refetch();
+      enqueueSuccessSnackBar({ message: sucesso });
+    } catch (err) {
+      const msg = (err as Error)?.message ?? '';
+      const idx = msg.indexOf('ASAAS_ERROR: ');
+      enqueueErrorSnackBar({
+        message:
+          idx !== -1
+            ? `Provedor recusou: ${msg.slice(idx + 'ASAAS_ERROR: '.length)}`
+            : 'Não foi possível concluir a ação.',
+      });
+    }
+  };
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-800">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Assinaturas (cobrança recorrente)
+          </h3>
+          <p className="text-xs text-gray-500">
+            Mensalidades geradas sozinhas todo mês pelo provedor.
+          </p>
+        </div>
+        <button
+          onClick={() => setModalAberto(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          <Plus size={15} />
+          Nova assinatura
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {assinaturas.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-500">
+            Nenhuma assinatura ainda — ideal para mensalidades e planos.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-800">
+                <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 font-medium">Descrição</th>
+                <th className="px-4 py-3 font-medium text-right">Valor/mês</th>
+                <th className="px-4 py-3 font-medium">Próx. cobrança</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+              {assinaturas.map((a) => (
+                <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                    {a.leadId ? (
+                      <Link to={`/leads/${a.leadId}`} className="hover:underline">
+                        {a.clienteNome}
+                      </Link>
+                    ) : (
+                      a.clienteNome
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">{a.descricao}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
+                    {brl(a.valorCentavos)}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {a.status === 'ATIVA' ? dataBR(a.proximoVencimento) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${ASSINATURA_CHIP[a.status]?.classe ?? ''}`}
+                    >
+                      {ASSINATURA_CHIP[a.status]?.rotulo ?? a.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {a.status === 'ATIVA' && (
+                        <>
+                          <button
+                            className="text-xs font-medium text-warning-600 hover:underline"
+                            onClick={() =>
+                              void acao(
+                                () => pausar({ variables: { assinaturaId: a.id } }),
+                                'Assinatura pausada.',
+                              )
+                            }
+                          >
+                            Pausar
+                          </button>
+                          <button
+                            className="text-xs font-medium text-error-500 hover:underline"
+                            onClick={() =>
+                              void acao(
+                                () => cancelar({ variables: { assinaturaId: a.id } }),
+                                'Assinatura cancelada.',
+                              )
+                            }
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+                      {a.status === 'PAUSADA' &&
+                        (retomandoId === a.id ? (
+                          <span className="flex items-center gap-1.5">
+                            <input
+                              type="date"
+                              className="rounded border border-gray-300 px-1.5 py-1 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                              value={dataRetomada}
+                              onChange={(e) => setDataRetomada(e.target.value)}
+                            />
+                            <button
+                              className="text-xs font-medium text-success-600 hover:underline"
+                              onClick={() =>
+                                void acao(
+                                  () =>
+                                    retomar({
+                                      variables: {
+                                        assinaturaId: a.id,
+                                        proximoVencimento: dataRetomada,
+                                      },
+                                    }).then(() => setRetomandoId(null)),
+                                  'Assinatura retomada.',
+                                )
+                              }
+                            >
+                              OK
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            className="text-xs font-medium text-success-600 hover:underline"
+                            onClick={() => setRetomandoId(a.id)}
+                          >
+                            Retomar
+                          </button>
+                        ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modalAberto && (
+        <AssinaturaModal
+          onFechar={() => setModalAberto(false)}
+          onCriada={() => {
+            setModalAberto(false);
+            void refetch();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Modal de criação ─────────────────────────────────────────────────────────
 
 function FaturaModal({
@@ -139,6 +606,30 @@ function FaturaModal({
   const [buscaLead, setBuscaLead] = useState('');
   const [enviarWhatsapp, setEnviarWhatsapp] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // F2: encargos (pré-preenchidos com o padrão da configuração) e régua
+  const { data: configData } = useQuery<{
+    financeiroConfig: {
+      jurosPadraoPercent: number | null;
+      multaPadraoPercent: number | null;
+    };
+  }>(FINANCEIRO_CONFIG, { fetchPolicy: 'cache-first' });
+  const [mostrarEncargos, setMostrarEncargos] = useState(false);
+  const [juros, setJuros] = useState('');
+  const [multa, setMulta] = useState('');
+  const [desconto, setDesconto] = useState('');
+  const [lembretes, setLembretes] = useState(true);
+
+  useEffect(() => {
+    const cfg = configData?.financeiroConfig;
+    if (cfg) {
+      if (juros === '' && cfg.jurosPadraoPercent != null)
+        setJuros(String(cfg.jurosPadraoPercent));
+      if (multa === '' && cfg.multaPadraoPercent != null)
+        setMulta(String(cfg.multaPadraoPercent));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configData]);
 
   const [criarFatura] = useMutation(CRIAR_FATURA);
 
@@ -195,6 +686,12 @@ function FaturaModal({
             valorCentavos,
             vencimento,
             meios,
+            jurosPercent: juros ? Number(juros.replace(',', '.')) : null,
+            multaPercent: multa ? Number(multa.replace(',', '.')) : null,
+            descontoCentavos: desconto
+              ? Math.round(Number(desconto.replace(',', '.')) * 100)
+              : null,
+            lembretesAtivos: lembretes,
           },
         },
       });
@@ -353,6 +850,66 @@ function FaturaModal({
             </select>
           </div>
 
+          {/* F2: encargos e desconto */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setMostrarEncargos(!mostrarEncargos)}
+              className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+            >
+              {mostrarEncargos ? '▾' : '▸'} Juros, multa e desconto
+            </button>
+            {mostrarEncargos && (
+              <div className="mt-2 grid grid-cols-3 gap-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-800/50">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                    Juros/mês (%)
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={juros}
+                    onChange={(e) => setJuros(e.target.value)}
+                    placeholder="0"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                    Multa (%)
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={multa}
+                    onChange={(e) => setMulta(e.target.value)}
+                    placeholder="0"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                    Desconto (R$)
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={desconto}
+                    onChange={(e) => setDesconto(e.target.value)}
+                    placeholder="0,00"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={lembretes}
+              onChange={(e) => setLembretes(e.target.checked)}
+            />
+            Lembretes automáticos de cobrança (régua do WhatsApp)
+          </label>
+
           <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
@@ -390,6 +947,7 @@ type AbaFiltro = 'todas' | 'PENDENTE' | 'PAGA' | 'VENCIDA';
 export const FaturasPage = () => {
   const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [secao, setSecao] = useState<'faturas' | 'assinaturas'>('faturas');
   const [aba, setAba] = useState<AbaFiltro>('todas');
   const [busca, setBusca] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
@@ -522,9 +1080,32 @@ export const FaturasPage = () => {
       {/* Overview (fatura.png) */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-            Visão geral
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Visão geral
+            </h2>
+            <div className="flex rounded-lg bg-gray-100 p-0.5 dark:bg-gray-800">
+              {(
+                [
+                  ['faturas', 'Faturas'],
+                  ['assinaturas', 'Assinaturas'],
+                ] as Array<['faturas' | 'assinaturas', string]>
+              ).map(([key, rotulo]) => (
+                <button
+                  key={key}
+                  onClick={() => setSecao(key)}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    secao === key
+                      ? 'bg-white text-gray-900 shadow-theme-xs dark:bg-gray-700 dark:text-white'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  {key === 'assinaturas' && <Repeat size={12} />}
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={() => {
               setLeadPre(null);
@@ -562,6 +1143,9 @@ export const FaturasPage = () => {
       </div>
 
       {/* Lista */}
+      {secao === 'assinaturas' ? (
+        <AssinaturasView />
+      ) : (
       <div className="flex flex-1 min-h-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
           <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
@@ -724,6 +1308,7 @@ export const FaturasPage = () => {
           )}
         </div>
       </div>
+      )}
 
       {modalAberto && (
         <FaturaModal

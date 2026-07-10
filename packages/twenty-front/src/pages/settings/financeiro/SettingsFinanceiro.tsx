@@ -1,10 +1,12 @@
 // FORK: Zellate — F1 Financeiro: conexão da conta de recebimento (Asaas)
 import { useMutation, useQuery } from '@apollo/client/react';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
+  ATUALIZAR_FINANCEIRO_CONFIG,
   CONECTAR_FINANCEIRO,
+  FINANCEIRO_CONFIG,
   FINANCEIRO_STATUS,
 } from '@/financeiro/graphql/financeiroQueries';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
@@ -20,6 +22,210 @@ type StatusData = {
 
 const inputClass =
   'w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+
+type ConfigData = {
+  financeiroConfig: {
+    jurosPadraoPercent: number | null;
+    multaPadraoPercent: number | null;
+    reguaAtiva: boolean;
+    reguaDiasAntes: number[];
+    reguaDiasDepois: number[];
+    templateLembrete: string | null;
+  };
+};
+
+// FORK: Zellate — F2: juros/multa padrão + régua de lembretes por WhatsApp
+function CobrancaAutomatica() {
+  const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
+  const { data, refetch } = useQuery<ConfigData>(FINANCEIRO_CONFIG, {
+    fetchPolicy: 'cache-and-network',
+  });
+  const config = data?.financeiroConfig;
+
+  const [juros, setJuros] = useState('');
+  const [multa, setMulta] = useState('');
+  const [reguaAtiva, setReguaAtiva] = useState(true);
+  const [diasAntes, setDiasAntes] = useState<number[]>([1]);
+  const [diasDepois, setDiasDepois] = useState<number[]>([1, 3, 7]);
+  const [template, setTemplate] = useState('');
+  const [carregado, setCarregado] = useState(false);
+
+  useEffect(() => {
+    if (config && !carregado) {
+      setJuros(
+        config.jurosPadraoPercent != null
+          ? String(config.jurosPadraoPercent)
+          : '',
+      );
+      setMulta(
+        config.multaPadraoPercent != null
+          ? String(config.multaPadraoPercent)
+          : '',
+      );
+      setReguaAtiva(config.reguaAtiva);
+      setDiasAntes(config.reguaDiasAntes);
+      setDiasDepois(config.reguaDiasDepois);
+      setTemplate(config.templateLembrete ?? '');
+      setCarregado(true);
+    }
+  }, [config, carregado]);
+
+  const [salvar, { loading: salvando }] = useMutation(
+    ATUALIZAR_FINANCEIRO_CONFIG,
+  );
+
+  const toggleDia = (
+    lista: number[],
+    setLista: (v: number[]) => void,
+    dia: number,
+  ) => {
+    setLista(
+      lista.includes(dia)
+        ? lista.filter((d) => d !== dia)
+        : [...lista, dia].sort((a, b) => a - b),
+    );
+  };
+
+  const handleSalvar = async () => {
+    try {
+      await salvar({
+        variables: {
+          input: {
+            jurosPadraoPercent: juros ? Number(juros.replace(',', '.')) : null,
+            multaPadraoPercent: multa ? Number(multa.replace(',', '.')) : null,
+            reguaAtiva,
+            reguaDiasAntes: diasAntes,
+            reguaDiasDepois: diasDepois,
+            templateLembrete: template.trim() || null,
+          },
+        },
+      });
+      await refetch();
+      enqueueSuccessSnackBar({ message: 'Cobrança automática salva.' });
+    } catch {
+      enqueueErrorSnackBar({ message: 'Não foi possível salvar.' });
+    }
+  };
+
+  const checkboxDia = (
+    lista: number[],
+    setLista: (v: number[]) => void,
+    dia: number,
+    rotulo: string,
+  ) => (
+    <label
+      key={rotulo}
+      className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+    >
+      <input
+        type="checkbox"
+        checked={lista.includes(dia)}
+        onChange={() => toggleDia(lista, setLista, dia)}
+      />
+      {rotulo}
+    </label>
+  );
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+      <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
+        Cobrança automática
+      </h3>
+      <p className="mb-4 text-xs text-gray-500">
+        Juros e multa aplicados em atraso, e lembretes enviados sozinhos pelo
+        WhatsApp — a cobrança que se cobra.
+      </p>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Juros ao mês em atraso (%)
+            </label>
+            <input
+              className={inputClass}
+              value={juros}
+              onChange={(e) => setJuros(e.target.value)}
+              placeholder="Ex.: 1"
+              inputMode="decimal"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              Multa por atraso (%)
+            </label>
+            <input
+              className={inputClass}
+              value={multa}
+              onChange={(e) => setMulta(e.target.value)}
+              placeholder="Ex.: 2"
+              inputMode="decimal"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={reguaAtiva}
+              onChange={(e) => setReguaAtiva(e.target.checked)}
+            />
+            Enviar lembretes de cobrança pelo WhatsApp
+          </label>
+          {reguaAtiva && (
+            <div className="space-y-2 rounded-lg bg-gray-50 p-3 dark:bg-gray-800/50">
+              <div className="flex flex-wrap gap-4">
+                <span className="text-xs font-medium text-gray-500">
+                  Antes do vencimento:
+                </span>
+                {checkboxDia(diasAntes, setDiasAntes, 3, '3 dias antes')}
+                {checkboxDia(diasAntes, setDiasAntes, 1, '1 dia antes')}
+              </div>
+              <div className="flex flex-wrap gap-4">
+                <span className="text-xs font-medium text-gray-500">
+                  Depois de vencer:
+                </span>
+                {checkboxDia(diasDepois, setDiasDepois, 1, '+1 dia')}
+                {checkboxDia(diasDepois, setDiasDepois, 3, '+3 dias')}
+                {checkboxDia(diasDepois, setDiasDepois, 7, '+7 dias')}
+              </div>
+              <p className="text-[11px] text-gray-400">
+                O lembrete no dia do vencimento é sempre enviado quando a régua
+                está ativa.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+            Template da Meta para fora da janela de 24h (opcional)
+          </label>
+          <input
+            className={inputClass}
+            value={template}
+            onChange={(e) => setTemplate(e.target.value)}
+            placeholder="nome_do_template_aprovado"
+          />
+          <p className="mt-1 text-[11px] text-gray-400">
+            O WhatsApp só permite mensagem livre até 24h após o último contato
+            do cliente. Fora da janela, o lembrete usa este template aprovado —
+            sem ele, o lembrete é pulado (fica registrado na fatura).
+          </p>
+        </div>
+
+        <button
+          onClick={() => void handleSalvar()}
+          disabled={salvando}
+          className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+        >
+          {salvando ? 'Salvando…' : 'Salvar cobrança automática'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export const SettingsFinanceiro = () => {
   const { enqueueErrorSnackBar } = useSnackBar();
@@ -143,6 +349,8 @@ export const SettingsFinanceiro = () => {
           </button>
         </div>
       </div>
+
+      {status?.conectado === true && <CobrancaAutomatica />}
 
       {/* Custos — transparência é feature */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">

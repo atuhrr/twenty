@@ -92,6 +92,22 @@ export class FaturaEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   pixQrCodeBase64: string | null;
 
+  // ── F2: encargos e régua ──
+  @Column({ nullable: true, type: 'numeric', precision: 5, scale: 2 })
+  jurosPercent: number | null;
+
+  @Column({ nullable: true, type: 'numeric', precision: 5, scale: 2 })
+  multaPercent: number | null;
+
+  @Column({ nullable: true, type: 'integer' })
+  descontoCentavos: number | null;
+
+  @Column({ nullable: false, type: 'boolean', default: true })
+  lembretesAtivos: boolean;
+
+  @Column({ nullable: true, type: 'uuid' })
+  assinaturaId: string | null;
+
   // ── Pagamento ──
   @Column({ nullable: true, type: 'timestamptz' })
   pagaEm: Date | null;

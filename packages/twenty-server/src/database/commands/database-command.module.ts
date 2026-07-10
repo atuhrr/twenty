@@ -24,6 +24,7 @@ import { ApplicationUpgradeModule } from 'src/engine/core-modules/application/ap
 import { ApplicationModule } from 'src/engine/core-modules/application/application.module';
 import { PreInstalledAppsModule } from 'src/engine/core-modules/application/pre-installed-apps/pre-installed-apps.module';
 import { EnterpriseKeyValidationCronCommand } from 'src/engine/core-modules/enterprise/cron/command/enterprise-key-validation.cron.command';
+import { FinanceiroLembretesCronCommand } from 'src/engine/core-modules/financeiro/crons/financeiro-lembretes.cron.command';
 import { EnterpriseModule } from 'src/engine/core-modules/enterprise/enterprise.module';
 import { EventLogCleanupModule } from 'src/engine/core-modules/event-logs/cleanup/event-log-cleanup.module';
 import { FeatureFlagModule } from 'src/engine/core-modules/feature-flag/feature-flag.module';
@@ -102,6 +103,7 @@ import { AutomatedTriggerModule } from 'src/modules/workflow/workflow-trigger/au
     RunInstanceCommandsCommand,
     ListOrphanedWorkspaceEntitiesCommand,
     EnterpriseKeyValidationCronCommand,
+    FinanceiroLembretesCronCommand,
     RotateSigningKeysCronCommand,
     GenerateApiKeyCommand,
     UpgradeStatusCommand,

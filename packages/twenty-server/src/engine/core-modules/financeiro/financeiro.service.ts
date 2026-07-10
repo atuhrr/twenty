@@ -15,6 +15,10 @@ import {
   FinanceiroContaEntity,
   FinanceiroContaStatus,
 } from 'src/engine/core-modules/financeiro/financeiro-conta.entity';
+import {
+  AssinaturaEntity,
+  AssinaturaStatus,
+} from 'src/engine/core-modules/financeiro/assinatura.entity';
 import { AsaasProvider } from 'src/engine/core-modules/financeiro/asaas.provider';
 import { NotificationsService } from 'src/engine/core-modules/notifications/notifications.service';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
@@ -55,6 +59,8 @@ export class FinanceiroService {
     private readonly faturaRepo: Repository<FaturaEntity>,
     @InjectRepository(FaturaEventoEntity)
     private readonly eventoRepo: Repository<FaturaEventoEntity>,
+    @InjectRepository(AssinaturaEntity)
+    private readonly assinaturaRepo: Repository<AssinaturaEntity>,
     @InjectRepository(WhatsappContactWindowEntity)
     private readonly contactWindowRepo: Repository<WhatsappContactWindowEntity>,
     private readonly asaas: AsaasProvider,
@@ -141,6 +147,10 @@ export class FinanceiroService {
       valorCentavos: number;
       vencimento: string;
       meios: FaturaMeios;
+      jurosPercent?: number | null;
+      multaPercent?: number | null;
+      descontoCentavos?: number | null;
+      lembretesAtivos?: boolean;
     },
   ): Promise<FaturaEntity> {
     if (input.valorCentavos < 100) {
@@ -161,6 +171,9 @@ export class FinanceiroService {
       vencimento: input.vencimento,
       descricao: input.descricao,
       billingType: MEIO_PARA_BILLING[input.meios],
+      jurosPercent: input.jurosPercent ?? conta.jurosPadraoPercent,
+      multaPercent: input.multaPercent ?? conta.multaPadraoPercent,
+      descontoCentavos: input.descontoCentavos ?? null,
     });
 
     const pix =
@@ -195,6 +208,10 @@ export class FinanceiroService {
         linkPagamento: cobranca.invoiceUrl,
         pixPayload: pix.payload,
         pixQrCodeBase64: pix.encodedImage,
+        jurosPercent: input.jurosPercent ?? conta.jurosPadraoPercent,
+        multaPercent: input.multaPercent ?? conta.multaPadraoPercent,
+        descontoCentavos: input.descontoCentavos ?? null,
+        lembretesAtivos: input.lembretesAtivos ?? true,
       }),
     );
 
@@ -357,9 +374,29 @@ export class FinanceiroService {
 
     if (!cobrancaId || !evento.event) return;
 
-    const fatura = await this.faturaRepo.findOne({
+    let fatura = await this.faturaRepo.findOne({
       where: { workspaceId, providerCobrancaId: cobrancaId },
     });
+
+    // F2: cobrança gerada por ASSINATURA no Asaas → materializa fatura local
+    if (!fatura && evento.event === 'PAYMENT_CREATED') {
+      const subscriptionId = (
+        evento.payment as { subscription?: string } | undefined
+      )?.subscription;
+
+      if (subscriptionId) {
+        fatura = await this.criarFaturaDeAssinatura(
+          workspaceId,
+          subscriptionId,
+          evento.payment as {
+            id: string;
+            value?: number;
+            dueDate?: string;
+            invoiceUrl?: string;
+          },
+        );
+      }
+    }
 
     if (!fatura) {
       this.logger.debug(
@@ -464,6 +501,475 @@ export class FinanceiroService {
       .catch((err) =>
         this.logger.warn(`Falha ao notificar pagamento: ${String(err)}`),
       );
+  }
+
+  private async criarFaturaDeAssinatura(
+    workspaceId: string,
+    providerAssinaturaId: string,
+    payment: {
+      id: string;
+      value?: number;
+      dueDate?: string;
+      invoiceUrl?: string;
+    },
+  ): Promise<FaturaEntity | null> {
+    const assinatura = await this.assinaturaRepo.findOne({
+      where: { workspaceId, providerAssinaturaId },
+    });
+
+    if (!assinatura) return null;
+
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+    const pix = await this.asaas.obterPix(apiKey, conta.ambiente, payment.id);
+
+    const ultimo = await this.faturaRepo
+      .createQueryBuilder('f')
+      .select('COALESCE(MAX(f.numeroSeq), 0)', 'max')
+      .where('f.workspaceId = :workspaceId', { workspaceId })
+      .getRawOne<{ max: number }>();
+
+    const fatura = await this.faturaRepo.save(
+      this.faturaRepo.create({
+        workspaceId,
+        numeroSeq: Number(ultimo?.max ?? 0) + 1,
+        leadId: assinatura.leadId,
+        clienteNome: assinatura.clienteNome,
+        clienteCpfCnpj: assinatura.clienteCpfCnpj,
+        clienteTelefone: assinatura.clienteTelefone,
+        descricao: `${assinatura.descricao} (assinatura)`,
+        valorCentavos: payment.value
+          ? Math.round(payment.value * 100)
+          : assinatura.valorCentavos,
+        vencimento:
+          payment.dueDate ?? assinatura.proximoVencimento,
+        meios: assinatura.meios as FaturaMeios,
+        status: FaturaStatus.PENDENTE,
+        provider: 'ASAAS',
+        providerCobrancaId: payment.id,
+        providerClienteId: assinatura.providerClienteId,
+        linkPagamento: payment.invoiceUrl ?? null,
+        pixPayload: pix.payload,
+        pixQrCodeBase64: pix.encodedImage,
+        assinaturaId: assinatura.id,
+      }),
+    );
+
+    if (payment.dueDate) {
+      await this.assinaturaRepo.update(
+        { id: assinatura.id },
+        { proximoVencimento: payment.dueDate },
+      );
+    }
+
+    await this.registrarEvento(workspaceId, fatura.id, 'CRIADA', {
+      origem: 'ASSINATURA',
+      assinaturaId: assinatura.id,
+    });
+
+    return fatura;
+  }
+
+  // ── F2: configuração de cobrança automática ───────────────────────────────
+
+  async atualizarConfig(
+    workspaceId: string,
+    config: {
+      jurosPadraoPercent?: number | null;
+      multaPadraoPercent?: number | null;
+      reguaLembretes?: {
+        ativo: boolean;
+        diasAntes: number[];
+        diasDepois: number[];
+      };
+      templateLembrete?: string | null;
+    },
+  ): Promise<void> {
+    const conta = await this.contaRepo.findOne({ where: { workspaceId } });
+
+    if (!conta) {
+      throw new BadRequestException(
+        'FINANCEIRO_NAO_CONECTADO: Conecte sua conta primeiro.',
+      );
+    }
+
+    await this.contaRepo.update(
+      { id: conta.id },
+      {
+        ...(config.jurosPadraoPercent !== undefined
+          ? { jurosPadraoPercent: config.jurosPadraoPercent }
+          : {}),
+        ...(config.multaPadraoPercent !== undefined
+          ? { multaPadraoPercent: config.multaPadraoPercent }
+          : {}),
+        ...(config.reguaLembretes !== undefined
+          ? { reguaLembretes: config.reguaLembretes }
+          : {}),
+        ...(config.templateLembrete !== undefined
+          ? { templateLembrete: config.templateLembrete }
+          : {}),
+      },
+    );
+  }
+
+  // ── F2: assinaturas (recorrência) ─────────────────────────────────────────
+
+  async criarAssinatura(
+    workspaceId: string,
+    input: {
+      leadId?: string | null;
+      clienteNome: string;
+      clienteCpfCnpj?: string | null;
+      clienteTelefone?: string | null;
+      descricao: string;
+      valorCentavos: number;
+      proximoVencimento: string;
+      meios: FaturaMeios;
+    },
+  ): Promise<AssinaturaEntity> {
+    if (input.valorCentavos < 100) {
+      throw new BadRequestException('Valor mínimo da assinatura é R$ 1,00.');
+    }
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    const cliente = await this.asaas.criarCliente(apiKey, conta.ambiente, {
+      nome: input.clienteNome,
+      cpfCnpj: input.clienteCpfCnpj,
+      telefone: input.clienteTelefone,
+    });
+
+    const providerAssinatura = await this.asaas.criarAssinatura(
+      apiKey,
+      conta.ambiente,
+      {
+        clienteId: cliente.id,
+        valorCentavos: input.valorCentavos,
+        proximoVencimento: input.proximoVencimento,
+        descricao: input.descricao,
+        billingType: MEIO_PARA_BILLING[input.meios],
+        jurosPercent: conta.jurosPadraoPercent,
+        multaPercent: conta.multaPadraoPercent,
+      },
+    );
+
+    return this.assinaturaRepo.save(
+      this.assinaturaRepo.create({
+        workspaceId,
+        leadId: input.leadId ?? null,
+        clienteNome: input.clienteNome,
+        clienteCpfCnpj: input.clienteCpfCnpj ?? null,
+        clienteTelefone: input.clienteTelefone ?? null,
+        descricao: input.descricao,
+        valorCentavos: input.valorCentavos,
+        ciclo: 'MENSAL',
+        proximoVencimento: input.proximoVencimento,
+        meios: input.meios,
+        status: AssinaturaStatus.ATIVA,
+        provider: 'ASAAS',
+        providerAssinaturaId: providerAssinatura.id,
+        providerClienteId: cliente.id,
+      }),
+    );
+  }
+
+  async listarAssinaturas(workspaceId: string): Promise<AssinaturaEntity[]> {
+    return this.assinaturaRepo.find({
+      where: { workspaceId },
+      order: { createdAt: 'DESC' },
+      take: 200,
+    });
+  }
+
+  // Pausar cancela no provedor (Asaas não tem pausa nativa) e mantém o
+  // registro local PAUSADA; retomar cria uma assinatura nova com os mesmos
+  // dados.
+  async pausarAssinatura(
+    workspaceId: string,
+    assinaturaId: string,
+  ): Promise<void> {
+    const assinatura = await this.assinaturaRepo.findOne({
+      where: { id: assinaturaId, workspaceId },
+    });
+
+    if (!assinatura || assinatura.status !== AssinaturaStatus.ATIVA) {
+      throw new BadRequestException('Assinatura não está ativa.');
+    }
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    if (assinatura.providerAssinaturaId) {
+      await this.asaas.cancelarAssinatura(
+        apiKey,
+        conta.ambiente,
+        assinatura.providerAssinaturaId,
+      );
+    }
+    await this.assinaturaRepo.update(
+      { id: assinaturaId },
+      { status: AssinaturaStatus.PAUSADA, providerAssinaturaId: null },
+    );
+  }
+
+  async retomarAssinatura(
+    workspaceId: string,
+    assinaturaId: string,
+    proximoVencimento: string,
+  ): Promise<void> {
+    const assinatura = await this.assinaturaRepo.findOne({
+      where: { id: assinaturaId, workspaceId },
+    });
+
+    if (!assinatura || assinatura.status !== AssinaturaStatus.PAUSADA) {
+      throw new BadRequestException('Assinatura não está pausada.');
+    }
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    if (!assinatura.providerClienteId) {
+      throw new BadRequestException('Assinatura sem cliente no provedor.');
+    }
+
+    const nova = await this.asaas.criarAssinatura(apiKey, conta.ambiente, {
+      clienteId: assinatura.providerClienteId,
+      valorCentavos: assinatura.valorCentavos,
+      proximoVencimento,
+      descricao: assinatura.descricao,
+      billingType: MEIO_PARA_BILLING[assinatura.meios as FaturaMeios],
+      jurosPercent: conta.jurosPadraoPercent,
+      multaPercent: conta.multaPadraoPercent,
+    });
+
+    await this.assinaturaRepo.update(
+      { id: assinaturaId },
+      {
+        status: AssinaturaStatus.ATIVA,
+        providerAssinaturaId: nova.id,
+        proximoVencimento,
+      },
+    );
+  }
+
+  async cancelarAssinatura(
+    workspaceId: string,
+    assinaturaId: string,
+  ): Promise<void> {
+    const assinatura = await this.assinaturaRepo.findOne({
+      where: { id: assinaturaId, workspaceId },
+    });
+
+    if (!assinatura) throw new BadRequestException('Assinatura não encontrada.');
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    if (
+      assinatura.status === AssinaturaStatus.ATIVA &&
+      assinatura.providerAssinaturaId
+    ) {
+      await this.asaas.cancelarAssinatura(
+        apiKey,
+        conta.ambiente,
+        assinatura.providerAssinaturaId,
+      );
+    }
+    await this.assinaturaRepo.update(
+      { id: assinaturaId },
+      { status: AssinaturaStatus.CANCELADA },
+    );
+  }
+
+  // ── F2: régua de lembretes (chamada pelo cron) ────────────────────────────
+
+  async processarLembretes(): Promise<void> {
+    const contas = await this.contaRepo.find();
+
+    for (const conta of contas) {
+      const regua = conta.reguaLembretes;
+
+      if (!regua?.ativo) continue;
+
+      const marcos: Array<{ chave: string; dataVencimento: string }> = [];
+      const hoje = new Date();
+      const dataStr = (d: Date) => d.toISOString().slice(0, 10);
+
+      for (const dias of regua.diasAntes ?? []) {
+        const alvo = new Date(hoje);
+        alvo.setDate(alvo.getDate() + dias);
+        marcos.push({ chave: `D-${dias}`, dataVencimento: dataStr(alvo) });
+      }
+      marcos.push({ chave: 'D0', dataVencimento: dataStr(hoje) });
+      for (const dias of regua.diasDepois ?? []) {
+        const alvo = new Date(hoje);
+        alvo.setDate(alvo.getDate() - dias);
+        marcos.push({ chave: `D+${dias}`, dataVencimento: dataStr(alvo) });
+      }
+
+      for (const marco of marcos) {
+        const faturas = await this.faturaRepo
+          .createQueryBuilder('f')
+          .where('f.workspaceId = :w', { w: conta.workspaceId })
+          .andWhere('f.status IN (:...st)', {
+            st: [FaturaStatus.PENDENTE, FaturaStatus.VENCIDA],
+          })
+          .andWhere('f.lembretesAtivos = true')
+          .andWhere('f.vencimento = :v', { v: marco.dataVencimento })
+          .getMany();
+
+        for (const fatura of faturas) {
+          await this.enviarLembrete(conta, fatura, marco.chave).catch((err) =>
+            this.logger.warn(
+              `Lembrete ${marco.chave} da fatura ${fatura.id} falhou: ${err instanceof Error ? err.message : String(err)}`,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  private async enviarLembrete(
+    conta: FinanceiroContaEntity,
+    fatura: FaturaEntity,
+    marco: string,
+  ): Promise<void> {
+    const tipoEvento = `LEMBRETE:${marco}:${fatura.vencimento}`;
+    const jaEnviado = await this.eventoRepo.findOne({
+      where: {
+        workspaceId: conta.workspaceId,
+        faturaId: fatura.id,
+        tipo: tipoEvento,
+      },
+    });
+
+    if (jaEnviado) return;
+
+    const window = fatura.leadId
+      ? await this.contactWindowRepo.findOne({
+          where: { workspaceId: conta.workspaceId, opportunityId: fatura.leadId },
+        })
+      : fatura.clienteTelefone
+        ? await this.contactWindowRepo.findOne({
+            where: {
+              workspaceId: conta.workspaceId,
+              phoneNumber: fatura.clienteTelefone.replace(/\D/g, ''),
+            },
+          })
+        : null;
+
+    if (!window?.phoneNumber) return;
+
+    const dentroDaJanela =
+      window.lastInboundAt != null &&
+      Date.now() - new Date(window.lastInboundAt).getTime() <
+        24 * 60 * 60 * 1000;
+
+    const atrasada = marco.startsWith('D+');
+    const texto = [
+      atrasada
+        ? `Olá, ${fatura.clienteNome}! Sua cobrança está em aberto:`
+        : `Olá, ${fatura.clienteNome}! Lembrete da sua cobrança:`,
+      ``,
+      `📄 ${fatura.descricao}`,
+      `💰 ${formatarBRL(fatura.valorCentavos)}`,
+      `📅 Vencimento: ${fatura.vencimento.split('-').reverse().join('/')}`,
+      ...(fatura.pixPayload
+        ? [``, `Pix copia e cola:`, fatura.pixPayload]
+        : []),
+      ...(fatura.linkPagamento
+        ? [``, `Link de pagamento:`, fatura.linkPagamento]
+        : []),
+    ].join('\n');
+
+    if (dentroDaJanela) {
+      await this.whatsappService.sendTextMessage(
+        conta.workspaceId,
+        window.phoneNumber,
+        texto,
+      );
+    } else if (conta.templateLembrete) {
+      // Fora da janela de 24h só template aprovado da Meta passa
+      await this.whatsappService.sendTemplateMessage(
+        conta.workspaceId,
+        window.phoneNumber,
+        conta.templateLembrete,
+        'pt_BR',
+        [],
+      );
+    } else {
+      await this.registrarEvento(
+        conta.workspaceId,
+        fatura.id,
+        'LEMBRETE_PULADO',
+        { marco, motivo: 'fora da janela de 24h e sem template configurado' },
+      );
+
+      return;
+    }
+
+    await this.registrarEvento(conta.workspaceId, fatura.id, tipoEvento, {
+      marco,
+    });
+    await this.registrarEvento(
+      conta.workspaceId,
+      fatura.id,
+      'LEMBRETE_ENVIADO',
+      { marco },
+    );
+  }
+
+  // ── F2: estatísticas de receita ───────────────────────────────────────────
+
+  async receitaStats(workspaceId: string): Promise<{
+    recebidoPorMes: Array<{ mes: string; centavos: number }>;
+    inadimplenciaPercent: number;
+    ticketMedioCentavos: number;
+    previsaoMesCentavos: number;
+    topClientes: Array<{ nome: string; centavos: number }>;
+  }> {
+    const meses = await this.faturaRepo.query(
+      `SELECT to_char(date_trunc('month', "pagaEm"), 'YYYY-MM') AS mes,
+              SUM(COALESCE("valorPagoCentavos", "valorCentavos")) AS total
+       FROM core."fatura"
+       WHERE "workspaceId" = $1 AND status = 'PAGA'
+         AND "pagaEm" >= date_trunc('month', now()) - interval '11 months'
+       GROUP BY 1 ORDER BY 1`,
+      [workspaceId],
+    );
+
+    const agregados = await this.faturaRepo.query(
+      `SELECT
+        COALESCE(SUM("valorCentavos") FILTER (WHERE status = 'VENCIDA'), 0) AS vencido,
+        COALESCE(SUM("valorCentavos") FILTER (WHERE status IN ('PAGA','VENCIDA','PENDENTE')), 0) AS emitido,
+        AVG(COALESCE("valorPagoCentavos", "valorCentavos"))
+          FILTER (WHERE status = 'PAGA') AS ticket,
+        COALESCE(SUM("valorCentavos") FILTER (
+          WHERE status = 'PENDENTE'
+            AND date_trunc('month', vencimento::timestamp) = date_trunc('month', now())
+        ), 0) AS previsao
+      FROM core."fatura" WHERE "workspaceId" = $1`,
+      [workspaceId],
+    );
+
+    const clientes = await this.faturaRepo.query(
+      `SELECT "clienteNome" AS nome,
+              SUM(COALESCE("valorPagoCentavos", "valorCentavos")) AS total
+       FROM core."fatura"
+       WHERE "workspaceId" = $1 AND status = 'PAGA'
+       GROUP BY 1 ORDER BY 2 DESC LIMIT 5`,
+      [workspaceId],
+    );
+
+    const a = agregados[0] ?? {};
+    const emitido = Number(a.emitido ?? 0);
+
+    return {
+      recebidoPorMes: (meses as Array<{ mes: string; total: string }>).map(
+        (m) => ({ mes: m.mes, centavos: Number(m.total) }),
+      ),
+      inadimplenciaPercent:
+        emitido > 0
+          ? Math.round((Number(a.vencido ?? 0) / emitido) * 1000) / 10
+          : 0,
+      ticketMedioCentavos: Math.round(Number(a.ticket ?? 0)),
+      previsaoMesCentavos: Number(a.previsao ?? 0),
+      topClientes: (clientes as Array<{ nome: string; total: string }>).map(
+        (c) => ({ nome: c.nome, centavos: Number(c.total) }),
+      ),
+    };
   }
 
   async validarWebhookToken(
