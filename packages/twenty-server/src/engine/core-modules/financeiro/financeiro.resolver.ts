@@ -17,6 +17,7 @@ import {
   FinanceiroConfigDTO,
   FinanceiroStatusDTO,
   ReceitaStatsDTO,
+  ServicoMunicipalDTO,
 } from 'src/engine/core-modules/financeiro/dtos/financeiro.dto';
 import {
   FinanceiroService,
@@ -43,6 +44,9 @@ const paraDTO = (f: FaturaEntity): FaturaDTO => ({
   pixPayload: f.pixPayload,
   pagaEm: f.pagaEm,
   formaPagamento: f.formaPagamento,
+  nfseStatus: f.nfseStatus,
+  nfsePdfUrl: f.nfsePdfUrl,
+  nfseErro: f.nfseErro,
   createdAt: f.createdAt,
 });
 
@@ -150,6 +154,13 @@ export class FinanceiroResolver {
       reguaDiasAntes: regua.diasAntes ?? [],
       reguaDiasDepois: regua.diasDepois ?? [],
       templateLembrete: conta?.templateLembrete ?? null,
+      nfseAtiva: conta?.nfseAtiva ?? false,
+      nfseMomento: conta?.nfseMomento ?? 'MANUAL',
+      nfseCodigoServico: conta?.nfseCodigoServico ?? null,
+      nfseNomeServico: conta?.nfseNomeServico ?? null,
+      nfseAliquotaIss:
+        conta?.nfseAliquotaIss != null ? Number(conta.nfseAliquotaIss) : null,
+      nfseDescricaoPadrao: conta?.nfseDescricaoPadrao ?? null,
     };
   }
 
@@ -174,6 +185,12 @@ export class FinanceiroResolver {
         diasAntes: input.reguaDiasAntes ?? reguaAtual.diasAntes,
         diasDepois: input.reguaDiasDepois ?? reguaAtual.diasDepois,
       },
+      nfseAtiva: input.nfseAtiva,
+      nfseMomento: input.nfseMomento,
+      nfseCodigoServico: input.nfseCodigoServico,
+      nfseNomeServico: input.nfseNomeServico,
+      nfseAliquotaIss: input.nfseAliquotaIss,
+      nfseDescricaoPadrao: input.nfseDescricaoPadrao,
     });
 
     return true;
@@ -232,6 +249,48 @@ export class FinanceiroResolver {
       workspace.id,
       assinaturaId,
     );
+
+    return true;
+  }
+
+  // ── F3: NFS-e ──
+  @Query(() => [ServicoMunicipalDTO])
+  async servicosMunicipais(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('busca') busca: string,
+  ): Promise<ServicoMunicipalDTO[]> {
+    return this.financeiroService.buscarServicosMunicipais(
+      workspace.id,
+      busca,
+    );
+  }
+
+  @Mutation(() => Boolean)
+  async emitirNfse(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('faturaId') faturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.emitirNfse(workspace.id, faturaId);
+
+    return true;
+  }
+
+  @Mutation(() => Boolean)
+  async atualizarStatusNfse(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('faturaId') faturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.atualizarStatusNfse(workspace.id, faturaId);
+
+    return true;
+  }
+
+  @Mutation(() => Boolean)
+  async enviarNfseWhatsapp(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('faturaId') faturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.enviarNfseWhatsapp(workspace.id, faturaId);
 
     return true;
   }

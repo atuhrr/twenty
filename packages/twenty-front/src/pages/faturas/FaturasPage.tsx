@@ -6,6 +6,7 @@ import { useMutation, useQuery } from '@apollo/client/react';
 import {
   Copy,
   Download,
+  FileText,
   Repeat,
   ExternalLink,
   MessageCircle,
@@ -23,7 +24,9 @@ import {
   CANCELAR_FATURA,
   CRIAR_ASSINATURA,
   CRIAR_FATURA,
+  EMITIR_NFSE,
   ENVIAR_FATURA_WHATSAPP,
+  ENVIAR_NFSE_WHATSAPP,
   FATURA_RESUMO,
   FATURAS,
   FINANCEIRO_CONFIG,
@@ -50,6 +53,9 @@ type Fatura = {
   pixPayload: string | null;
   pagaEm: string | null;
   formaPagamento: string | null;
+  nfseStatus: string | null;
+  nfsePdfUrl: string | null;
+  nfseErro: string | null;
   createdAt: string;
 };
 
@@ -976,6 +982,39 @@ export const FaturasPage = () => {
 
   const [cancelarFatura] = useMutation(CANCELAR_FATURA);
   const [enviarWhatsapp] = useMutation(ENVIAR_FATURA_WHATSAPP);
+  const [emitirNfse] = useMutation(EMITIR_NFSE);
+  const [enviarNfse] = useMutation(ENVIAR_NFSE_WHATSAPP);
+
+  const { data: configNfseData } = useQuery<{
+    financeiroConfig: { nfseAtiva: boolean };
+  }>(FINANCEIRO_CONFIG, { fetchPolicy: 'cache-first' });
+  const nfseAtiva = configNfseData?.financeiroConfig?.nfseAtiva === true;
+
+  const handleEmitirNfse = async (faturaId: string) => {
+    try {
+      await emitirNfse({ variables: { faturaId } });
+      await refetch();
+      enqueueSuccessSnackBar({ message: 'NFS-e solicitada à prefeitura.' });
+    } catch (err) {
+      const msg = (err as Error)?.message ?? '';
+      const idx = msg.indexOf('ASAAS_ERROR: ');
+      enqueueErrorSnackBar({
+        message:
+          idx !== -1
+            ? `Provedor recusou: ${msg.slice(idx + 'ASAAS_ERROR: '.length)}`
+            : msg || 'Não foi possível emitir a NFS-e.',
+      });
+    }
+  };
+
+  const handleEnviarNfse = async (faturaId: string) => {
+    try {
+      await enviarNfse({ variables: { faturaId } });
+      enqueueSuccessSnackBar({ message: 'NFS-e enviada pelo WhatsApp.' });
+    } catch {
+      enqueueErrorSnackBar({ message: 'Falha ao enviar a NFS-e.' });
+    }
+  };
 
   // Abertura via URL (botão "Cobrar" do Inbox/lead)
   useEffect(() => {
@@ -1217,6 +1256,7 @@ export const FaturasPage = () => {
                   <th className="px-4 py-3 font-medium">Vencimento</th>
                   <th className="px-4 py-3 font-medium text-right">Valor</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">NFS-e</th>
                   <th className="px-4 py-3 font-medium text-right">Ações</th>
                 </tr>
               </thead>
@@ -1260,6 +1300,40 @@ export const FaturasPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3">
+                      {f.nfseStatus === 'EMITIDA' && f.nfsePdfUrl ? (
+                        <a
+                          href={f.nfsePdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-xs font-medium text-success-600 hover:underline dark:bg-success-500/10 dark:text-success-400"
+                        >
+                          <FileText size={11} /> Emitida
+                        </a>
+                      ) : f.nfseStatus === 'AGENDADA' ? (
+                        <span className="rounded-full bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-600 dark:bg-warning-500/10 dark:text-warning-400">
+                          Processando
+                        </span>
+                      ) : f.nfseStatus === 'ERRO' ? (
+                        <span
+                          title={f.nfseErro ?? 'Erro na emissão'}
+                          className="cursor-help rounded-full bg-error-50 px-2 py-0.5 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
+                        >
+                          Erro
+                        </span>
+                      ) : nfseAtiva && f.status === 'PAGA' ? (
+                        <button
+                          onClick={() => void handleEmitirNfse(f.id)}
+                          className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                        >
+                          Emitir nota
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300 dark:text-gray-600">
+                          —
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         {f.linkPagamento && (
                           <a
@@ -1288,6 +1362,15 @@ export const FaturasPage = () => {
                             className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-success-600 dark:hover:bg-gray-800"
                           >
                             <MessageCircle size={15} />
+                          </button>
+                        )}
+                        {f.nfseStatus === 'EMITIDA' && f.nfsePdfUrl && (
+                          <button
+                            title="Enviar NFS-e pelo WhatsApp"
+                            onClick={() => void handleEnviarNfse(f.id)}
+                            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-success-600 dark:hover:bg-gray-800"
+                          >
+                            <FileText size={15} />
                           </button>
                         )}
                         {(f.status === 'PENDENTE' || f.status === 'VENCIDA') && (

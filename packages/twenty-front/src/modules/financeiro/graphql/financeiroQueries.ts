@@ -40,6 +40,9 @@ export const FATURAS = gql`
       pixPayload
       pagaEm
       formaPagamento
+      nfseStatus
+      nfsePdfUrl
+      nfseErro
       createdAt
     }
   }
@@ -90,6 +93,12 @@ export const FINANCEIRO_CONFIG = gql`
       reguaDiasAntes
       reguaDiasDepois
       templateLembrete
+      nfseAtiva
+      nfseMomento
+      nfseCodigoServico
+      nfseNomeServico
+      nfseAliquotaIss
+      nfseDescricaoPadrao
     }
   }
 `;
@@ -162,5 +171,35 @@ export const RECEITA_STATS = gql`
         centavos
       }
     }
+  }
+`;
+
+// ── F3: NFS-e ──
+
+export const SERVICOS_MUNICIPAIS = gql`
+  query ServicosMunicipais($busca: String!) {
+    servicosMunicipais(busca: $busca) {
+      id
+      descricao
+      issPadrao
+    }
+  }
+`;
+
+export const EMITIR_NFSE = gql`
+  mutation EmitirNfse($faturaId: String!) {
+    emitirNfse(faturaId: $faturaId)
+  }
+`;
+
+export const ATUALIZAR_STATUS_NFSE = gql`
+  mutation AtualizarStatusNfse($faturaId: String!) {
+    atualizarStatusNfse(faturaId: $faturaId)
+  }
+`;
+
+export const ENVIAR_NFSE_WHATSAPP = gql`
+  mutation EnviarNfseWhatsapp($faturaId: String!) {
+    enviarNfseWhatsapp(faturaId: $faturaId)
   }
 `;

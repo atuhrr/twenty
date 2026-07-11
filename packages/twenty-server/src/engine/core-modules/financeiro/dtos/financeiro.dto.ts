@@ -60,6 +60,16 @@ export class FaturaDTO {
   @Field(() => String, { nullable: true })
   formaPagamento: string | null;
 
+  // F3: NFS-e
+  @Field(() => String, { nullable: true })
+  nfseStatus: string | null;
+
+  @Field(() => String, { nullable: true })
+  nfsePdfUrl: string | null;
+
+  @Field(() => String, { nullable: true })
+  nfseErro: string | null;
+
   @Field(() => Date)
   createdAt: Date;
 }
@@ -98,6 +108,37 @@ export class FinanceiroConfigDTO {
 
   @Field(() => String, { nullable: true })
   templateLembrete: string | null;
+
+  // F3: NFS-e
+  @Field(() => Boolean)
+  nfseAtiva: boolean;
+
+  @Field(() => String)
+  nfseMomento: string;
+
+  @Field(() => String, { nullable: true })
+  nfseCodigoServico: string | null;
+
+  @Field(() => String, { nullable: true })
+  nfseNomeServico: string | null;
+
+  @Field(() => Number, { nullable: true })
+  nfseAliquotaIss: number | null;
+
+  @Field(() => String, { nullable: true })
+  nfseDescricaoPadrao: string | null;
+}
+
+@ObjectType()
+export class ServicoMunicipalDTO {
+  @Field(() => String)
+  id: string;
+
+  @Field(() => String)
+  descricao: string;
+
+  @Field(() => Number, { nullable: true })
+  issPadrao: number | null;
 }
 
 @ObjectType()
@@ -188,6 +229,25 @@ export class AtualizarFinanceiroConfigInput {
 
   @Field(() => String, { nullable: true })
   templateLembrete?: string;
+
+  // F3: NFS-e
+  @Field(() => Boolean, { nullable: true })
+  nfseAtiva?: boolean;
+
+  @Field(() => String, { nullable: true })
+  nfseMomento?: string;
+
+  @Field(() => String, { nullable: true })
+  nfseCodigoServico?: string;
+
+  @Field(() => String, { nullable: true })
+  nfseNomeServico?: string;
+
+  @Field(() => Number, { nullable: true })
+  nfseAliquotaIss?: number;
+
+  @Field(() => String, { nullable: true })
+  nfseDescricaoPadrao?: string;
 }
 
 @InputType()

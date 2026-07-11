@@ -108,6 +108,20 @@ export class FaturaEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'uuid' })
   assinaturaId: string | null;
 
+  // ── F3: NFS-e (null = sem nota) ──
+  // AGENDADA | EMITIDA | ERRO | CANCELADA
+  @Column({ nullable: true, type: 'text' })
+  nfseStatus: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  nfseProviderId: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  nfsePdfUrl: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  nfseErro: string | null;
+
   // ── Pagamento ──
   @Column({ nullable: true, type: 'timestamptz' })
   pagaEm: Date | null;

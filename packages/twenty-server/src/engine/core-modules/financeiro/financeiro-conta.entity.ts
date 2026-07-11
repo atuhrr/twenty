@@ -74,6 +74,27 @@ export class FinanceiroContaEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'text' })
   templateLembrete: string | null;
 
+  // ── F3: NFS-e (opcional; default desligada) ──
+  @Column({ nullable: false, type: 'boolean', default: false })
+  nfseAtiva: boolean;
+
+  // MANUAL | AO_PAGAR
+  @Column({ nullable: false, type: 'text', default: 'MANUAL' })
+  nfseMomento: string;
+
+  // municipalServiceId do Asaas
+  @Column({ nullable: true, type: 'text' })
+  nfseCodigoServico: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  nfseNomeServico: string | null;
+
+  @Column({ nullable: true, type: 'numeric', precision: 5, scale: 2 })
+  nfseAliquotaIss: number | null;
+
+  @Column({ nullable: true, type: 'text' })
+  nfseDescricaoPadrao: string | null;
+
   // ── Reservados para a F5 (Zellate Pay) ──
   @Column({ nullable: true, type: 'text' })
   walletId: string | null;

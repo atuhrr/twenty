@@ -33,6 +33,28 @@ export type CriarCobrancaParams = {
   descontoCentavos?: number | null;
 };
 
+export type ServicoMunicipal = {
+  id: string;
+  descricao: string;
+  issPadrao: number | null;
+};
+
+export type NfseResultado = {
+  id: string;
+  status: string;
+  pdfUrl: string | null;
+  erro: string | null;
+};
+
+export type EmitirNfseParams = {
+  paymentId: string;
+  descricaoServico: string;
+  municipalServiceId: string;
+  municipalServiceName: string;
+  aliquotaIss: number | null;
+  valorCentavos: number;
+};
+
 export type CriarAssinaturaParams = {
   clienteId: string;
   valorCentavos: number;
@@ -87,6 +109,22 @@ export interface FinanceiroProvider {
     ambiente: string,
     assinaturaId: string,
   ): Promise<void>;
+  // F3: NFS-e
+  buscarServicosMunicipais(
+    apiKey: string,
+    ambiente: string,
+    busca: string,
+  ): Promise<ServicoMunicipal[]>;
+  emitirNfse(
+    apiKey: string,
+    ambiente: string,
+    params: EmitirNfseParams,
+  ): Promise<NfseResultado>;
+  consultarNfse(
+    apiKey: string,
+    ambiente: string,
+    nfseId: string,
+  ): Promise<NfseResultado>;
   // ── Reservados para a F5 (Zellate Pay) ──
   criarSubconta?(...args: unknown[]): Promise<unknown>;
   statusSubconta?(...args: unknown[]): Promise<unknown>;
@@ -166,6 +204,9 @@ export class AsaasProvider implements FinanceiroProvider {
           'PAYMENT_OVERDUE',
           'PAYMENT_REFUNDED',
           'PAYMENT_DELETED',
+          'INVOICE_AUTHORIZED',
+          'INVOICE_CANCELED',
+          'INVOICE_ERROR',
         ],
       });
     } catch (err) {
@@ -331,6 +372,99 @@ export class AsaasProvider implements FinanceiroProvider {
       );
     } catch (err) {
       this.lancarErroAmigavel(err, 'cancelarAssinatura');
+    }
+  }
+
+  // ── F3: NFS-e ──────────────────────────────────────────────────────────────
+
+  private mapearNfse(data: Record<string, unknown>): NfseResultado {
+    return {
+      id: String(data.id),
+      status: String(data.status ?? ''),
+      pdfUrl: (data.pdfUrl as string | undefined) ?? null,
+      erro:
+        (data.statusDescription as string | undefined) ??
+        (data.observations as string | undefined) ??
+        null,
+    };
+  }
+
+  async buscarServicosMunicipais(
+    apiKey: string,
+    ambiente: string,
+    busca: string,
+  ): Promise<ServicoMunicipal[]> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).get(
+        '/invoices/municipalServices',
+        { params: { description: busca, limit: 20 } },
+      );
+      const lista =
+        (data as { data?: Array<Record<string, unknown>> }).data ?? [];
+
+      return lista.map((sv) => ({
+        id: String(sv.id ?? sv.municipalServiceCode ?? ''),
+        descricao: String(sv.description ?? ''),
+        issPadrao: sv.issTax != null ? Number(sv.issTax) : null,
+      }));
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'buscarServicosMunicipais');
+    }
+  }
+
+  async emitirNfse(
+    apiKey: string,
+    ambiente: string,
+    params: EmitirNfseParams,
+  ): Promise<NfseResultado> {
+    try {
+      const hoje = new Date().toISOString().slice(0, 10);
+      const { data } = await this.client(apiKey, ambiente).post('/invoices', {
+        payment: params.paymentId,
+        serviceDescription: params.descricaoServico,
+        observations: params.descricaoServico,
+        value: params.valorCentavos / 100,
+        deductions: 0,
+        effectiveDate: hoje,
+        municipalServiceId: params.municipalServiceId,
+        municipalServiceName: params.municipalServiceName,
+        taxes: {
+          retainIss: false,
+          iss: params.aliquotaIss ?? 0,
+          cofins: 0,
+          csll: 0,
+          inss: 0,
+          ir: 0,
+          pis: 0,
+        },
+      });
+      const criada = data as Record<string, unknown>;
+
+      // Autoriza (emite) imediatamente; a prefeitura processa assíncrono
+      const { data: autorizada } = await this.client(apiKey, ambiente).post(
+        `/invoices/${String(criada.id)}/authorize`,
+        {},
+      );
+
+      return this.mapearNfse(autorizada as Record<string, unknown>);
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'emitirNfse');
+    }
+  }
+
+  async consultarNfse(
+    apiKey: string,
+    ambiente: string,
+    nfseId: string,
+  ): Promise<NfseResultado> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).get(
+        `/invoices/${nfseId}`,
+      );
+
+      return this.mapearNfse(data as Record<string, unknown>);
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'consultarNfse');
     }
   }
 }

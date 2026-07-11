@@ -368,11 +368,26 @@ export class FinanceiroService {
         billingType?: string;
         paymentDate?: string;
       };
+      invoice?: {
+        id?: string;
+        status?: string;
+        pdfUrl?: string;
+        statusDescription?: string;
+      };
     },
   ): Promise<void> {
+    if (!evento.event) return;
+
+    // F3: eventos de NFS-e
+    if (evento.event.startsWith('INVOICE_')) {
+      await this.processarEventoNfse(workspaceId, evento);
+
+      return;
+    }
+
     const cobrancaId = evento.payment?.id;
 
-    if (!cobrancaId || !evento.event) return;
+    if (!cobrancaId) return;
 
     let fatura = await this.faturaRepo.findOne({
       where: { workspaceId, providerCobrancaId: cobrancaId },
@@ -501,6 +516,237 @@ export class FinanceiroService {
       .catch((err) =>
         this.logger.warn(`Falha ao notificar pagamento: ${String(err)}`),
       );
+
+    // F3: emissão automática da NFS-e quando configurada para "ao pagar"
+    const conta = await this.contaRepo.findOne({ where: { workspaceId } });
+
+    if (conta?.nfseAtiva && conta.nfseMomento === 'AO_PAGAR') {
+      await this.emitirNfse(workspaceId, fatura.id).catch((err) => {
+        this.logger.warn(
+          `NFS-e automática da fatura ${fatura.id} falhou: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
+  }
+
+  // ── F3: NFS-e ─────────────────────────────────────────────────────────────
+
+  private async processarEventoNfse(
+    workspaceId: string,
+    evento: {
+      event?: string;
+      invoice?: {
+        id?: string;
+        status?: string;
+        pdfUrl?: string;
+        statusDescription?: string;
+      };
+    },
+  ): Promise<void> {
+    const nfseId = evento.invoice?.id;
+
+    if (!nfseId) return;
+
+    const fatura = await this.faturaRepo.findOne({
+      where: { workspaceId, nfseProviderId: nfseId },
+    });
+
+    if (!fatura) return;
+
+    if (evento.event === 'INVOICE_AUTHORIZED') {
+      await this.faturaRepo.update(
+        { id: fatura.id },
+        {
+          nfseStatus: 'EMITIDA',
+          nfsePdfUrl: evento.invoice?.pdfUrl ?? fatura.nfsePdfUrl,
+          nfseErro: null,
+        },
+      );
+      await this.registrarEvento(workspaceId, fatura.id, 'NFSE_EMITIDA');
+      await this.notificationsService
+        .create(workspaceId, {
+          title: `🧾 NFS-e emitida — fatura ${numeroDaFatura(fatura.numeroSeq)}`,
+          body: fatura.clienteNome,
+          type: 'FINANCEIRO',
+          link: '/faturas',
+        })
+        .catch(() => undefined);
+    } else if (evento.event === 'INVOICE_ERROR') {
+      await this.faturaRepo.update(
+        { id: fatura.id },
+        {
+          nfseStatus: 'ERRO',
+          nfseErro:
+            evento.invoice?.statusDescription ??
+            'Erro na emissão junto à prefeitura.',
+        },
+      );
+      await this.registrarEvento(workspaceId, fatura.id, 'NFSE_ERRO', {
+        motivo: evento.invoice?.statusDescription ?? null,
+      });
+    } else if (evento.event === 'INVOICE_CANCELED') {
+      await this.faturaRepo.update(
+        { id: fatura.id },
+        { nfseStatus: 'CANCELADA' },
+      );
+      await this.registrarEvento(workspaceId, fatura.id, 'NFSE_CANCELADA');
+    }
+  }
+
+  async emitirNfse(workspaceId: string, faturaId: string): Promise<void> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    if (!conta.nfseAtiva) {
+      throw new BadRequestException(
+        'NFS-e desativada — ative em Configurações → Financeiro.',
+      );
+    }
+    if (!conta.nfseCodigoServico || !conta.nfseNomeServico) {
+      throw new BadRequestException(
+        'Configure o serviço municipal da NFS-e em Configurações → Financeiro.',
+      );
+    }
+
+    const fatura = await this.faturaRepo.findOne({
+      where: { id: faturaId, workspaceId },
+    });
+
+    if (!fatura) throw new BadRequestException('Fatura não encontrada.');
+    if (fatura.status !== FaturaStatus.PAGA) {
+      throw new BadRequestException(
+        'A NFS-e é emitida após o pagamento da fatura.',
+      );
+    }
+    if (fatura.nfseStatus === 'EMITIDA' || fatura.nfseStatus === 'AGENDADA') {
+      throw new BadRequestException('Esta fatura já tem NFS-e.');
+    }
+    if (!fatura.providerCobrancaId) {
+      throw new BadRequestException('Fatura sem cobrança no provedor.');
+    }
+
+    const resultado = await this.asaas.emitirNfse(apiKey, conta.ambiente, {
+      paymentId: fatura.providerCobrancaId,
+      descricaoServico: conta.nfseDescricaoPadrao?.trim()
+        ? conta.nfseDescricaoPadrao
+        : fatura.descricao,
+      municipalServiceId: conta.nfseCodigoServico,
+      municipalServiceName: conta.nfseNomeServico,
+      aliquotaIss:
+        conta.nfseAliquotaIss != null ? Number(conta.nfseAliquotaIss) : null,
+      valorCentavos: fatura.valorPagoCentavos ?? fatura.valorCentavos,
+    });
+
+    const statusLocal =
+      resultado.status === 'AUTHORIZED'
+        ? 'EMITIDA'
+        : resultado.status === 'ERROR'
+          ? 'ERRO'
+          : 'AGENDADA';
+
+    await this.faturaRepo.update(
+      { id: fatura.id },
+      {
+        nfseProviderId: resultado.id,
+        nfseStatus: statusLocal,
+        nfsePdfUrl: resultado.pdfUrl,
+        nfseErro: statusLocal === 'ERRO' ? resultado.erro : null,
+      },
+    );
+    await this.registrarEvento(
+      workspaceId,
+      fatura.id,
+      statusLocal === 'ERRO' ? 'NFSE_ERRO' : 'NFSE_SOLICITADA',
+      { nfseId: resultado.id, status: resultado.status },
+    );
+  }
+
+  async atualizarStatusNfse(
+    workspaceId: string,
+    faturaId: string,
+  ): Promise<void> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+    const fatura = await this.faturaRepo.findOne({
+      where: { id: faturaId, workspaceId },
+    });
+
+    if (!fatura?.nfseProviderId) return;
+
+    const resultado = await this.asaas.consultarNfse(
+      apiKey,
+      conta.ambiente,
+      fatura.nfseProviderId,
+    );
+
+    const statusLocal =
+      resultado.status === 'AUTHORIZED'
+        ? 'EMITIDA'
+        : resultado.status === 'ERROR'
+          ? 'ERRO'
+          : resultado.status === 'CANCELED'
+            ? 'CANCELADA'
+            : 'AGENDADA';
+
+    await this.faturaRepo.update(
+      { id: fatura.id },
+      {
+        nfseStatus: statusLocal,
+        nfsePdfUrl: resultado.pdfUrl ?? fatura.nfsePdfUrl,
+        nfseErro: statusLocal === 'ERRO' ? resultado.erro : null,
+      },
+    );
+  }
+
+  async enviarNfseWhatsapp(
+    workspaceId: string,
+    faturaId: string,
+  ): Promise<void> {
+    const fatura = await this.faturaRepo.findOne({
+      where: { id: faturaId, workspaceId },
+    });
+
+    if (!fatura?.nfsePdfUrl) {
+      throw new BadRequestException('Esta fatura não tem NFS-e emitida.');
+    }
+
+    const window = fatura.leadId
+      ? await this.contactWindowRepo.findOne({
+          where: { workspaceId, opportunityId: fatura.leadId },
+        })
+      : fatura.clienteTelefone
+        ? await this.contactWindowRepo.findOne({
+            where: {
+              workspaceId,
+              phoneNumber: fatura.clienteTelefone.replace(/\D/g, ''),
+            },
+          })
+        : null;
+
+    if (!window?.phoneNumber) {
+      throw new BadRequestException(
+        'Sem conversa de WhatsApp vinculada a esta fatura.',
+      );
+    }
+
+    await this.whatsappService.sendTextMessage(
+      workspaceId,
+      window.phoneNumber,
+      [
+        `Olá, ${fatura.clienteNome}! Sua nota fiscal está disponível:`,
+        ``,
+        `🧾 NFS-e da fatura ${numeroDaFatura(fatura.numeroSeq)}`,
+        fatura.nfsePdfUrl,
+      ].join('\n'),
+    );
+    await this.registrarEvento(workspaceId, faturaId, 'NFSE_ENVIADA_WHATSAPP');
+  }
+
+  async buscarServicosMunicipais(
+    workspaceId: string,
+    busca: string,
+  ): Promise<Array<{ id: string; descricao: string; issPadrao: number | null }>> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    return this.asaas.buscarServicosMunicipais(apiKey, conta.ambiente, busca);
   }
 
   private async criarFaturaDeAssinatura(
@@ -582,6 +828,12 @@ export class FinanceiroService {
         diasDepois: number[];
       };
       templateLembrete?: string | null;
+      nfseAtiva?: boolean;
+      nfseMomento?: string;
+      nfseCodigoServico?: string | null;
+      nfseNomeServico?: string | null;
+      nfseAliquotaIss?: number | null;
+      nfseDescricaoPadrao?: string | null;
     },
   ): Promise<void> {
     const conta = await this.contaRepo.findOne({ where: { workspaceId } });
@@ -606,6 +858,24 @@ export class FinanceiroService {
           : {}),
         ...(config.templateLembrete !== undefined
           ? { templateLembrete: config.templateLembrete }
+          : {}),
+        ...(config.nfseAtiva !== undefined
+          ? { nfseAtiva: config.nfseAtiva }
+          : {}),
+        ...(config.nfseMomento !== undefined
+          ? { nfseMomento: config.nfseMomento }
+          : {}),
+        ...(config.nfseCodigoServico !== undefined
+          ? { nfseCodigoServico: config.nfseCodigoServico }
+          : {}),
+        ...(config.nfseNomeServico !== undefined
+          ? { nfseNomeServico: config.nfseNomeServico }
+          : {}),
+        ...(config.nfseAliquotaIss !== undefined
+          ? { nfseAliquotaIss: config.nfseAliquotaIss }
+          : {}),
+        ...(config.nfseDescricaoPadrao !== undefined
+          ? { nfseDescricaoPadrao: config.nfseDescricaoPadrao }
           : {}),
       },
     );
