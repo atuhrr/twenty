@@ -3,6 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { WhatsappRealtimeService } from 'src/engine/core-modules/whatsapp/realtime/whatsapp-realtime.service';
 
 // jest.mock is hoisted before imports, so the factory runs before any variable
 // declarations. Store mock functions on the returned object so tests can
@@ -86,6 +87,7 @@ describe('WhatsappService', () => {
         { provide: getRepositoryToken(WhatsappContactWindowEntity), useValue: mockContactWindowRepo },
         { provide: getRepositoryToken(WhatsappQuickReplyEntity), useValue: { find: jest.fn(), findOne: jest.fn(), save: jest.fn(), delete: jest.fn(), create: jest.fn() } },
         { provide: GlobalWorkspaceOrmManager, useValue: { executeInWorkspaceContext: jest.fn(), getRepository: jest.fn() } },
+        { provide: WhatsappRealtimeService, useValue: { publicarMensagem: jest.fn(), assinarMensagens: jest.fn() } },
         { provide: SecretEncryptionService, useValue: mockSecretEncryption },
       ],
     }).compile();

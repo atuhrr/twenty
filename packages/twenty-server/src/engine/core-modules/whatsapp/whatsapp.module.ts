@@ -17,11 +17,13 @@ import { WhatsappTemplateEntity } from 'src/engine/core-modules/whatsapp/whatsap
 import { WhatsappWebhookJob } from 'src/engine/core-modules/whatsapp/whatsapp-webhook.job';
 import { WhatsappController } from 'src/engine/core-modules/whatsapp/whatsapp.controller';
 import { WhatsappResolver } from 'src/engine/core-modules/whatsapp/whatsapp.resolver';
+import { WhatsappRealtimeModule } from 'src/engine/core-modules/whatsapp/realtime/whatsapp-realtime.module';
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/workspace-cache-storage.module';
 
 @Module({
   imports: [
+    WhatsappRealtimeModule,
     // FORK: Voka CRM — Fase C: notificações de mensagens recebidas
     NotificationsModule,
     TypeOrmModule.forFeature([

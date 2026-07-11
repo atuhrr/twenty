@@ -16,6 +16,7 @@ import {
   WhatsappMessageType,
 } from 'src/engine/core-modules/whatsapp/whatsapp-message.entity';
 import { getWhatsappContactId } from 'src/engine/core-modules/whatsapp/utils/whatsapp-contact-id.util';
+import { WhatsappRealtimeService } from 'src/engine/core-modules/whatsapp/realtime/whatsapp-realtime.service';
 import { SalesbotEntity } from 'src/engine/core-modules/salesbot/salesbot.entity';
 import { SalesbotService } from 'src/engine/core-modules/salesbot/salesbot.service';
 import { SalesbotSessionEntity } from 'src/engine/core-modules/salesbot/salesbot-session.entity';
@@ -40,6 +41,8 @@ export class SalesbotExecutorService {
     // FORK: Zellate — persiste as mensagens enviadas pelo bot na conversa
     @InjectRepository(WhatsappMessageEntity)
     private readonly messageRepo: Repository<WhatsappMessageEntity>,
+    // FORK: Zellate — tempo real do Inbox (Redis pub/sub)
+    private readonly realtimeService: WhatsappRealtimeService,
   ) {}
 
   async handleInboundMessage(
@@ -622,7 +625,7 @@ Se não souber responder, diga que vai transferir para um atendente.`;
         (data as { messages?: Array<{ id?: string }> }).messages?.[0]?.id ??
         `bot_${Date.now()}`;
 
-      await this.messageRepo.save(
+      const salva = await this.messageRepo.save(
         this.messageRepo.create({
           workspaceId,
           contactId: getWhatsappContactId(workspaceId, phone),
@@ -634,6 +637,11 @@ Se não souber responder, diga que vai transferir para um atendente.`;
           status: WhatsappMessageStatus.SENT,
           timestamp: new Date(),
         }),
+      );
+
+      await this.realtimeService.publicarMensagem(
+        workspaceId,
+        salva as unknown as Record<string, unknown>,
       );
     } catch (err) {
       this.logger.warn(

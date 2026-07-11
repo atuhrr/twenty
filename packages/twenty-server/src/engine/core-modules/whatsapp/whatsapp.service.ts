@@ -2,12 +2,12 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 
 import axios, { type AxiosInstance } from 'axios';
-import { EventEmitter } from 'events';
 import { Observable } from 'rxjs';
 import { Repository } from 'typeorm';
 
 import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/whatsapp-thread-summary.dto';
 
+import { WhatsappRealtimeService } from 'src/engine/core-modules/whatsapp/realtime/whatsapp-realtime.service';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { SecretEncryptionService } from 'src/engine/core-modules/secret-encryption/secret-encryption.service';
@@ -34,7 +34,6 @@ const MAX_RETRIES = 3;
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
-  private readonly messageEmitter = new EventEmitter();
 
   constructor(
     @InjectRepository(WhatsappInstanceEntity)
@@ -48,6 +47,8 @@ export class WhatsappService {
     private readonly secretEncryptionService: SecretEncryptionService,
     // FORK: Zellate — atualiza o lead vinculado (responsável) ao atribuir
     private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
+    // FORK: Zellate — tempo real do Inbox (Redis pub/sub)
+    private readonly realtimeService: WhatsappRealtimeService,
   ) {}
 
   private getMetaClient(accessToken: string): AxiosInstance {
@@ -312,23 +313,17 @@ export class WhatsappService {
     const saved = await this.messageRepo.save(entity);
 
     // Notify SSE subscribers for this workspace
-    this.messageEmitter.emit(`msg:${params.workspaceId}`, saved);
+    // FORK: Zellate — tempo real via Redis (cruza worker → server → SSE)
+    await this.realtimeService.publicarMensagem(
+      params.workspaceId,
+      saved as unknown as Record<string, unknown>,
+    );
 
     return saved;
   }
 
   subscribeToWorkspaceMessages(workspaceId: string): Observable<{ data: string }> {
-    return new Observable((subscriber) => {
-      const handler = (msg: WhatsappMessageEntity) => {
-        subscriber.next({ data: JSON.stringify(msg) });
-      };
-
-      this.messageEmitter.on(`msg:${workspaceId}`, handler);
-
-      return () => {
-        this.messageEmitter.off(`msg:${workspaceId}`, handler);
-      };
-    });
+    return this.realtimeService.assinarMensagens(workspaceId);
   }
 
   async updateMessageStatus(

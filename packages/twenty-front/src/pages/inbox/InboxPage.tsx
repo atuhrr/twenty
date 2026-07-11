@@ -1,7 +1,7 @@
 // T-5: Caixa de Entrada — Linaria styled → Tailwind CSS, lógica inalterada
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useMutation } from '@apollo/client/react';
+import { useApolloClient, useMutation } from '@apollo/client/react';
 
 import { useLeadTasks } from '@/funil/hooks/useLeadTasks';
 import { type ObjectRecord } from '@/object-record/types/ObjectRecord';
@@ -11,6 +11,9 @@ import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { IS_WHATSAPP_MOCK } from '@/whatsapp/mocks/whatsappMockData';
 import { useWhatsappThreads, type WhatsappThread } from '@/whatsapp/hooks/useWhatsappThreads';
+import { useWhatsappSSE } from '@/whatsapp/hooks/useWhatsappSSE';
+import { GET_WHATSAPP_MESSAGES } from '@/whatsapp/graphql/queries/getWhatsappMessages';
+import type { WhatsappMessage } from '@/whatsapp/types/WhatsappMessage.type';
 import { useWhatsappMessages } from '@/whatsapp/hooks/useWhatsappMessages';
 import { useSendWhatsappMessage } from '@/whatsapp/hooks/useSendWhatsappMessage';
 import { QuickReplyComposer } from '@/whatsapp/components/chat/QuickReplyComposer';
@@ -659,6 +662,38 @@ function RealInbox({
   // FORK: Zellate — abrir a conversa zera o não-lido (banco + recibo à Meta)
   const [markThreadRead] = useMutation(MARK_WHATSAPP_THREAD_READ, {
     refetchQueries: [{ query: GET_WHATSAPP_THREADS }],
+  });
+
+  // FORK: Zellate — TEMPO REAL: uma conexão SSE por Inbox aberto. Mensagem
+  // nova (recebida, do bot ou enviada em outra aba) atualiza a lista de
+  // conversas e o chat aberto sem recarregar a página.
+  const apolloClient = useApolloClient();
+
+  useWhatsappSSE({
+    onMessage: (msg: WhatsappMessage) => {
+      refetchThreads();
+
+      // Anexa ao chat aberto (dedupe por id) — mesma técnica do envio
+      const existente = apolloClient.readQuery<{
+        whatsappMessages: WhatsappMessage[];
+      }>({
+        query: GET_WHATSAPP_MESSAGES,
+        variables: { contactId: msg.contactId },
+      });
+
+      if (
+        existente &&
+        !existente.whatsappMessages.some((m) => m.id === msg.id)
+      ) {
+        apolloClient.writeQuery({
+          query: GET_WHATSAPP_MESSAGES,
+          variables: { contactId: msg.contactId },
+          data: {
+            whatsappMessages: [...existente.whatsappMessages, msg],
+          },
+        });
+      }
+    },
   });
 
   useEffect(() => {
