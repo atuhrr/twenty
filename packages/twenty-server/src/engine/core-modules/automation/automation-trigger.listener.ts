@@ -2,6 +2,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
+import { type FaturaEventoAutomacao } from 'src/engine/core-modules/financeiro/financeiro.service';
+
 import { type ObjectRecordCreateEvent } from 'twenty-shared/database-events';
 import { type ObjectRecordUpdateEvent } from 'twenty-shared/database-events';
 
@@ -174,6 +176,55 @@ export class AutomationTriggerListener {
       await this.executeRule(rule, {
         workspaceId: event.workspaceId,
         recordId: event.contactId,
+        record,
+      });
+    }
+  }
+
+  // ── F4: Triggers FATURA_PAGA / FATURA_VENCIDA ────────────────────────────
+
+  @OnEvent('fatura.paga')
+  async onFaturaPaga(event: FaturaEventoAutomacao): Promise<void> {
+    await this.executarGatilhoDeFatura('FATURA_PAGA', event);
+  }
+
+  @OnEvent('fatura.vencida')
+  async onFaturaVencida(event: FaturaEventoAutomacao): Promise<void> {
+    await this.executarGatilhoDeFatura('FATURA_VENCIDA', event);
+  }
+
+  private async executarGatilhoDeFatura(
+    triggerType: 'FATURA_PAGA' | 'FATURA_VENCIDA',
+    event: FaturaEventoAutomacao,
+  ): Promise<void> {
+    const rules = await this.automationService.findActiveByTrigger(
+      event.workspaceId,
+      triggerType,
+    );
+
+    if (rules.length === 0) return;
+
+    const record: Record<string, unknown> = {
+      faturaId: event.faturaId,
+      numero: event.numero,
+      leadId: event.leadId,
+      // ações que operam sobre o lead usam este campo
+      pointOfContactId: event.leadId,
+      clienteNome: event.clienteNome,
+      valorCentavos: event.valorCentavos,
+    };
+    const recordId = event.leadId ?? event.faturaId;
+
+    for (const rule of rules) {
+      if (!this.evaluateConditions(rule.conditions, record)) {
+        await this.automationService.recordExecution(
+          rule.id, event.workspaceId, recordId, 'SKIPPED',
+        );
+        continue;
+      }
+      await this.executeRule(rule, {
+        workspaceId: event.workspaceId,
+        recordId,
         record,
       });
     }

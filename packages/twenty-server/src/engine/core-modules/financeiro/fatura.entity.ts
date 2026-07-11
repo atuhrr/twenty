@@ -129,6 +129,10 @@ export class FaturaEntity extends WorkspaceRelatedEntity {
   @Column({ nullable: true, type: 'integer' })
   valorPagoCentavos: number | null;
 
+  // F4: valor líquido após taxas do provedor (netValue do webhook)
+  @Column({ nullable: true, type: 'integer' })
+  valorLiquidoCentavos: number | null;
+
   @Column({ nullable: true, type: 'text' })
   formaPagamento: string | null;
 

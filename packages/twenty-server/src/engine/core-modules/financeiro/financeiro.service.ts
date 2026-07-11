@@ -1,5 +1,6 @@
 // FORK: Zellate — F1 Financeiro: regras de negócio das faturas
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { randomBytes } from 'crypto';
@@ -46,6 +47,16 @@ const formatarBRL = (centavos: number): string =>
 export const numeroDaFatura = (seq: number): string =>
   `ZLT-${String(seq).padStart(4, '0')}`;
 
+// F4: eventos para o motor de automações (gatilhos FATURA_PAGA/FATURA_VENCIDA)
+export type FaturaEventoAutomacao = {
+  workspaceId: string;
+  faturaId: string;
+  numero: string;
+  leadId: string | null;
+  clienteNome: string;
+  valorCentavos: number;
+};
+
 @Injectable()
 export class FinanceiroService {
   private readonly logger = new Logger(FinanceiroService.name);
@@ -68,6 +79,8 @@ export class FinanceiroService {
     private readonly notificationsService: NotificationsService,
     private readonly whatsappService: WhatsappService,
     private readonly globalWorkspaceOrmManager: GlobalWorkspaceOrmManager,
+    // F4: dispara gatilhos do motor de automações
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private async contaOuErro(
@@ -441,19 +454,35 @@ export class FinanceiroService {
       case 'PAYMENT_CONFIRMED': {
         if (fatura.status === FaturaStatus.PAGA) return;
 
-        await this.faturaRepo.update(
-          { id: fatura.id },
-          {
-            status: FaturaStatus.PAGA,
-            pagaEm: new Date(),
-            valorPagoCentavos: evento.payment?.value
-              ? Math.round(evento.payment.value * 100)
-              : fatura.valorCentavos,
-            formaPagamento: evento.payment?.billingType ?? null,
-          },
-        );
-        await this.registrarEvento(workspaceId, fatura.id, 'PAGA');
-        await this.aplicarEfeitosDePagamento(workspaceId, fatura);
+        {
+          const netValue = (
+            evento.payment as { netValue?: number } | undefined
+          )?.netValue;
+
+          await this.faturaRepo.update(
+            { id: fatura.id },
+            {
+              status: FaturaStatus.PAGA,
+              pagaEm: new Date(),
+              valorPagoCentavos: evento.payment?.value
+                ? Math.round(evento.payment.value * 100)
+                : fatura.valorCentavos,
+              valorLiquidoCentavos:
+                netValue != null ? Math.round(netValue * 100) : null,
+              formaPagamento: evento.payment?.billingType ?? null,
+            },
+          );
+          await this.registrarEvento(workspaceId, fatura.id, 'PAGA');
+          await this.aplicarEfeitosDePagamento(workspaceId, fatura);
+          this.eventEmitter.emit('fatura.paga', {
+            workspaceId,
+            faturaId: fatura.id,
+            numero: numeroDaFatura(fatura.numeroSeq),
+            leadId: fatura.leadId,
+            clienteNome: fatura.clienteNome,
+            valorCentavos: fatura.valorCentavos,
+          } satisfies FaturaEventoAutomacao);
+        }
         break;
       }
       case 'PAYMENT_OVERDUE': {
@@ -463,6 +492,14 @@ export class FinanceiroService {
           { status: FaturaStatus.VENCIDA },
         );
         await this.registrarEvento(workspaceId, fatura.id, 'VENCIDA');
+        this.eventEmitter.emit('fatura.vencida', {
+          workspaceId,
+          faturaId: fatura.id,
+          numero: numeroDaFatura(fatura.numeroSeq),
+          leadId: fatura.leadId,
+          clienteNome: fatura.clienteNome,
+          valorCentavos: fatura.valorCentavos,
+        } satisfies FaturaEventoAutomacao);
         break;
       }
       case 'PAYMENT_REFUNDED': {
@@ -1240,6 +1277,82 @@ export class FinanceiroService {
         (c) => ({ nome: c.nome, centavos: Number(c.total) }),
       ),
     };
+  }
+
+  // ── F4: conciliação, estorno e links avulsos ───────────────────────────────
+
+  async obterSaldo(workspaceId: string): Promise<number> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    return this.asaas.obterSaldo(apiKey, conta.ambiente);
+  }
+
+  // Estorno: devolve o dinheiro ao pagador. O lead NÃO regride de etapa
+  // sozinho — apenas notifica (decisão comercial é humana).
+  async estornarFatura(workspaceId: string, faturaId: string): Promise<void> {
+    const fatura = await this.faturaRepo.findOne({
+      where: { id: faturaId, workspaceId },
+    });
+
+    if (!fatura) throw new BadRequestException('Fatura não encontrada.');
+    if (fatura.status !== FaturaStatus.PAGA) {
+      throw new BadRequestException('Só é possível estornar fatura paga.');
+    }
+    if (!fatura.providerCobrancaId) {
+      throw new BadRequestException('Fatura sem cobrança no provedor.');
+    }
+
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    await this.asaas.estornarCobranca(
+      apiKey,
+      conta.ambiente,
+      fatura.providerCobrancaId,
+    );
+
+    await this.faturaRepo.update(
+      { id: faturaId },
+      { status: FaturaStatus.ESTORNADA },
+    );
+    await this.registrarEvento(workspaceId, faturaId, 'ESTORNADA', {
+      origem: 'MANUAL',
+    });
+    await this.notificationsService
+      .create(workspaceId, {
+        title: `↩️ Fatura ${numeroDaFatura(fatura.numeroSeq)} estornada`,
+        body: `${formatarBRL(fatura.valorCentavos)} devolvido a ${fatura.clienteNome}`,
+        type: 'FINANCEIRO',
+        link: '/faturas',
+      })
+      .catch(() => undefined);
+  }
+
+  async criarLinkPagamento(
+    workspaceId: string,
+    input: { nome: string; valorCentavos: number | null; meios: FaturaMeios },
+  ): Promise<{ id: string; url: string }> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    return this.asaas.criarLinkPagamento(apiKey, conta.ambiente, {
+      nome: input.nome.trim(),
+      valorCentavos: input.valorCentavos,
+      billingType: MEIO_PARA_BILLING[input.meios],
+    });
+  }
+
+  async listarLinksPagamento(workspaceId: string) {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    return this.asaas.listarLinksPagamento(apiKey, conta.ambiente);
+  }
+
+  async desativarLinkPagamento(
+    workspaceId: string,
+    linkId: string,
+  ): Promise<void> {
+    const { conta, apiKey } = await this.contaOuErro(workspaceId);
+
+    await this.asaas.desativarLinkPagamento(apiKey, conta.ambiente, linkId);
   }
 
   async validarWebhookToken(

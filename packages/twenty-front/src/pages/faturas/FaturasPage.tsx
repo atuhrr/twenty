@@ -7,7 +7,10 @@ import {
   Copy,
   Download,
   FileText,
+  Link2,
   Repeat,
+  Undo2,
+  Wallet,
   ExternalLink,
   MessageCircle,
   Plus,
@@ -24,15 +27,20 @@ import {
   CANCELAR_FATURA,
   CRIAR_ASSINATURA,
   CRIAR_FATURA,
+  CRIAR_LINK_PAGAMENTO,
+  DESATIVAR_LINK_PAGAMENTO,
   EMITIR_NFSE,
   ENVIAR_FATURA_WHATSAPP,
   ENVIAR_NFSE_WHATSAPP,
+  ESTORNAR_FATURA,
   FATURA_RESUMO,
   FATURAS,
   FINANCEIRO_CONFIG,
   FINANCEIRO_STATUS,
+  LINKS_PAGAMENTO,
   PAUSAR_ASSINATURA,
   RETOMAR_ASSINATURA,
+  SALDO_FINANCEIRO,
 } from '@/financeiro/graphql/financeiroQueries';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
@@ -51,8 +59,10 @@ type Fatura = {
   status: string;
   linkPagamento: string | null;
   pixPayload: string | null;
+  valorPagoCentavos: number | null;
   pagaEm: string | null;
   formaPagamento: string | null;
+  valorLiquidoCentavos: number | null;
   nfseStatus: string | null;
   nfsePdfUrl: string | null;
   nfseErro: string | null;
@@ -576,6 +586,363 @@ function AssinaturasView() {
   );
 }
 
+// ─── F4: Recebimentos (conciliação bruto × líquido) ─────────────────────────
+
+const dataOFX = (iso: string) => iso.slice(0, 10).replace(/-/g, '');
+
+function gerarOFX(pagas: Fatura[]): string {
+  const agora = new Date().toISOString();
+  const transacoes = pagas
+    .map((f) => {
+      const valor = ((f.valorLiquidoCentavos ?? f.valorPagoCentavos ?? f.valorCentavos) / 100).toFixed(2);
+      return [
+        '<STMTTRN>',
+        '<TRNTYPE>CREDIT',
+        `<DTPOSTED>${dataOFX(f.pagaEm ?? f.createdAt)}`,
+        `<TRNAMT>${valor}`,
+        `<FITID>${f.numero}`,
+        `<MEMO>${f.numero} ${f.clienteNome} - ${f.descricao}`.slice(0, 250),
+        '</STMTTRN>',
+      ].join('\n');
+    })
+    .join('\n');
+
+  return [
+    'OFXHEADER:100', 'DATA:OFXSGML', 'VERSION:102', 'SECURITY:NONE',
+    'ENCODING:UTF-8', 'CHARSET:NONE', 'COMPRESSION:NONE',
+    'OLDFILEUID:NONE', 'NEWFILEUID:NONE', '',
+    '<OFX>', '<BANKMSGSRSV1>', '<STMTTRNRS>', '<TRNUID>1',
+    '<STMTRS>', '<CURDEF>BRL',
+    '<BANKACCTFROM><BANKID>0000<ACCTID>ZELLATE<ACCTTYPE>CHECKING</BANKACCTFROM>',
+    '<BANKTRANLIST>',
+    `<DTSTART>${dataOFX(agora)}`, `<DTEND>${dataOFX(agora)}`,
+    transacoes,
+    '</BANKTRANLIST>', '</STMTRS>', '</STMTTRNRS>',
+    '</BANKMSGSRSV1>', '</OFX>',
+  ].join('\n');
+}
+
+function baixarArquivo(conteudo: string, nome: string, mime: string) {
+  const blob = new Blob([conteudo], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function RecebimentosView({ faturas }: { faturas: Fatura[] }) {
+  const { data: saldoData } = useQuery<{ saldoFinanceiro: number }>(
+    SALDO_FINANCEIRO,
+    { fetchPolicy: 'cache-and-network' },
+  );
+
+  const pagas = useMemo(
+    () =>
+      faturas
+        .filter((f) => f.status === 'PAGA')
+        .sort((a, b) => (b.pagaEm ?? '').localeCompare(a.pagaEm ?? '')),
+    [faturas],
+  );
+
+  const bruto = pagas.reduce(
+    (acc, f) => acc + (f.valorPagoCentavos ?? f.valorCentavos),
+    0,
+  );
+  const liquido = pagas.reduce(
+    (acc, f) =>
+      acc + (f.valorLiquidoCentavos ?? f.valorPagoCentavos ?? f.valorCentavos),
+    0,
+  );
+  const taxas = bruto - liquido;
+
+  const exportarCSV = () => {
+    const linhas = [
+      ['Número', 'Cliente', 'Pago em', 'Forma', 'Bruto', 'Taxas', 'Líquido'],
+      ...pagas.map((f) => {
+        const b = f.valorPagoCentavos ?? f.valorCentavos;
+        const l = f.valorLiquidoCentavos ?? b;
+        return [
+          f.numero,
+          f.clienteNome,
+          f.pagaEm ? dataBR(f.pagaEm) : '',
+          f.formaPagamento ?? '',
+          (b / 100).toFixed(2).replace('.', ','),
+          ((b - l) / 100).toFixed(2).replace('.', ','),
+          (l / 100).toFixed(2).replace('.', ','),
+        ];
+      }),
+    ];
+    const csv = linhas
+      .map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+    baixarArquivo(`\ufeff${csv}`, 'recebimentos-zellate.csv', 'text/csv;charset=utf-8');
+  };
+
+  const cardStat = (rotulo: string, valor: string) => (
+    <div className="flex-1 min-w-[150px] rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="text-xs text-gray-500">{rotulo}</div>
+      <div className="mt-1 text-lg font-bold text-gray-900 dark:text-white">{valor}</div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex flex-1 flex-wrap gap-3">
+          {cardStat('Saldo na conta (provedor)', brl(saldoData?.saldoFinanceiro ?? 0))}
+          {cardStat('Recebido (bruto)', brl(bruto))}
+          {cardStat('Taxas do provedor', `− ${brl(taxas)}`)}
+          {cardStat('Recebido (líquido)', brl(liquido))}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={exportarCSV}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <Download size={14} /> CSV
+          </button>
+          <button
+            onClick={() =>
+              baixarArquivo(gerarOFX(pagas), 'recebimentos-zellate.ofx', 'application/x-ofx')
+            }
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <Download size={14} /> OFX (contador)
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {pagas.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-500">
+            Nenhum recebimento ainda — faturas pagas aparecem aqui com o
+            detalhamento das taxas.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-800">
+                <th className="px-4 py-3 font-medium">Número</th>
+                <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 font-medium">Pago em</th>
+                <th className="px-4 py-3 font-medium">Forma</th>
+                <th className="px-4 py-3 font-medium text-right">Bruto</th>
+                <th className="px-4 py-3 font-medium text-right">Taxas</th>
+                <th className="px-4 py-3 font-medium text-right">Líquido</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+              {pagas.map((f) => {
+                const b = f.valorPagoCentavos ?? f.valorCentavos;
+                const l = f.valorLiquidoCentavos ?? b;
+                return (
+                  <tr key={f.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{f.numero}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{f.clienteNome}</td>
+                    <td className="px-4 py-3 text-gray-500">{f.pagaEm ? dataBR(f.pagaEm) : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{f.formaPagamento ?? '—'}</td>
+                    <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{brl(b)}</td>
+                    <td className="px-4 py-3 text-right text-error-500">
+                      {b - l > 0 ? `− ${brl(b - l)}` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-success-600">{brl(l)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── F4: Links de pagamento avulsos (balcão) ─────────────────────────────────
+
+function LinksPagamentoView() {
+  const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
+  const [nome, setNome] = useState('');
+  const [valor, setValor] = useState('');
+  const [meios, setMeios] = useState('TODOS');
+  const [criando, setCriando] = useState(false);
+
+  const { data, refetch } = useQuery<{
+    linksPagamento: Array<{
+      id: string;
+      nome: string;
+      url: string;
+      valorCentavos: number | null;
+      ativo: boolean;
+    }>;
+  }>(LINKS_PAGAMENTO, { fetchPolicy: 'cache-and-network' });
+  const links = data?.linksPagamento ?? [];
+
+  const [criarLink] = useMutation(CRIAR_LINK_PAGAMENTO);
+  const [desativarLink] = useMutation(DESATIVAR_LINK_PAGAMENTO);
+
+  const handleCriar = async () => {
+    if (nome.trim() === '') return;
+    setCriando(true);
+    try {
+      await criarLink({
+        variables: {
+          input: {
+            nome: nome.trim(),
+            valorCentavos: valor
+              ? Math.round(Number(valor.replace(',', '.')) * 100)
+              : null,
+            meios,
+          },
+        },
+      });
+      setNome('');
+      setValor('');
+      await refetch();
+      enqueueSuccessSnackBar({ message: 'Link de pagamento criado.' });
+    } catch (err) {
+      const msg = (err as Error)?.message ?? '';
+      const idx = msg.indexOf('ASAAS_ERROR: ');
+      enqueueErrorSnackBar({
+        message:
+          idx !== -1
+            ? `Provedor recusou: ${msg.slice(idx + 'ASAAS_ERROR: '.length)}`
+            : 'Não foi possível criar o link.',
+      });
+    } finally {
+      setCriando(false);
+    }
+  };
+
+  const copiar = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+    enqueueSuccessSnackBar({ message: 'Link copiado.' });
+  };
+
+  return (
+    <div className="flex flex-1 min-h-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className="border-b border-gray-100 p-4 dark:border-gray-800">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          Links de pagamento avulsos
+        </h3>
+        <p className="mb-3 text-xs text-gray-500">
+          Link/QR reutilizável para balcão ou bio — sem precisar criar fatura.
+          Deixe o valor vazio para o cliente digitar quanto pagar.
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[220px] flex-1">
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Nome</label>
+            <input
+              className={inputClass}
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Ex.: Pagamento no balcão"
+            />
+          </div>
+          <div className="w-36">
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Valor (R$)</label>
+            <input
+              className={inputClass}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              placeholder="Aberto"
+              inputMode="decimal"
+            />
+          </div>
+          <div className="w-44">
+            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Meios</label>
+            <select className={inputClass} value={meios} onChange={(e) => setMeios(e.target.value)}>
+              <option value="TODOS">Cliente escolhe</option>
+              <option value="PIX">Somente Pix</option>
+              <option value="CARTAO">Somente cartão</option>
+              <option value="BOLETO">Somente boleto</option>
+            </select>
+          </div>
+          <button
+            onClick={() => void handleCriar()}
+            disabled={criando || nome.trim() === ''}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            <Plus size={15} /> Criar link
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {links.length === 0 ? (
+          <div className="py-16 text-center text-sm text-gray-500">
+            Nenhum link ainda.
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-800">
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium text-right">Valor</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
+              {links.map((l) => (
+                <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{l.nome}</td>
+                  <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">
+                    {l.valorCentavos != null ? brl(l.valorCentavos) : 'Valor aberto'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        l.ativo
+                          ? 'bg-success-50 text-success-600 dark:bg-success-500/10 dark:text-success-400'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                      }`}
+                    >
+                      {l.ativo ? 'Ativo' : 'Desativado'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        title="Copiar link"
+                        onClick={() => void copiar(l.url)}
+                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+                      >
+                        <Copy size={15} />
+                      </button>
+                      <a
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Abrir link"
+                        className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+                      >
+                        <ExternalLink size={15} />
+                      </a>
+                      {l.ativo && (
+                        <button
+                          title="Desativar link"
+                          onClick={() =>
+                            void desativarLink({ variables: { linkId: l.id } }).then(() => refetch())
+                          }
+                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-error-500 dark:hover:bg-gray-800"
+                        >
+                          <XCircle size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Modal de criação ─────────────────────────────────────────────────────────
 
 function FaturaModal({
@@ -949,11 +1316,12 @@ function FaturaModal({
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 type AbaFiltro = 'todas' | 'PENDENTE' | 'PAGA' | 'VENCIDA';
+type Secao = 'faturas' | 'assinaturas' | 'recebimentos' | 'links';
 
 export const FaturasPage = () => {
   const { enqueueErrorSnackBar, enqueueSuccessSnackBar } = useSnackBar();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [secao, setSecao] = useState<'faturas' | 'assinaturas'>('faturas');
+  const [secao, setSecao] = useState<Secao>('faturas');
   const [aba, setAba] = useState<AbaFiltro>('todas');
   const [busca, setBusca] = useState('');
   const [modalAberto, setModalAberto] = useState(false);
@@ -984,6 +1352,30 @@ export const FaturasPage = () => {
   const [enviarWhatsapp] = useMutation(ENVIAR_FATURA_WHATSAPP);
   const [emitirNfse] = useMutation(EMITIR_NFSE);
   const [enviarNfse] = useMutation(ENVIAR_NFSE_WHATSAPP);
+  const [estornarFatura] = useMutation(ESTORNAR_FATURA);
+  const [estornandoId, setEstornandoId] = useState<string | null>(null);
+
+  const handleEstornar = async (faturaId: string) => {
+    if (estornandoId !== faturaId) {
+      setEstornandoId(faturaId);
+      return;
+    }
+    setEstornandoId(null);
+    try {
+      await estornarFatura({ variables: { faturaId } });
+      await Promise.all([refetch(), refetchResumo()]);
+      enqueueSuccessSnackBar({ message: 'Fatura estornada — valor devolvido ao pagador.' });
+    } catch (err) {
+      const msg = (err as Error)?.message ?? '';
+      const idx = msg.indexOf('ASAAS_ERROR: ');
+      enqueueErrorSnackBar({
+        message:
+          idx !== -1
+            ? `Provedor recusou: ${msg.slice(idx + 'ASAAS_ERROR: '.length)}`
+            : 'Não foi possível estornar.',
+      });
+    }
+  };
 
   const { data: configNfseData } = useQuery<{
     financeiroConfig: { nfseAtiva: boolean };
@@ -1128,7 +1520,9 @@ export const FaturasPage = () => {
                 [
                   ['faturas', 'Faturas'],
                   ['assinaturas', 'Assinaturas'],
-                ] as Array<['faturas' | 'assinaturas', string]>
+                  ['recebimentos', 'Recebimentos'],
+                  ['links', 'Links'],
+                ] as Array<[Secao, string]>
               ).map(([key, rotulo]) => (
                 <button
                   key={key}
@@ -1140,6 +1534,8 @@ export const FaturasPage = () => {
                   }`}
                 >
                   {key === 'assinaturas' && <Repeat size={12} />}
+                  {key === 'recebimentos' && <Wallet size={12} />}
+                  {key === 'links' && <Link2 size={12} />}
                   {rotulo}
                 </button>
               ))}
@@ -1184,6 +1580,10 @@ export const FaturasPage = () => {
       {/* Lista */}
       {secao === 'assinaturas' ? (
         <AssinaturasView />
+      ) : secao === 'recebimentos' ? (
+        <RecebimentosView faturas={faturas} />
+      ) : secao === 'links' ? (
+        <LinksPagamentoView />
       ) : (
       <div className="flex flex-1 min-h-0 flex-col rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
@@ -1362,6 +1762,23 @@ export const FaturasPage = () => {
                             className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-success-600 dark:hover:bg-gray-800"
                           >
                             <MessageCircle size={15} />
+                          </button>
+                        )}
+                        {f.status === 'PAGA' && (
+                          <button
+                            title={
+                              estornandoId === f.id
+                                ? 'Clique de novo para CONFIRMAR o estorno'
+                                : 'Estornar (devolver o valor ao pagador)'
+                            }
+                            onClick={() => void handleEstornar(f.id)}
+                            className={`rounded p-1.5 ${
+                              estornandoId === f.id
+                                ? 'bg-error-50 text-error-500 dark:bg-error-500/10'
+                                : 'text-gray-400 hover:bg-gray-100 hover:text-error-500 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            <Undo2 size={15} />
                           </button>
                         )}
                         {f.nfseStatus === 'EMITIDA' && f.nfsePdfUrl && (

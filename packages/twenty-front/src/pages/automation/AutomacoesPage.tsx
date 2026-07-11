@@ -17,6 +17,8 @@ const TRIGGER_LABELS: Record<string, string> = {
   LEAD_CREATED: 'Lead criado',
   STAGE_CHANGED: 'Etapa alterada',
   MESSAGE_RECEIVED: 'Mensagem recebida (WhatsApp)',
+  FATURA_PAGA: 'Fatura paga (Financeiro)',
+  FATURA_VENCIDA: 'Fatura vencida (Financeiro)',
   LEAD_UNCLASSIFIED: 'Lead não classificado',
 };
 

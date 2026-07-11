@@ -1,6 +1,6 @@
 // FORK: Zellate — F1 Financeiro: API GraphQL das faturas
 import { UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import {
   FaturaEntity,
@@ -14,8 +14,10 @@ import {
   CriarFaturaInput,
   FaturaDTO,
   FaturaResumoDTO,
+  CriarLinkPagamentoInput,
   FinanceiroConfigDTO,
   FinanceiroStatusDTO,
+  LinkPagamentoDTO,
   ReceitaStatsDTO,
   ServicoMunicipalDTO,
 } from 'src/engine/core-modules/financeiro/dtos/financeiro.dto';
@@ -44,6 +46,8 @@ const paraDTO = (f: FaturaEntity): FaturaDTO => ({
   pixPayload: f.pixPayload,
   pagaEm: f.pagaEm,
   formaPagamento: f.formaPagamento,
+  valorPagoCentavos: f.valorPagoCentavos,
+  valorLiquidoCentavos: f.valorLiquidoCentavos,
   nfseStatus: f.nfseStatus,
   nfsePdfUrl: f.nfsePdfUrl,
   nfseErro: f.nfseErro,
@@ -291,6 +295,64 @@ export class FinanceiroResolver {
     @Args('faturaId') faturaId: string,
   ): Promise<boolean> {
     await this.financeiroService.enviarNfseWhatsapp(workspace.id, faturaId);
+
+    return true;
+  }
+
+  // ── F4: conciliação, estorno e links avulsos ──
+  @Query(() => Int)
+  async saldoFinanceiro(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<number> {
+    return this.financeiroService.obterSaldo(workspace.id);
+  }
+
+  @Mutation(() => Boolean)
+  async estornarFatura(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('faturaId') faturaId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.estornarFatura(workspace.id, faturaId);
+
+    return true;
+  }
+
+  @Query(() => [LinkPagamentoDTO])
+  async linksPagamento(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<LinkPagamentoDTO[]> {
+    return this.financeiroService.listarLinksPagamento(workspace.id);
+  }
+
+  @Mutation(() => LinkPagamentoDTO)
+  async criarLinkPagamento(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('input') input: CriarLinkPagamentoInput,
+  ): Promise<LinkPagamentoDTO> {
+    const link = await this.financeiroService.criarLinkPagamento(
+      workspace.id,
+      {
+        nome: input.nome,
+        valorCentavos: input.valorCentavos ?? null,
+        meios: (input.meios as FaturaMeios) ?? FaturaMeios.TODOS,
+      },
+    );
+
+    return {
+      id: link.id,
+      url: link.url,
+      nome: input.nome,
+      valorCentavos: input.valorCentavos ?? null,
+      ativo: true,
+    };
+  }
+
+  @Mutation(() => Boolean)
+  async desativarLinkPagamento(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Args('linkId') linkId: string,
+  ): Promise<boolean> {
+    await this.financeiroService.desativarLinkPagamento(workspace.id, linkId);
 
     return true;
   }

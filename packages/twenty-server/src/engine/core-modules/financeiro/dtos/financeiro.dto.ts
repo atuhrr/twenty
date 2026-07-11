@@ -60,6 +60,13 @@ export class FaturaDTO {
   @Field(() => String, { nullable: true })
   formaPagamento: string | null;
 
+  @Field(() => Int, { nullable: true })
+  valorPagoCentavos: number | null;
+
+  // F4: valor líquido após taxas do provedor
+  @Field(() => Int, { nullable: true })
+  valorLiquidoCentavos: number | null;
+
   // F3: NFS-e
   @Field(() => String, { nullable: true })
   nfseStatus: string | null;
@@ -127,6 +134,37 @@ export class FinanceiroConfigDTO {
 
   @Field(() => String, { nullable: true })
   nfseDescricaoPadrao: string | null;
+}
+
+@ObjectType()
+export class LinkPagamentoDTO {
+  @Field(() => String)
+  id: string;
+
+  @Field(() => String)
+  nome: string;
+
+  @Field(() => String)
+  url: string;
+
+  @Field(() => Int, { nullable: true })
+  valorCentavos: number | null;
+
+  @Field(() => Boolean)
+  ativo: boolean;
+}
+
+@InputType()
+export class CriarLinkPagamentoInput {
+  @Field(() => String)
+  nome: string;
+
+  // null = valor aberto (cliente digita)
+  @Field(() => Int, { nullable: true })
+  valorCentavos?: number;
+
+  @Field(() => String)
+  meios: string;
 }
 
 @ObjectType()

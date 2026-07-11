@@ -55,6 +55,14 @@ export type EmitirNfseParams = {
   valorCentavos: number;
 };
 
+export type LinkPagamento = {
+  id: string;
+  nome: string;
+  url: string;
+  valorCentavos: number | null;
+  ativo: boolean;
+};
+
 export type CriarAssinaturaParams = {
   clienteId: string;
   valorCentavos: number;
@@ -125,6 +133,31 @@ export interface FinanceiroProvider {
     ambiente: string,
     nfseId: string,
   ): Promise<NfseResultado>;
+  // F4: conciliação, estorno e links avulsos
+  obterSaldo(apiKey: string, ambiente: string): Promise<number>;
+  estornarCobranca(
+    apiKey: string,
+    ambiente: string,
+    cobrancaId: string,
+  ): Promise<void>;
+  criarLinkPagamento(
+    apiKey: string,
+    ambiente: string,
+    params: {
+      nome: string;
+      valorCentavos: number | null;
+      billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED';
+    },
+  ): Promise<LinkPagamento>;
+  listarLinksPagamento(
+    apiKey: string,
+    ambiente: string,
+  ): Promise<LinkPagamento[]>;
+  desativarLinkPagamento(
+    apiKey: string,
+    ambiente: string,
+    linkId: string,
+  ): Promise<void>;
   // ── Reservados para a F5 (Zellate Pay) ──
   criarSubconta?(...args: unknown[]): Promise<unknown>;
   statusSubconta?(...args: unknown[]): Promise<unknown>;
@@ -465,6 +498,104 @@ export class AsaasProvider implements FinanceiroProvider {
       return this.mapearNfse(data as Record<string, unknown>);
     } catch (err) {
       this.lancarErroAmigavel(err, 'consultarNfse');
+    }
+  }
+
+  // ── F4: conciliação, estorno e links avulsos ───────────────────────────────
+
+  async obterSaldo(apiKey: string, ambiente: string): Promise<number> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).get(
+        '/finance/balance',
+      );
+
+      return Math.round(Number((data as { balance?: number }).balance ?? 0) * 100);
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'obterSaldo');
+    }
+  }
+
+  async estornarCobranca(
+    apiKey: string,
+    ambiente: string,
+    cobrancaId: string,
+  ): Promise<void> {
+    try {
+      await this.client(apiKey, ambiente).post(
+        `/payments/${cobrancaId}/refund`,
+        {},
+      );
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'estornarCobranca');
+    }
+  }
+
+  private mapearLink(data: Record<string, unknown>): LinkPagamento {
+    return {
+      id: String(data.id),
+      nome: String(data.name ?? ''),
+      url: String(data.url ?? ''),
+      valorCentavos:
+        data.value != null ? Math.round(Number(data.value) * 100) : null,
+      ativo: data.active !== false && data.deleted !== true,
+    };
+  }
+
+  async criarLinkPagamento(
+    apiKey: string,
+    ambiente: string,
+    params: {
+      nome: string;
+      valorCentavos: number | null;
+      billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED';
+    },
+  ): Promise<LinkPagamento> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).post(
+        '/paymentLinks',
+        {
+          name: params.nome,
+          billingType: params.billingType,
+          chargeType: 'DETACHED',
+          ...(params.valorCentavos
+            ? { value: params.valorCentavos / 100 }
+            : {}),
+        },
+      );
+
+      return this.mapearLink(data as Record<string, unknown>);
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'criarLinkPagamento');
+    }
+  }
+
+  async listarLinksPagamento(
+    apiKey: string,
+    ambiente: string,
+  ): Promise<LinkPagamento[]> {
+    try {
+      const { data } = await this.client(apiKey, ambiente).get(
+        '/paymentLinks',
+        { params: { limit: 50 } },
+      );
+      const lista =
+        (data as { data?: Array<Record<string, unknown>> }).data ?? [];
+
+      return lista.map((l) => this.mapearLink(l));
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'listarLinksPagamento');
+    }
+  }
+
+  async desativarLinkPagamento(
+    apiKey: string,
+    ambiente: string,
+    linkId: string,
+  ): Promise<void> {
+    try {
+      await this.client(apiKey, ambiente).delete(`/paymentLinks/${linkId}`);
+    } catch (err) {
+      this.lancarErroAmigavel(err, 'desativarLinkPagamento');
     }
   }
 }

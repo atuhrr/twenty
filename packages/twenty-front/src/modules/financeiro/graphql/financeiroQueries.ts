@@ -40,6 +40,8 @@ export const FATURAS = gql`
       pixPayload
       pagaEm
       formaPagamento
+      valorPagoCentavos
+      valorLiquidoCentavos
       nfseStatus
       nfsePdfUrl
       nfseErro
@@ -201,5 +203,46 @@ export const ATUALIZAR_STATUS_NFSE = gql`
 export const ENVIAR_NFSE_WHATSAPP = gql`
   mutation EnviarNfseWhatsapp($faturaId: String!) {
     enviarNfseWhatsapp(faturaId: $faturaId)
+  }
+`;
+
+// ── F4: conciliação, estorno e links avulsos ──
+
+export const SALDO_FINANCEIRO = gql`
+  query SaldoFinanceiro {
+    saldoFinanceiro
+  }
+`;
+
+export const ESTORNAR_FATURA = gql`
+  mutation EstornarFatura($faturaId: String!) {
+    estornarFatura(faturaId: $faturaId)
+  }
+`;
+
+export const LINKS_PAGAMENTO = gql`
+  query LinksPagamento {
+    linksPagamento {
+      id
+      nome
+      url
+      valorCentavos
+      ativo
+    }
+  }
+`;
+
+export const CRIAR_LINK_PAGAMENTO = gql`
+  mutation CriarLinkPagamento($input: CriarLinkPagamentoInput!) {
+    criarLinkPagamento(input: $input) {
+      id
+      url
+    }
+  }
+`;
+
+export const DESATIVAR_LINK_PAGAMENTO = gql`
+  mutation DesativarLinkPagamento($linkId: String!) {
+    desativarLinkPagamento(linkId: $linkId)
   }
 `;
