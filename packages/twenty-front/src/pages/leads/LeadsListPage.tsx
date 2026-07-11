@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import Badge from '@/tailadmin/ui/Badge';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
@@ -56,6 +58,26 @@ export function LeadsListPage() {
     limit: 200,
     skip: false,
   } as any);
+
+  // FORK: Zellate — o botão "Novo Lead" não pode navegar para /objects/opportunities
+  // (o roteador redireciona /objects/* de volta para as páginas Voka). Cria o
+  // registro e abre o detalhe para edição, como faz o Twenty nativo.
+  const { createOneRecord: criarLead } = useCreateOneRecord({
+    objectNameSingular: 'opportunity',
+  });
+  const [criando, setCriando] = useState(false);
+
+  const novoLead = async () => {
+    if (criando) return;
+    setCriando(true);
+    try {
+      const id = uuidv4();
+      await criarLead({ id, name: 'Novo lead' });
+      navigate(`/leads/${id}`);
+    } finally {
+      setCriando(false);
+    }
+  };
 
   const leads = records as any[];
 
@@ -138,12 +160,27 @@ export function LeadsListPage() {
             Leads{!loading && ` (${filtered.length})`}
           </h1>
         </div>
-        <button
-          onClick={() => navigate('/objects/opportunities')}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
-        >
-          + Novo Lead
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* FORK: Zellate — alternador de visão (volta ao Kanban do funil) */}
+          <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <button
+              onClick={() => navigate('/funil')}
+              className="px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
+            >
+              Kanban
+            </button>
+            <button className="px-3 py-1.5 text-sm font-medium bg-brand-50 text-brand-600 dark:bg-brand-500/[0.12] dark:text-brand-400">
+              Lista
+            </button>
+          </div>
+          <button
+            onClick={novoLead}
+            disabled={criando}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
+          >
+            {criando ? 'Criando…' : '+ Novo Lead'}
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}

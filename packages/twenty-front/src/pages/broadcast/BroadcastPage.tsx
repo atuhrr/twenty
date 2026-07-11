@@ -10,8 +10,32 @@ import {
   useLaunchBroadcastCampaign,
   type BroadcastCampaign,
 } from '@/broadcast/hooks/useBroadcast';
+import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
+import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import Badge from '@/tailadmin/ui/Badge';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
+
+// FORK: Zellate — contato selecionável no seletor de audiência do broadcast
+type ContatoBroadcast = ObjectRecord & {
+  name?: { firstName?: string | null; lastName?: string | null } | null;
+  phones?: {
+    primaryPhoneNumber?: string | null;
+    primaryPhoneCallingCode?: string | null;
+  } | null;
+};
+
+type DestinatarioContato = { contactId: string; nome: string; telefone: string };
+
+const nomeContato = (c: ContatoBroadcast): string =>
+  `${c.name?.firstName ?? ''} ${c.name?.lastName ?? ''}`.trim() || 'Sem nome';
+
+// Monta o número internacional a partir do telefone composto do contato
+const telefoneContato = (c: ContatoBroadcast): string => {
+  const cc = (c.phones?.primaryPhoneCallingCode ?? '').replace(/[^\d]/g, '');
+  const num = (c.phones?.primaryPhoneNumber ?? '').replace(/[^\d]/g, '');
+
+  return num === '' ? '' : `+${cc}${num}`;
+};
 
 type Aba = 'campanhas' | 'criar' | 'relatorios';
 
@@ -99,12 +123,64 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
 
   const numeros = useMemo(() => parseNumeros(form.numeros), [form.numeros]);
 
+  // FORK: Zellate — audiência a partir dos contatos existentes (não só CSV).
+  const [buscaContato, setBuscaContato] = useState('');
+  const [selecionados, setSelecionados] = useState<
+    Record<string, DestinatarioContato>
+  >({});
+
+  const { records: contatos, loading: carregandoContatos } =
+    useFindManyRecords<ContatoBroadcast>({
+      objectNameSingular: 'person',
+      recordGqlFields: { id: true, name: true, phones: true },
+      orderBy: [{ createdAt: 'DescNullsLast' }],
+      limit: 300,
+    });
+
+  const contatosComTelefone = useMemo(
+    () =>
+      contatos
+        .map((c) => ({ contato: c, telefone: telefoneContato(c) }))
+        .filter((x) => x.telefone !== ''),
+    [contatos],
+  );
+
+  const contatosVisiveis = useMemo(() => {
+    const q = buscaContato.trim().toLowerCase();
+    const lista = q
+      ? contatosComTelefone.filter(
+          (x) =>
+            nomeContato(x.contato).toLowerCase().includes(q) ||
+            x.telefone.includes(q),
+        )
+      : contatosComTelefone;
+
+    return lista.slice(0, 100);
+  }, [contatosComTelefone, buscaContato]);
+
+  const alternarContato = (c: ContatoBroadcast, telefone: string) => {
+    setSelecionados((prev) => {
+      const proximo = { ...prev };
+
+      if (proximo[c.id]) {
+        delete proximo[c.id];
+      } else {
+        proximo[c.id] = { contactId: c.id, nome: nomeContato(c), telefone };
+      }
+
+      return proximo;
+    });
+  };
+
+  const contatosSelecionados = Object.values(selecionados);
+  const totalDestinatarios = numeros.length + contatosSelecionados.length;
+
   const podeAvancar =
     passo === 0
       ? form.nome.trim() !== '' &&
         (form.tipo === 'imediato' || form.scheduledAt !== '')
       : passo === 1
-        ? numeros.length > 0
+        ? totalDestinatarios > 0
         : passo === 2
           ? form.templateName.trim() !== ''
           : true;
@@ -121,6 +197,26 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
   const criar = async () => {
     setEnviando(true);
     try {
+      // Contatos selecionados + números avulsos, sem telefone duplicado
+      const vistos = new Set<string>();
+      const recipients: { phoneNumber: string; contactId?: string }[] = [];
+
+      for (const c of contatosSelecionados) {
+        const chave = c.telefone.replace(/[^\d]/g, '');
+
+        if (chave === '' || vistos.has(chave)) continue;
+        vistos.add(chave);
+        recipients.push({ phoneNumber: c.telefone, contactId: c.contactId });
+      }
+
+      for (const n of numeros) {
+        const chave = n.replace(/[^\d]/g, '');
+
+        if (chave === '' || vistos.has(chave)) continue;
+        vistos.add(chave);
+        recipients.push({ phoneNumber: n, contactId: undefined });
+      }
+
       await create({
         variables: {
           input: {
@@ -134,14 +230,13 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
               form.tipo === 'agendado' && form.scheduledAt !== ''
                 ? new Date(form.scheduledAt).toISOString()
                 : undefined,
-            recipients: numeros.map((n) => ({
-              phoneNumber: n,
-              contactId: undefined,
-            })),
+            recipients,
           },
         },
       });
       setForm(wizardVazio());
+      setSelecionados({});
+      setBuscaContato('');
       setPasso(0);
       onCriada();
     } finally {
@@ -243,10 +338,60 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
 
       {/* Passo 2 — Audiência */}
       {passo === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Selecionar contatos existentes */}
           <div>
             <label className={labelClass}>
-              Números de telefone (um por linha, ou separados por vírgula)
+              Selecionar da sua lista de contatos
+            </label>
+            <input
+              type="text"
+              value={buscaContato}
+              onChange={(e) => setBuscaContato(e.target.value)}
+              placeholder="Buscar contato por nome ou telefone…"
+              className={`${inputClass} mb-2`}
+            />
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
+              {carregandoContatos ? (
+                <p className="px-3 py-4 text-sm text-gray-400">
+                  Carregando contatos…
+                </p>
+              ) : contatosVisiveis.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-gray-400">
+                  Nenhum contato com telefone encontrado.
+                </p>
+              ) : (
+                contatosVisiveis.map(({ contato, telefone }) => (
+                  <label
+                    key={contato.id}
+                    className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selecionados[contato.id] !== undefined}
+                      onChange={() => alternarContato(contato, telefone)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                    />
+                    <span className="flex-1 text-sm text-gray-800 dark:text-white/90 truncate">
+                      {nomeContato(contato)}
+                    </span>
+                    <span className="text-xs text-gray-400">{telefone}</span>
+                  </label>
+                ))
+              )}
+            </div>
+            {contatosSelecionados.length > 0 && (
+              <p className="mt-1.5 text-xs text-brand-600 dark:text-brand-400">
+                {contatosSelecionados.length} contato(s) selecionado(s)
+              </p>
+            )}
+          </div>
+
+          {/* Números avulsos / CSV */}
+          <div>
+            <label className={labelClass}>
+              Ou adicione números avulsos (um por linha, ou separados por
+              vírgula)
             </label>
             <textarea
               value={form.numeros}
@@ -254,40 +399,40 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
                 setForm((f) => ({ ...f, numeros: e.target.value }))
               }
               placeholder={'+5511999999999\n+5511888888888'}
-              rows={6}
+              rows={4}
               className={inputClass}
             />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 8l5-5 5 5M12 3v12"
+            <div className="mt-2 flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 8l5-5 5 5M12 3v12"
+                  />
+                </svg>
+                Importar CSV
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file !== undefined) lerCsv(file);
+                    e.target.value = '';
+                  }}
                 />
-              </svg>
-              Importar CSV
-              <input
-                type="file"
-                accept=".csv,.txt"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file !== undefined) lerCsv(file);
-                  e.target.value = '';
-                }}
-              />
-            </label>
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {numeros.length} destinatário(s) válido(s)
-            </span>
+              </label>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {totalDestinatarios} destinatário(s) no total
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -353,7 +498,10 @@ function CriarNovaWizard({ onCriada }: CriarNovaWizardProps) {
                   ? 'Imediato (após lançar)'
                   : `Agendado para ${new Date(form.scheduledAt).toLocaleString('pt-BR')}`,
               ],
-              ['Destinatários', `${numeros.length} número(s)`],
+              [
+                'Destinatários',
+                `${totalDestinatarios} (${contatosSelecionados.length} contato(s) + ${numeros.length} avulso(s))`,
+              ],
               ['Template', `${form.templateName} (${form.languageCode})`],
             ].map(([rotulo, valor]) => (
               <div key={rotulo} className="flex gap-3">

@@ -6,7 +6,9 @@ import {
   Draggable,
   type DropResult,
 } from '@hello-pangea/dnd';
+import { v4 as uuidv4 } from 'uuid';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { LeadKanbanCard } from '@/funil/LeadKanbanCard';
@@ -51,6 +53,25 @@ export function FunilKanbanPage() {
   } as any);
 
   const { updateOneRecord } = useUpdateOneRecord();
+
+  // FORK: Zellate — "Novo Lead" cria o registro e abre o detalhe (o roteador
+  // redireciona /objects/* de volta ao funil, então navegar para lá não cria nada).
+  const { createOneRecord: criarLead } = useCreateOneRecord({
+    objectNameSingular: 'opportunity',
+  });
+  const [criando, setCriando] = useState(false);
+
+  const novoLead = async () => {
+    if (criando) return;
+    setCriando(true);
+    try {
+      const id = uuidv4();
+      await criarLead({ id, name: 'Novo lead' });
+      navigate(`/leads/${id}`);
+    } finally {
+      setCriando(false);
+    }
+  };
 
   // FORK: Zellate — conversas do WhatsApp por lead (badge de não lidas)
   const { threads } = useWhatsappThreads();
@@ -174,10 +195,11 @@ export function FunilKanbanPage() {
 
             {/* New Lead */}
             <button
-              onClick={() => navigate('/objects/opportunities')}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0"
+              onClick={novoLead}
+              disabled={criando}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors flex-shrink-0 disabled:opacity-50"
             >
-              + Novo Lead
+              {criando ? 'Criando…' : '+ Novo Lead'}
             </button>
           </div>
         </div>

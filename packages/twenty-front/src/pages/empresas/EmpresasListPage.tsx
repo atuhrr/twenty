@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
 
@@ -34,6 +36,26 @@ export function EmpresasListPage() {
     limit: 200,
     skip: false,
   } as any);
+
+  // FORK: Zellate — "Nova Empresa" cria o registro e abre o detalhe. Navegar
+  // para /objects/companies não funcionava: o roteador redireciona /objects/*
+  // de volta para /empresas, então nenhuma empresa era criada.
+  const { createOneRecord: criarEmpresa } = useCreateOneRecord({
+    objectNameSingular: 'company',
+  });
+  const [criando, setCriando] = useState(false);
+
+  const novaEmpresa = async () => {
+    if (criando) return;
+    setCriando(true);
+    try {
+      const id = uuidv4();
+      await criarEmpresa({ id, name: 'Nova empresa' });
+      navigate(`/empresas/${id}`);
+    } finally {
+      setCriando(false);
+    }
+  };
 
   const empresas = records as any[];
 
@@ -141,10 +163,11 @@ export function EmpresasListPage() {
           Empresas{!loading && ` (${filtered.length})`}
         </h1>
         <button
-          onClick={() => navigate('/objects/companies')}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+          onClick={novaEmpresa}
+          disabled={criando}
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
         >
-          + Nova Empresa
+          {criando ? 'Criando…' : '+ Nova Empresa'}
         </button>
       </div>
 

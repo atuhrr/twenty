@@ -52,6 +52,23 @@ const CORES: Array<{ chave: string; rotulo: string; cssVar: string }> = [
 const corDoEvento = (chave: string): string =>
   CORES.find((c) => c.chave === chave)?.cssVar ?? CORES[0].cssVar;
 
+// FORK: Zellate — o FullCalendar aplica backgroundColor via style inline, mas
+// não resolve `var(--…)`; resolvemos o token para o valor computado (hex) —
+// mesmo padrão do themeColor da página de campanhas. Sem isso, todos os
+// eventos caíam na cor padrão e a seleção de cor não tinha efeito.
+const corResolvida = (chave: string): string => {
+  const cssVar = corDoEvento(chave);
+  const nome = cssVar.match(/var\((--[^)]+)\)/)?.[1];
+
+  if (nome === undefined) return cssVar;
+
+  const valor = getComputedStyle(document.documentElement)
+    .getPropertyValue(nome)
+    .trim();
+
+  return valor !== '' ? valor : cssVar;
+};
+
 const paraDatetimeLocal = (d: Date): string => {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -331,8 +348,9 @@ export const CalendarioPage = () => {
       title: e.titulo,
       start: e.inicio,
       end: e.fim,
-      backgroundColor: corDoEvento(e.cor),
-      borderColor: corDoEvento(e.cor),
+      display: 'block' as const,
+      backgroundColor: corResolvida(e.cor),
+      borderColor: corResolvida(e.cor),
     }));
     const doNegocio = tarefas
       .filter((t) => t.dueAt != null && t.status !== 'CONCLUIDO')

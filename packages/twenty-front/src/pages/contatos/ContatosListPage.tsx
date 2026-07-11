@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
 
@@ -35,6 +37,29 @@ export function ContatosListPage() {
     limit: 200,
     skip: false,
   } as any);
+
+  // FORK: Zellate — "Novo Contato" cria o registro e abre o detalhe. Navegar
+  // para /objects/people não criava nada (o roteador redireciona /objects/*
+  // de volta para /contatos). O nome de person é composto (firstName/lastName).
+  const { createOneRecord: criarContato } = useCreateOneRecord({
+    objectNameSingular: 'person',
+  });
+  const [criando, setCriando] = useState(false);
+
+  const novoContato = async () => {
+    if (criando) return;
+    setCriando(true);
+    try {
+      const id = uuidv4();
+      await criarContato({
+        id,
+        name: { firstName: 'Novo', lastName: 'contato' },
+      });
+      navigate(`/contatos/${id}`);
+    } finally {
+      setCriando(false);
+    }
+  };
 
   const contatos = records as any[];
 
@@ -136,10 +161,11 @@ export function ContatosListPage() {
           Contatos{!loading && ` (${filtered.length})`}
         </h1>
         <button
-          onClick={() => navigate('/objects/people')}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+          onClick={novoContato}
+          disabled={criando}
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
         >
-          + Novo Contato
+          {criando ? 'Criando…' : '+ Novo Contato'}
         </button>
       </div>
 
