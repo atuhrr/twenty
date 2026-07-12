@@ -8,7 +8,17 @@ import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { InlineEditField } from '@/tailadmin/ui/InlineEditField';
+import { RecordPicker } from '@/tailadmin/ui/RecordPicker';
 import { RecordTimeline } from '@/tailadmin/ui/RecordTimeline';
+
+type EmpresaOpcao = ObjectRecord & { name?: string | null };
+type PessoaOpcao = ObjectRecord & {
+  name?: { firstName?: string; lastName?: string } | null;
+};
+
+const nomePessoa = (p: {
+  name?: { firstName?: string; lastName?: string } | null;
+}) => `${p.name?.firstName ?? ''} ${p.name?.lastName ?? ''}`.trim();
 
 type Lead = ObjectRecord & {
   name?: string | null;
@@ -58,7 +68,7 @@ const cardClass =
 export const LeadDetailPage = () => {
   const { id = '' } = useParams();
 
-  const { record: lead, loading } = useFindOneRecord<Lead>({
+  const { record: lead, loading, refetch } = useFindOneRecord<Lead>({
     objectNameSingular: 'opportunity',
     objectRecordId: id,
     recordGqlFields: {
@@ -107,6 +117,12 @@ export const LeadDetailPage = () => {
       idToUpdate: id,
       updateOneRecordInput: patch,
     });
+  };
+
+  // Associações do grafo: vincular/desvincular empresa e contato do lead
+  const associar = async (patch: Record<string, unknown>) => {
+    await atualizar(patch);
+    await refetch();
   };
 
   if (loading || lead == null) {
@@ -254,52 +270,75 @@ export const LeadDetailPage = () => {
           </div>
 
           {/* Contato */}
-          {contato != null && (
-            <div className={cardClass}>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                 Contato
               </h3>
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                  {iniciais(nomeContato === '' ? '?' : nomeContato)}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 dark:text-white/90 truncate">
-                    {nomeContato === '' ? '(Sem nome)' : nomeContato}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {contato.emails?.primaryEmail ??
-                      contato.phones?.primaryPhoneNumber ??
-                      ''}
-                  </p>
-                </div>
-              </div>
-              <Link
-                to={`/contatos/${contato.id}`}
-                className="block mt-3 text-sm text-brand-600 dark:text-brand-400 hover:underline"
-              >
-                Ver perfil →
-              </Link>
+              <RecordPicker<PessoaOpcao>
+                objectNameSingular="person"
+                recordGqlFields={{ id: true, name: true }}
+                labelOf={(p) => nomePessoa(p)}
+                currentLabel={nomeContato}
+                onSelect={(pid) => associar({ pointOfContactId: pid })}
+                placeholder="Buscar contato…"
+              />
             </div>
-          )}
+            {contato != null ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                    {iniciais(nomeContato === '' ? '?' : nomeContato)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90 truncate">
+                      {nomeContato === '' ? '(Sem nome)' : nomeContato}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {contato.emails?.primaryEmail ??
+                        contato.phones?.primaryPhoneNumber ??
+                        ''}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to={`/contatos/${contato.id}`}
+                  className="block mt-3 text-sm text-brand-600 dark:text-brand-400 hover:underline"
+                >
+                  Ver perfil →
+                </Link>
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">Nenhum contato vinculado.</p>
+            )}
+          </div>
 
           {/* Empresa */}
-          {lead.company != null && (
-            <div className={cardClass}>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                 Empresa
               </h3>
-              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                {lead.company.name}
-              </p>
+              <RecordPicker<EmpresaOpcao>
+                objectNameSingular="company"
+                recordGqlFields={{ id: true, name: true }}
+                labelOf={(e) => e.name ?? ''}
+                currentLabel={lead.company?.name ?? ''}
+                onSelect={(cid) => associar({ companyId: cid })}
+                placeholder="Buscar empresa…"
+              />
+            </div>
+            {lead.company != null ? (
               <Link
                 to={`/empresas/${lead.company.id}`}
-                className="block mt-3 text-sm text-brand-600 dark:text-brand-400 hover:underline"
+                className="block text-sm font-medium text-brand-600 dark:text-brand-400 hover:underline"
               >
-                Ver empresa →
+                {lead.company.name} →
               </Link>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-gray-400">Nenhuma empresa vinculada.</p>
+            )}
+          </div>
 
           {/* Tarefas */}
           <div className={cardClass}>

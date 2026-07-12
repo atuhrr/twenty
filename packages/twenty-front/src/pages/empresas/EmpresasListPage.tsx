@@ -3,7 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
+import Badge from '@/tailadmin/ui/Badge';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
+
+type BadgeColor = 'primary' | 'success' | 'light';
+
+// Ciclo de vida calculado a partir dos negócios (campo armazenado vem na F2)
+const CICLO: Record<string, { label: string; color: BadgeColor }> = {
+  CLIENTE: { label: 'Cliente', color: 'success' },
+  OPORTUNIDADE: { label: 'Oportunidade', color: 'primary' },
+  LEAD: { label: 'Lead', color: 'light' },
+};
 
 function initials(name: string) {
   return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -29,6 +39,8 @@ export function EmpresasListPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
+  const [cicloFiltro, setCicloFiltro] = useState('');
+
   const { records, loading } = useFindManyRecords({
     objectNameSingular: 'company',
     filter: {},
@@ -36,6 +48,49 @@ export function EmpresasListPage() {
     limit: 200,
     skip: false,
   } as any);
+
+  // Negócios de todas as empresas — agrega por companyId para nº de negócios,
+  // valor em negociação e o ciclo de vida (tem GANHO → Cliente).
+  const { records: negocios } = useFindManyRecords({
+    objectNameSingular: 'opportunity',
+    filter: { isUnclassified: { eq: false } },
+    recordGqlFields: {
+      id: true,
+      company: { id: true },
+      stage: true,
+      amount: true,
+    },
+    limit: 500,
+    skip: false,
+  } as any);
+
+  const agregadoPorEmpresa = useMemo(() => {
+    const mapa = new Map<
+      string,
+      { total: number; temGanho: boolean; valorAberto: number }
+    >();
+    for (const n of negocios as any[]) {
+      const cid = n.company?.id;
+      if (!cid) continue;
+      const atual = mapa.get(cid) ?? {
+        total: 0,
+        temGanho: false,
+        valorAberto: 0,
+      };
+      atual.total += 1;
+      if (n.stage === 'GANHO') atual.temGanho = true;
+      else atual.valorAberto += Number(n.amount?.amountMicros ?? 0);
+      mapa.set(cid, atual);
+    }
+    return mapa;
+  }, [negocios]);
+
+  const cicloDe = (empresaId: string): keyof typeof CICLO => {
+    const ag = agregadoPorEmpresa.get(empresaId);
+    if (ag?.temGanho) return 'CLIENTE';
+    if (ag && ag.total > 0) return 'OPORTUNIDADE';
+    return 'LEAD';
+  };
 
   // FORK: Zellate — "Nova Empresa" cria o registro e abre o detalhe. Navegar
   // para /objects/companies não funcionava: o roteador redireciona /objects/*
@@ -65,8 +120,10 @@ export function EmpresasListPage() {
       const q = search.toLowerCase();
       r = r.filter((e) => (e.name ?? '').toLowerCase().includes(q));
     }
+    if (cicloFiltro) r = r.filter((e) => cicloDe(e.id) === cicloFiltro);
     return r;
-  }, [empresas, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresas, search, cicloFiltro, agregadoPorEmpresa]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -131,6 +188,41 @@ export function EmpresasListPage() {
       },
     },
     {
+      key: 'ciclo',
+      header: 'Ciclo de vida',
+      render: (e) => {
+        const c = CICLO[cicloDe(e.id)];
+        return (
+          <Badge size="sm" color={c.color}>
+            {c.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: 'negocios',
+      header: 'Negócios',
+      className: 'text-right',
+      render: (e) => {
+        const ag = agregadoPorEmpresa.get(e.id);
+        return (
+          <span className="text-gray-500 dark:text-gray-400">
+            {ag?.total ?? 0}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'funcionarios',
+      header: 'Funcionários',
+      className: 'text-right',
+      render: (e) => (
+        <span className="text-gray-500 dark:text-gray-400">
+          {e.employees != null ? Number(e.employees).toLocaleString('pt-BR') : '—'}
+        </span>
+      ),
+    },
+    {
       key: 'receita',
       header: 'Receita Anual',
       className: 'text-right',
@@ -161,18 +253,30 @@ export function EmpresasListPage() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <input
-          type="text"
-          placeholder="Buscar empresa..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pl-9 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-        />
-        <svg className="absolute left-3 top-3 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-        </svg>
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 max-w-sm">
+          <input
+            type="text"
+            placeholder="Buscar empresa..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 pl-9 text-sm text-gray-700 placeholder-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          />
+          <svg className="absolute left-3 top-3 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+        </div>
+        <select
+          value={cicloFiltro}
+          onChange={(e) => { setCicloFiltro(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+        >
+          <option value="">Todos os ciclos</option>
+          <option value="CLIENTE">Clientes</option>
+          <option value="OPORTUNIDADE">Oportunidades</option>
+          <option value="LEAD">Leads</option>
+        </select>
       </div>
 
       {/* Table */}
