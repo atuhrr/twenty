@@ -28,6 +28,23 @@ export class UpdateProdutoInput {
 }
 
 @InputType()
+export class AddLeadProdutoInput {
+  @Field() leadId: string;
+  @Field() produtoId: string;
+  @Field(() => Float, { nullable: true }) quantidade?: number;
+  @Field(() => Float, { nullable: true }) preco?: number;
+  @Field(() => Float, { nullable: true }) desconto?: number;
+}
+
+@InputType()
+export class UpdateLeadProdutoInput {
+  @Field() id: string;
+  @Field(() => Float, { nullable: true }) quantidade?: number;
+  @Field(() => Float, { nullable: true }) preco?: number;
+  @Field(() => Float, { nullable: true }) desconto?: number;
+}
+
+@InputType()
 export class CreateClienteRecorrenteInput {
   @Field() nome: string;
   @Field(() => String, { nullable: true }) email?: string;

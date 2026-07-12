@@ -53,6 +53,36 @@ export const DELETE_PRODUTO = gql`
   }
 `;
 
+// ── F3: Itens de negócio (produto vinculado ao lead) ─────────────────────────
+
+const LEAD_PRODUTO_FIELDS = `
+  id leadId produtoId produtoNome produtoUnidade quantidade preco desconto subtotal
+`;
+
+export const GET_LEAD_PRODUTOS = gql`
+  query LeadProdutos($leadId: String!) {
+    leadProdutos(leadId: $leadId) { ${LEAD_PRODUTO_FIELDS} }
+  }
+`;
+
+export const ADD_LEAD_PRODUTO = gql`
+  mutation AddLeadProduto($input: AddLeadProdutoInput!) {
+    addLeadProduto(input: $input) { ${LEAD_PRODUTO_FIELDS} }
+  }
+`;
+
+export const UPDATE_LEAD_PRODUTO = gql`
+  mutation UpdateLeadProduto($input: UpdateLeadProdutoInput!) {
+    updateLeadProduto(input: $input) { ${LEAD_PRODUTO_FIELDS} }
+  }
+`;
+
+export const REMOVE_LEAD_PRODUTO = gql`
+  mutation RemoveLeadProduto($id: String!) {
+    removeLeadProduto(id: $id) { ${LEAD_PRODUTO_FIELDS} }
+  }
+`;
+
 // ── Clientes Recorrentes ─────────────────────────────────────────────────────
 
 export const GET_CLIENTES_RECORRENTES = gql`

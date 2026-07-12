@@ -28,6 +28,20 @@ export class ProdutoDTO {
 }
 
 @ObjectType()
+export class LeadProdutoDTO {
+  @Field(() => ID) id: string;
+  @Field() leadId: string;
+  @Field() produtoId: string;
+  @Field() produtoNome: string;
+  @Field() produtoUnidade: string;
+  @Field(() => Float) quantidade: number;
+  @Field(() => Float) preco: number;
+  @Field(() => Float) desconto: number;
+  @Field(() => Float) subtotal: number;
+  @Field() createdAt: Date;
+}
+
+@ObjectType()
 export class ClienteRecorrenteDTO {
   @Field(() => ID) id: string;
   @Field() workspaceId: string;

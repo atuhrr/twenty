@@ -955,6 +955,7 @@ function FaturaModal({
     nome: string;
     valorCentavos: number | null;
     telefone: string | null;
+    descricao?: string | null;
   } | null;
   onFechar: () => void;
   onCriada: (opcoes: { enviarWhatsapp: boolean; faturaId: string }) => void;
@@ -965,7 +966,7 @@ function FaturaModal({
     leadPre?.telefone ?? '',
   );
   const [clienteCpfCnpj, setClienteCpfCnpj] = useState('');
-  const [descricao, setDescricao] = useState('');
+  const [descricao, setDescricao] = useState(leadPre?.descricao ?? '');
   const [valor, setValor] = useState(
     leadPre?.valorCentavos ? String(leadPre.valorCentavos / 100) : '',
   );
@@ -1330,6 +1331,7 @@ export const FaturasPage = () => {
     nome: string;
     valorCentavos: number | null;
     telefone: string | null;
+    descricao?: string | null;
   } | null>(null);
 
   const { data: statusData } = useQuery<{
@@ -1419,6 +1421,7 @@ export const FaturasPage = () => {
               nome: searchParams.get('leadNome') ?? 'Lead',
               valorCentavos: Number(searchParams.get('valorCentavos')) || null,
               telefone: searchParams.get('telefone'),
+              descricao: searchParams.get('descricao'),
             }
           : null,
       );

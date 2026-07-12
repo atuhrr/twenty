@@ -106,6 +106,7 @@ import { FinanceiroF3NfseFastInstanceCommand } from './2-16/2-16-instance-comman
 import { FinanceiroF4FastInstanceCommand } from './2-16/2-16-instance-command-fast-1784678400000-financeiro-f4';
 import { AddCompanyCrmFieldsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784937600000-add-company-crm-fields';
 import { AddCompanyLifecycleStageFastInstanceCommand } from './2-16/2-16-instance-command-fast-1785024000000-add-company-lifecycle-stage';
+import { AddDescontoToLeadProdutoFastInstanceCommand } from './2-16/2-16-instance-command-fast-1785110400000-add-desconto-to-lead-produto';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -214,4 +215,5 @@ export const INSTANCE_COMMANDS = [
   TranslateStandardFieldLabelsFastInstanceCommand,
   AddCompanyCrmFieldsFastInstanceCommand,
   AddCompanyLifecycleStageFastInstanceCommand,
+  AddDescontoToLeadProdutoFastInstanceCommand,
 ];

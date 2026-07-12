@@ -11,15 +11,18 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { VokaCrmService } from './voka-crm.service';
 import {
   ClienteRecorrenteDTO,
+  LeadProdutoDTO,
   MotivoPerdaDTO,
   ProdutoDTO,
   VokaNotificationDTO,
 } from './dtos/voka-crm.dto';
 import {
+  AddLeadProdutoInput,
   CreateClienteRecorrenteInput,
   CreateMotivoPerdaInput,
   CreateProdutoInput,
   UpdateClienteRecorrenteInput,
+  UpdateLeadProdutoInput,
   UpdateProdutoInput,
 } from './dtos/voka-crm.input';
 
@@ -86,6 +89,40 @@ export class VokaCrmResolver {
     @Args('id') id: string,
   ): Promise<boolean> {
     return this.service.deleteProduto(ws.id, id);
+  }
+
+  // ── F3: Itens de negócio ──────────────────────────────────────────────────
+
+  @Query(() => [LeadProdutoDTO])
+  async leadProdutos(
+    @AuthWorkspace() ws: WorkspaceEntity,
+    @Args('leadId') leadId: string,
+  ): Promise<LeadProdutoDTO[]> {
+    return this.service.listItensDoLead(ws.id, leadId);
+  }
+
+  @Mutation(() => [LeadProdutoDTO])
+  async addLeadProduto(
+    @AuthWorkspace() ws: WorkspaceEntity,
+    @Args('input') input: AddLeadProdutoInput,
+  ): Promise<LeadProdutoDTO[]> {
+    return this.service.addLeadProduto(ws.id, input);
+  }
+
+  @Mutation(() => [LeadProdutoDTO])
+  async updateLeadProduto(
+    @AuthWorkspace() ws: WorkspaceEntity,
+    @Args('input') input: UpdateLeadProdutoInput,
+  ): Promise<LeadProdutoDTO[]> {
+    return this.service.updateLeadProduto(ws.id, input);
+  }
+
+  @Mutation(() => [LeadProdutoDTO])
+  async removeLeadProduto(
+    @AuthWorkspace() ws: WorkspaceEntity,
+    @Args('id') id: string,
+  ): Promise<LeadProdutoDTO[]> {
+    return this.service.removeLeadProduto(ws.id, id);
   }
 
   // ── Cliente Recorrente ────────────────────────────────────────────────────

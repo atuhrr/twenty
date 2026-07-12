@@ -10,6 +10,7 @@ import type { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { InlineEditField } from '@/tailadmin/ui/InlineEditField';
 import { RecordPicker } from '@/tailadmin/ui/RecordPicker';
 import { RecordTimeline } from '@/tailadmin/ui/RecordTimeline';
+import { ItensDoNegocio } from '~/pages/leads/ItensDoNegocio';
 
 type EmpresaOpcao = ObjectRecord & { name?: string | null };
 type PessoaOpcao = ObjectRecord & {
@@ -220,6 +221,13 @@ export const LeadDetailPage = () => {
               </button>
             </div>
           </div>
+
+          {/* F3: Itens do negócio (Catálogo → valor do negócio → fatura) */}
+          <ItensDoNegocio
+            leadId={id}
+            leadNome={lead.name ?? 'Lead'}
+            onValorMudou={() => void refetch()}
+          />
 
           {/* Timeline */}
           <RecordTimeline

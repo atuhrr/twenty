@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClienteRecorrenteEntity } from './entities/cliente-recorrente.entity';
 import { MotivoPerdaEntity } from './entities/motivo-perda.entity';
 import { ProdutoEntity } from './entities/produto.entity';
+import { LeadProdutoEntity } from './entities/lead-produto.entity';
 import { VokaNotificationEntity } from './entities/voka-notification.entity';
 import { VokaCrmResolver } from './voka-crm.resolver';
 import { VokaCrmService } from './voka-crm.service';
@@ -15,6 +16,7 @@ import { VokaCrmService } from './voka-crm.service';
       [
         MotivoPerdaEntity,
         ProdutoEntity,
+        LeadProdutoEntity,
         ClienteRecorrenteEntity,
         VokaNotificationEntity,
       ],
