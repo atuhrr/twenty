@@ -36,6 +36,9 @@ export class CompanyWorkspaceEntity {
   domainName: LinksMetadata;
   linkedinLink: LinksMetadata | null;
   annualRevenue: CurrencyMetadata | null;
+  // FORK: Zellate — F1 Empresa 360
+  employees: number | null;
+  cnpj: string | null;
   address: AddressMetadata;
   position: number;
   createdBy: ActorMetadata;

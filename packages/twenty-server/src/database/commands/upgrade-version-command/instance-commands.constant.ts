@@ -104,6 +104,7 @@ import { CreateFinanceiroTablesFastInstanceCommand } from './2-16/2-16-instance-
 import { FinanceiroF2FastInstanceCommand } from './2-16/2-16-instance-command-fast-1784505600000-financeiro-f2';
 import { FinanceiroF3NfseFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784592000000-financeiro-f3-nfse';
 import { FinanceiroF4FastInstanceCommand } from './2-16/2-16-instance-command-fast-1784678400000-financeiro-f4';
+import { AddCompanyCrmFieldsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784937600000-add-company-crm-fields';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -210,4 +211,5 @@ export const INSTANCE_COMMANDS = [
   AddMultiNumberToWhatsappInstanceFastInstanceCommand,
   CreateTeamsLossReasonsFastInstanceCommand,
   TranslateStandardFieldLabelsFastInstanceCommand,
+  AddCompanyCrmFieldsFastInstanceCommand,
 ];

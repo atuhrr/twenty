@@ -3,6 +3,7 @@ import { i18nLabel } from 'src/engine/workspace-manager/twenty-standard-applicat
 import {
   DateDisplayFormat,
   FieldMetadataType,
+  NumberDataType,
   RelationOnDeleteAction,
   RelationType,
 } from 'twenty-shared/types';
@@ -195,6 +196,42 @@ export const buildCompanyStandardFlatFieldMetadatas = ({
       label: i18nLabel(msg`Annual Revenue`),
       description: i18nLabel(msg`The company's total annual revenue`),
       icon: 'IconMoneybag',
+      isNullable: true,
+    },
+    standardObjectMetadataRelatedEntityIds,
+    dependencyFlatEntityMaps,
+    twentyStandardApplicationId,
+    now,
+  }),
+  // FORK: Zellate — F1 Empresa 360: nº de funcionários e CNPJ
+  employees: createStandardFieldFlatMetadata({
+    objectName,
+    workspaceId,
+    context: {
+      fieldName: 'employees',
+      type: FieldMetadataType.NUMBER,
+      label: i18nLabel(msg`Funcionários`),
+      description: i18nLabel(msg`Número de funcionários da empresa`),
+      icon: 'IconUsers',
+      isNullable: true,
+      settings: {
+        dataType: NumberDataType.INT,
+      },
+    },
+    standardObjectMetadataRelatedEntityIds,
+    dependencyFlatEntityMaps,
+    twentyStandardApplicationId,
+    now,
+  }),
+  cnpj: createStandardFieldFlatMetadata({
+    objectName,
+    workspaceId,
+    context: {
+      fieldName: 'cnpj',
+      type: FieldMetadataType.TEXT,
+      label: i18nLabel(msg`CNPJ`),
+      description: i18nLabel(msg`CNPJ da empresa`),
+      icon: 'IconId',
       isNullable: true,
     },
     standardObjectMetadataRelatedEntityIds,

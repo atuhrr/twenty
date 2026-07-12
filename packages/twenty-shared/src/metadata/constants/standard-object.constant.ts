@@ -731,6 +731,13 @@ export const STANDARD_OBJECTS = {
       annualRevenue: {
         universalIdentifier: '60f533b7-2166-4071-a767-ceb0286822fd',
       },
+      // FORK: Zellate — F1 Empresa 360
+      employees: {
+        universalIdentifier: 'f669c073-004c-4c0f-ad9f-c2dda5a0d54b',
+      },
+      cnpj: {
+        universalIdentifier: '970702fc-15bc-4637-9995-2cf0574010c1',
+      },
       position: { universalIdentifier: '20202020-9b4e-462b-991d-a0ee33326454' },
       createdBy: {
         universalIdentifier: '20202020-fabc-451d-ab7d-412170916baa',
