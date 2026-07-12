@@ -738,6 +738,10 @@ export const STANDARD_OBJECTS = {
       cnpj: {
         universalIdentifier: '970702fc-15bc-4637-9995-2cf0574010c1',
       },
+      // FORK: Zellate — F2 Cliente: estágio do ciclo de vida
+      lifecycleStage: {
+        universalIdentifier: '750eb078-305a-4bee-9d1d-f8f13ae310ed',
+      },
       position: { universalIdentifier: '20202020-9b4e-462b-991d-a0ee33326454' },
       createdBy: {
         universalIdentifier: '20202020-fabc-451d-ab7d-412170916baa',

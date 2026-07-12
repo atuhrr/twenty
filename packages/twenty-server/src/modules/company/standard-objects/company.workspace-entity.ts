@@ -39,6 +39,8 @@ export class CompanyWorkspaceEntity {
   // FORK: Zellate — F1 Empresa 360
   employees: number | null;
   cnpj: string | null;
+  // FORK: Zellate — F2 Cliente: ciclo de vida (LEAD/OPORTUNIDADE/CLIENTE/INATIVO)
+  lifecycleStage: string | null;
   address: AddressMetadata;
   position: number;
   createdBy: ActorMetadata;

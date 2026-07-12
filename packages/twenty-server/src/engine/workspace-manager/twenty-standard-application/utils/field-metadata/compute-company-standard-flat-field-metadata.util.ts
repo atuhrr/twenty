@@ -239,6 +239,55 @@ export const buildCompanyStandardFlatFieldMetadatas = ({
     twentyStandardApplicationId,
     now,
   }),
+  // FORK: Zellate — F2 Cliente: ciclo de vida. Vira CLIENTE quando um negócio
+  // é Ganho ou uma fatura é paga (automação); editável manualmente.
+  lifecycleStage: createStandardFieldFlatMetadata({
+    objectName,
+    workspaceId,
+    context: {
+      fieldName: 'lifecycleStage',
+      type: FieldMetadataType.SELECT,
+      label: i18nLabel(msg`Ciclo de vida`),
+      description: i18nLabel(msg`Estágio do relacionamento com a empresa`),
+      icon: 'IconTargetArrow',
+      isNullable: true,
+      defaultValue: "'LEAD'",
+      options: [
+        {
+          id: 'f4762a6d-bdfd-4d64-ba4d-5ff8f65f4f45',
+          value: 'LEAD',
+          label: i18nLabel(msg`Lead`),
+          position: 0,
+          color: 'gray',
+        },
+        {
+          id: '183a2d29-a436-451f-b67a-19cd471e902a',
+          value: 'OPORTUNIDADE',
+          label: i18nLabel(msg`Oportunidade`),
+          position: 1,
+          color: 'blue',
+        },
+        {
+          id: '2b6c740a-b319-4dbb-b3c5-e2fa8da690f0',
+          value: 'CLIENTE',
+          label: i18nLabel(msg`Cliente`),
+          position: 2,
+          color: 'green',
+        },
+        {
+          id: '116117d2-fded-4b8b-a741-f5c4f9b252d6',
+          value: 'INATIVO',
+          label: i18nLabel(msg`Inativo`),
+          position: 3,
+          color: 'red',
+        },
+      ],
+    },
+    standardObjectMetadataRelatedEntityIds,
+    dependencyFlatEntityMaps,
+    twentyStandardApplicationId,
+    now,
+  }),
   position: createStandardFieldFlatMetadata({
     objectName,
     workspaceId,

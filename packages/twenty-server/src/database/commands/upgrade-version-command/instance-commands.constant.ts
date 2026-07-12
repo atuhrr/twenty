@@ -105,6 +105,7 @@ import { FinanceiroF2FastInstanceCommand } from './2-16/2-16-instance-command-fa
 import { FinanceiroF3NfseFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784592000000-financeiro-f3-nfse';
 import { FinanceiroF4FastInstanceCommand } from './2-16/2-16-instance-command-fast-1784678400000-financeiro-f4';
 import { AddCompanyCrmFieldsFastInstanceCommand } from './2-16/2-16-instance-command-fast-1784937600000-add-company-crm-fields';
+import { AddCompanyLifecycleStageFastInstanceCommand } from './2-16/2-16-instance-command-fast-1785024000000-add-company-lifecycle-stage';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -212,4 +213,5 @@ export const INSTANCE_COMMANDS = [
   CreateTeamsLossReasonsFastInstanceCommand,
   TranslateStandardFieldLabelsFastInstanceCommand,
   AddCompanyCrmFieldsFastInstanceCommand,
+  AddCompanyLifecycleStageFastInstanceCommand,
 ];
