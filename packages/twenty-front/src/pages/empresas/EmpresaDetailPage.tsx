@@ -11,7 +11,7 @@ import { RecordTimeline } from '@/tailadmin/ui/RecordTimeline';
 type Empresa = ObjectRecord & {
   name?: string | null;
   domainName?: { primaryLinkUrl?: string } | null;
-  employees?: number | null;
+  annualRevenue?: { amountMicros?: number | string | null } | null;
   createdAt?: string | null;
   address?: { addressCity?: string } | null;
 };
@@ -45,7 +45,7 @@ export const EmpresaDetailPage = () => {
       id: true,
       name: true,
       domainName: true,
-      employees: true,
+      annualRevenue: true,
       createdAt: true,
       address: true,
     },
@@ -127,12 +127,12 @@ export const EmpresaDetailPage = () => {
                     {site}
                   </a>
                 )}
-                {typeof empresa.employees === 'number' &&
-                  empresa.employees > 0 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {empresa.employees} funcionário(s)
-                    </p>
-                  )}
+                {Number(empresa.annualRevenue?.amountMicros ?? 0) > 0 && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatBRL(Number(empresa.annualRevenue?.amountMicros ?? 0))}{' '}
+                    / ano
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -158,11 +158,23 @@ export const EmpresaDetailPage = () => {
                 onSave={(v) => atualizar({ name: v })}
               />
               <InlineEditField
-                label="Funcionários"
+                label="Receita anual (R$)"
                 value={
-                  empresa.employees != null ? String(empresa.employees) : ''
+                  Number(empresa.annualRevenue?.amountMicros ?? 0) > 0
+                    ? String(
+                        Number(empresa.annualRevenue?.amountMicros ?? 0) /
+                          1_000_000,
+                      )
+                    : ''
                 }
-                onSave={(v) => atualizar({ employees: Number(v) })}
+                onSave={(v) =>
+                  atualizar({
+                    annualRevenue: {
+                      amountMicros: Math.round(Number(v) * 1_000_000),
+                      currencyCode: 'BRL',
+                    },
+                  })
+                }
               />
               <InlineEditField
                 label="Cidade"

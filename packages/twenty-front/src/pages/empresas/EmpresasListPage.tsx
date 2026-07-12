@@ -135,23 +135,13 @@ export function EmpresasListPage() {
       header: 'Receita Anual',
       className: 'text-right',
       render: (e) => {
-        const v = Number(e.annualRecurringRevenue?.amountMicros ?? e.annualRecurringRevenue ?? 0) / 1_000_000;
+        const v = Number(e.annualRevenue?.amountMicros ?? 0) / 1_000_000;
         return (
           <span className="text-gray-700 dark:text-gray-300 font-medium">
             {v > 0 ? formatBRL(v) : '—'}
           </span>
         );
       },
-    },
-    {
-      key: 'funcionarios',
-      header: 'Funcionários',
-      className: 'text-right',
-      render: (e) => (
-        <span className="text-gray-500 dark:text-gray-400">
-          {e.employees != null ? e.employees.toLocaleString('pt-BR') : '—'}
-        </span>
-      ),
     },
   ];
 
