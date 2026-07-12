@@ -19,6 +19,7 @@ type Empresa = ObjectRecord & {
   annualRevenue?: { amountMicros?: number | string | null } | null;
   employees?: number | null;
   cnpj?: string | null;
+  lifecycleStage?: string | null;
   createdAt?: string | null;
   address?: { addressCity?: string } | null;
   accountOwner?: { id: string; name?: { firstName?: string; lastName?: string } | null } | null;
@@ -51,25 +52,31 @@ const formatBRL = (micros: number) =>
 const cardClass =
   'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-5';
 
-// Ciclo de vida calculado (o campo armazenado chega na F2 com a automação)
-const cicloDeVida = (
-  leads: LeadDaEmpresa[],
-): { label: string; classe: string } => {
-  const temGanho = leads.some((l) => l.stage === 'GANHO');
-  if (temGanho)
-    return {
-      label: 'Cliente',
-      classe: 'bg-success-100 text-success-700 dark:bg-success-500/[0.15] dark:text-success-400',
-    };
-  if (leads.length > 0)
-    return {
-      label: 'Oportunidade',
-      classe: 'bg-brand-100 text-brand-700 dark:bg-brand-500/[0.15] dark:text-brand-400',
-    };
-  return {
+// Ciclo de vida armazenado (F2). Fallback calculado a partir dos negócios
+// para empresas ainda sem valor gravado.
+const CICLO: Record<string, { label: string; classe: string }> = {
+  LEAD: {
     label: 'Lead',
     classe: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
-  };
+  },
+  OPORTUNIDADE: {
+    label: 'Oportunidade',
+    classe: 'bg-brand-100 text-brand-700 dark:bg-brand-500/[0.15] dark:text-brand-400',
+  },
+  CLIENTE: {
+    label: 'Cliente',
+    classe: 'bg-success-100 text-success-700 dark:bg-success-500/[0.15] dark:text-success-400',
+  },
+  INATIVO: {
+    label: 'Inativo',
+    classe: 'bg-error-100 text-error-700 dark:bg-error-500/[0.15] dark:text-error-400',
+  },
+};
+
+const cicloCalculado = (leads: LeadDaEmpresa[]): string => {
+  if (leads.some((l) => l.stage === 'GANHO')) return 'CLIENTE';
+  if (leads.length > 0) return 'OPORTUNIDADE';
+  return 'LEAD';
 };
 
 export const EmpresaDetailPage = () => {
@@ -86,6 +93,7 @@ export const EmpresaDetailPage = () => {
       annualRevenue: true,
       employees: true,
       cnpj: true,
+      lifecycleStage: true,
       createdAt: true,
       address: true,
       accountOwner: { id: true, name: true },
@@ -155,7 +163,8 @@ export const EmpresaDetailPage = () => {
 
   const site = empresa.domainName?.primaryLinkUrl ?? '';
   const receitaMicros = Number(empresa.annualRevenue?.amountMicros ?? 0);
-  const ciclo = cicloDeVida(leads);
+  const cicloValor =
+    empresa.lifecycleStage ?? cicloCalculado(leads);
 
   const negociosAbertos = leads.filter((l) => l.stage !== 'GANHO');
   const valorEmNegociacao = negociosAbertos.reduce(
@@ -203,11 +212,19 @@ export const EmpresaDetailPage = () => {
                   <h1 className="text-2xl font-semibold text-gray-900 dark:text-white truncate">
                     {empresa.name ?? '(Sem nome)'}
                   </h1>
-                  <span
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-full ${ciclo.classe}`}
+                  <select
+                    value={cicloValor}
+                    onChange={(e) =>
+                      atualizar({ lifecycleStage: e.target.value })
+                    }
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:outline-none ${CICLO[cicloValor]?.classe ?? CICLO.LEAD.classe}`}
                   >
-                    {ciclo.label}
-                  </span>
+                    {Object.entries(CICLO).map(([valor, info]) => (
+                      <option key={valor} value={valor}>
+                        {info.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 {site !== '' && (
                   <a

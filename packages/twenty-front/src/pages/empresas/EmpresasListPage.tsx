@@ -6,13 +6,13 @@ import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import Badge from '@/tailadmin/ui/Badge';
 import { DataTable, type DataTableColumn } from '@/tailadmin/ui/DataTable';
 
-type BadgeColor = 'primary' | 'success' | 'light';
+type BadgeColor = 'primary' | 'success' | 'light' | 'error';
 
-// Ciclo de vida calculado a partir dos negócios (campo armazenado vem na F2)
 const CICLO: Record<string, { label: string; color: BadgeColor }> = {
   CLIENTE: { label: 'Cliente', color: 'success' },
   OPORTUNIDADE: { label: 'Oportunidade', color: 'primary' },
   LEAD: { label: 'Lead', color: 'light' },
+  INATIVO: { label: 'Inativo', color: 'error' },
 };
 
 function initials(name: string) {
@@ -85,8 +85,11 @@ export function EmpresasListPage() {
     return mapa;
   }, [negocios]);
 
-  const cicloDe = (empresaId: string): keyof typeof CICLO => {
-    const ag = agregadoPorEmpresa.get(empresaId);
+  // Ciclo armazenado (F2) com fallback calculado dos negócios
+  const cicloDe = (empresa: any): keyof typeof CICLO => {
+    if (empresa?.lifecycleStage && CICLO[empresa.lifecycleStage])
+      return empresa.lifecycleStage;
+    const ag = agregadoPorEmpresa.get(empresa.id);
     if (ag?.temGanho) return 'CLIENTE';
     if (ag && ag.total > 0) return 'OPORTUNIDADE';
     return 'LEAD';
@@ -120,7 +123,7 @@ export function EmpresasListPage() {
       const q = search.toLowerCase();
       r = r.filter((e) => (e.name ?? '').toLowerCase().includes(q));
     }
-    if (cicloFiltro) r = r.filter((e) => cicloDe(e.id) === cicloFiltro);
+    if (cicloFiltro) r = r.filter((e) => cicloDe(e) === cicloFiltro);
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresas, search, cicloFiltro, agregadoPorEmpresa]);
@@ -191,7 +194,7 @@ export function EmpresasListPage() {
       key: 'ciclo',
       header: 'Ciclo de vida',
       render: (e) => {
-        const c = CICLO[cicloDe(e.id)];
+        const c = CICLO[cicloDe(e)];
         return (
           <Badge size="sm" color={c.color}>
             {c.label}
@@ -276,6 +279,7 @@ export function EmpresasListPage() {
           <option value="CLIENTE">Clientes</option>
           <option value="OPORTUNIDADE">Oportunidades</option>
           <option value="LEAD">Leads</option>
+          <option value="INATIVO">Inativos</option>
         </select>
       </div>
 

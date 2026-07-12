@@ -125,6 +125,19 @@ export const LeadDetailPage = () => {
     await refetch();
   };
 
+  // F2: mudar a etapa; ao GANHAR, a empresa vinculada vira CLIENTE
+  const definirEtapa = async (stage: string) => {
+    await atualizar({ stage });
+    const companyId = lead?.company?.id;
+    if (stage === 'GANHO' && companyId != null) {
+      await updateOneRecord({
+        objectNameSingular: 'company',
+        idToUpdate: companyId,
+        updateOneRecordInput: { lifecycleStage: 'CLIENTE' },
+      });
+    }
+  };
+
   if (loading || lead == null) {
     return (
       <div className="p-6">
@@ -189,7 +202,7 @@ export const LeadDetailPage = () => {
             <div className="flex items-center gap-3 flex-wrap mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
               <select
                 value={lead.stage ?? ''}
-                onChange={(e) => atualizar({ stage: e.target.value })}
+                onChange={(e) => void definirEtapa(e.target.value)}
                 className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:outline-none"
               >
                 {stageOptions.map((o) => (
@@ -200,16 +213,10 @@ export const LeadDetailPage = () => {
               </select>
               <div className="flex-1" />
               <button
-                onClick={() => atualizar({ stage: 'WON' })}
+                onClick={() => void definirEtapa('GANHO')}
                 className="px-3 py-1.5 text-sm font-medium bg-success-500 text-white rounded-lg hover:bg-success-600 transition-colors"
               >
-                Ganho
-              </button>
-              <button
-                onClick={() => atualizar({ stage: 'LOST' })}
-                className="px-3 py-1.5 text-sm font-medium text-error-500 border border-error-500/30 rounded-lg hover:bg-error-50 dark:hover:bg-error-500/[0.12] transition-colors"
-              >
-                Perdido
+                Marcar como ganho
               </button>
             </div>
           </div>

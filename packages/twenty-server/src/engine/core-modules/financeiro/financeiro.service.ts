@@ -535,6 +535,26 @@ export class FinanceiroService {
             stage: 'GANHO',
             isUnclassified: false,
           } as never);
+
+          // FORK: Zellate — F2: a empresa do lead vira CLIENTE ao receber
+          const lead = await repo.findOne({
+            where: { id: fatura.leadId as string },
+          });
+          const companyId = (lead as { companyId?: string | null } | null)
+            ?.companyId;
+
+          if (companyId) {
+            const companyRepo =
+              await this.globalWorkspaceOrmManager.getRepository(
+                workspaceId,
+                'company',
+                { shouldBypassPermissionChecks: true },
+              );
+
+            await companyRepo.update(companyId, {
+              lifecycleStage: 'CLIENTE',
+            } as never);
+          }
         }, authContext)
         .catch((err) => {
           this.logger.warn(
