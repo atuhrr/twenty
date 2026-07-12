@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProdutos } from '@/voka-crm/hooks/useProdutos';
 import {
   ADD_LEAD_PRODUTO,
+  ENVIAR_ORCAMENTO,
   GET_LEAD_PRODUTOS,
   REMOVE_LEAD_PRODUTO,
   UPDATE_LEAD_PRODUTO,
@@ -59,6 +60,31 @@ export function ItensDoNegocio({
   );
   const [updateItem] = useMutation(UPDATE_LEAD_PRODUTO, opcoesMut);
   const [removeItem] = useMutation(REMOVE_LEAD_PRODUTO, opcoesMut);
+
+  const [enviarOrcamento, { loading: enviandoOrc }] =
+    useMutation(ENVIAR_ORCAMENTO);
+  const [orc, setOrc] = useState<{
+    link: string;
+    enviado: boolean;
+    aviso: string | null;
+  } | null>(null);
+
+  const gerarOrcamento = async () => {
+    setOrc(null);
+    const res = await enviarOrcamento({
+      variables: { leadId, baseUrl: window.location.origin },
+    });
+    const dados = (
+      res.data as {
+        enviarOrcamento?: {
+          link: string;
+          enviado: boolean;
+          aviso: string | null;
+        };
+      }
+    )?.enviarOrcamento;
+    if (dados) setOrc(dados);
+  };
 
   const adicionar = async () => {
     if (produtoSel === '') return;
@@ -207,12 +233,51 @@ export function ItensDoNegocio({
       </div>
 
       {total > 0 && (
-        <button
-          onClick={cobrar}
-          className="mt-3 w-full rounded-lg border border-brand-500/30 px-3 py-2 text-sm font-semibold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/[0.12] transition-colors"
-        >
-          Gerar cobrança — {brl(total)}
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => void gerarOrcamento()}
+            disabled={enviandoOrc}
+            className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            {enviandoOrc ? 'Gerando…' : 'Enviar orçamento'}
+          </button>
+          <button
+            onClick={cobrar}
+            className="rounded-lg border border-brand-500/30 px-3 py-2 text-sm font-semibold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/[0.12] transition-colors"
+          >
+            Gerar cobrança
+          </button>
+        </div>
+      )}
+
+      {orc != null && (
+        <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 text-sm">
+          <p
+            className={
+              orc.enviado
+                ? 'text-success-600 dark:text-success-400 font-medium'
+                : 'text-warning-600 dark:text-warning-400 font-medium'
+            }
+          >
+            {orc.enviado
+              ? '✓ Orçamento enviado pelo WhatsApp'
+              : (orc.aviso ?? 'Não foi possível enviar automaticamente.')}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              readOnly
+              value={orc.link}
+              onFocus={(e) => e.currentTarget.select()}
+              className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-600 dark:text-gray-300"
+            />
+            <button
+              onClick={() => void navigator.clipboard.writeText(orc.link)}
+              className="rounded-md bg-brand-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-600"
+            >
+              Copiar
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

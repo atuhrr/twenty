@@ -77,6 +77,12 @@ export const usePageChangeEffectNavigateLocation = () => {
     ? returnToPath
     : readReturnToPathFromUrlSearchParams();
 
+  // FORK: Zellate — F4: a proposta pública é acessível sem login (o cliente
+  // abre pelo link do WhatsApp); nunca redirecionar para /entrar.
+  if (location.pathname.startsWith('/orcamento/')) {
+    return;
+  }
+
   // FORK: Voka CRM — Fase A: telas de auth próprias (design TailAdmin)
   if (
     (!hasAccessTokenPair || !isOnAWorkspace || !isDefined(currentWorkspace)) &&

@@ -148,6 +148,13 @@ const NotFound = lazy(() =>
   })),
 );
 
+// FORK: Zellate — F4: página pública da proposta/orçamento (sem auth)
+const OrcamentoPage = lazy(() =>
+  import('~/pages/orcamento/OrcamentoPage').then((module) => ({
+    default: module.OrcamentoPage,
+  })),
+);
+
 // FORK: Voka CRM — placeholder pages for new modules
 const InboxPage = lazy(() =>
   import('~/pages/inbox/InboxPage').then((module) => ({
@@ -735,6 +742,15 @@ export const useCreateAppRouter = (
           </Route>
         </Route>
         <Route element={<BlankLayout />}>
+          {/* FORK: Zellate — F4: proposta pública (sem auth, sem chrome) */}
+          <Route
+            path="/orcamento/:workspaceId/:leadId/:token"
+            element={
+              <LazyRoute fallback={null}>
+                <OrcamentoPage />
+              </LazyRoute>
+            }
+          />
           <Route
             path={AppPath.Authorize}
             element={

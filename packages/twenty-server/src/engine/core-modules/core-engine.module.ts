@@ -91,6 +91,7 @@ import { LossReasonsModule } from 'src/engine/core-modules/loss-reasons/loss-rea
 import { TemplateModule } from 'src/engine/core-modules/template/template.module';
 import { AnalyticsModule } from 'src/engine/core-modules/analytics/analytics.module';
 import { VokaCrmModule } from 'src/engine/core-modules/voka-crm/voka-crm.module';
+import { OrcamentoModule } from 'src/engine/core-modules/orcamento/orcamento.module';
 import { ClientConfigModule } from './client-config/client-config.module';
 import { EventLogsViewerModule } from './event-logs/event-logs-viewer.module';
 import { FileModule } from './file/file.module';
@@ -194,6 +195,7 @@ import { FileModule } from './file/file.module';
     TemplateModule,
     AnalyticsModule,
     VokaCrmModule,
+    OrcamentoModule,
   ],
   providers: [
     {

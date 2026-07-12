@@ -83,6 +83,18 @@ export const REMOVE_LEAD_PRODUTO = gql`
   }
 `;
 
+// ── F4: orçamento/proposta ───────────────────────────────────────────────────
+
+export const ENVIAR_ORCAMENTO = gql`
+  mutation EnviarOrcamento($leadId: String!, $baseUrl: String!) {
+    enviarOrcamento(leadId: $leadId, baseUrl: $baseUrl) {
+      link
+      enviado
+      aviso
+    }
+  }
+`;
+
 // ── Clientes Recorrentes ─────────────────────────────────────────────────────
 
 export const GET_CLIENTES_RECORRENTES = gql`
