@@ -1543,6 +1543,15 @@ export class ConfigVariables {
   IS_MULTIWORKSPACE_ENABLED = false;
 
   @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.SERVER_CONFIG,
+    description:
+      'When multi-workspace is enabled, serve every workspace on the front domain instead of a per-workspace subdomain. The workspace is resolved from the authenticated token rather than the hostname.',
+    type: ConfigVariableType.BOOLEAN,
+  })
+  @IsOptional()
+  IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED = false;
+
+  @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ADVANCED_SETTINGS,
     description:
       'Number of inactive days before sending a deletion warning for workspaces. Used in the workspace deletion cron job to determine when to send warning emails.',

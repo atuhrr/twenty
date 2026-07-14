@@ -22,6 +22,7 @@ import { maintenanceModeState } from '@/client-config/states/maintenanceModeStat
 import { isMicrosoftCalendarEnabledState } from '@/client-config/states/isMicrosoftCalendarEnabledState';
 import { isMicrosoftMessagingEnabledState } from '@/client-config/states/isMicrosoftMessagingEnabledState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
+import { isMultiWorkspaceSingleDomainEnabledState } from '@/client-config/states/isMultiWorkspaceSingleDomainEnabledState';
 import { labPublicFeatureFlagsState } from '@/client-config/states/labPublicFeatureFlagsState';
 import { sentryConfigState } from '@/client-config/states/sentryConfigState';
 import { supportChatState } from '@/client-config/states/supportChatState';
@@ -53,6 +54,9 @@ export const useClientConfig = (): UseClientConfigResult => {
   );
   const setIsMultiWorkspaceEnabled = useSetAtomState(
     isMultiWorkspaceEnabledState,
+  );
+  const setIsMultiWorkspaceSingleDomainEnabled = useSetAtomState(
+    isMultiWorkspaceSingleDomainEnabledState,
   );
   const setIsEmailVerificationRequired = useSetAtomState(
     isEmailVerificationRequiredState,
@@ -159,6 +163,9 @@ export const useClientConfig = (): UseClientConfigResult => {
       setIsAnalyticsEnabled(clientConfig.analyticsEnabled);
       setIsDeveloperDefaultSignInPrefilled(clientConfig.signInPrefilled);
       setIsMultiWorkspaceEnabled(clientConfig.isMultiWorkspaceEnabled);
+      setIsMultiWorkspaceSingleDomainEnabled(
+        clientConfig.isMultiWorkspaceSingleDomainEnabled,
+      );
       setIsEmailVerificationRequired(clientConfig.isEmailVerificationRequired);
       setBilling(clientConfig.billing);
       setSupportChat(clientConfig.support);
@@ -237,6 +244,7 @@ export const useClientConfig = (): UseClientConfigResult => {
     setIsEmailVerificationRequired,
     setIsImapSmtpCaldavEnabled,
     setIsMultiWorkspaceEnabled,
+    setIsMultiWorkspaceSingleDomainEnabled,
     setIsEmailingDomainInDemoMode,
     setIsClickHouseConfigured,
     setIsCloudflareIntegrationEnabled,

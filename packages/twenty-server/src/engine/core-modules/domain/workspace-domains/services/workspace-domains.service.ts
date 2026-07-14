@@ -96,6 +96,23 @@ export class WorkspaceDomainsService {
     return workspace;
   }
 
+  // In single-domain mode the origin no longer identifies a workspace (all
+  // workspaces share the front domain). The login token is a signed JWT scoped
+  // to a workspace, so it is the authoritative source: resolve directly by its
+  // workspaceId. Falls back to origin resolution in the standard subdomain mode.
+  async getWorkspaceForLoginToken(origin: string, tokenWorkspaceId: string) {
+    if (this.isMultiWorkspaceSingleDomainEnabled()) {
+      return (
+        (await this.workspaceRepository.findOne({
+          where: { id: tokenWorkspaceId },
+          relations: ['workspaceSSOIdentityProviders'],
+        })) ?? undefined
+      );
+    }
+
+    return this.getWorkspaceByOriginOrDefaultWorkspace(origin);
+  }
+
   async resolveWorkspaceAndPublicDomain(origin: string): Promise<{
     workspace: WorkspaceEntity | undefined;
     publicDomain: PublicDomainEntity | null;
@@ -154,12 +171,23 @@ export class WorkspaceDomainsService {
     return url.toString();
   }
 
+  isMultiWorkspaceSingleDomainEnabled() {
+    return (
+      this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') &&
+      this.twentyConfigService.get('IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED')
+    );
+  }
+
   private getTwentyWorkspaceUrl(subdomain: string) {
     const url = this.domainServerConfigService.getFrontUrl();
 
-    url.hostname = this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED')
-      ? `${subdomain}.${url.hostname}`
-      : url.hostname;
+    // In single-domain mode every workspace lives on the front domain; the
+    // workspace is scoped by the authenticated token, not by the hostname.
+    url.hostname =
+      this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') &&
+      !this.isMultiWorkspaceSingleDomainEnabled()
+        ? `${subdomain}.${url.hostname}`
+        : url.hostname;
 
     return url.toString();
   }

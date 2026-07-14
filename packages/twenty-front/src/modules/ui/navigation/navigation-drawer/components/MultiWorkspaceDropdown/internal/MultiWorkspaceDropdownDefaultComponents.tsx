@@ -3,7 +3,11 @@ import { DEFAULT_WORKSPACE_LOGO } from '@/ui/navigation/navigation-drawer/consta
 import { useAuth } from '@/auth/hooks/useAuth';
 import { availableWorkspacesState } from '@/auth/states/availableWorkspacesState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
-import { countAvailableWorkspaces } from '@/auth/utils/availableWorkspacesUtils';
+import {
+  countAvailableWorkspaces,
+  getAvailableWorkspacePathAndSearchParams,
+} from '@/auth/utils/availableWorkspacesUtils';
+import { isMultiWorkspaceSingleDomainEnabledState } from '@/client-config/states/isMultiWorkspaceSingleDomainEnabledState';
 import { supportChatState } from '@/client-config/states/supportChatState';
 import { useBuildWorkspaceUrl } from '@/domain-manager/hooks/useBuildWorkspaceUrl';
 import { useRedirectToDefaultDomain } from '@/domain-manager/hooks/useRedirectToDefaultDomain';
@@ -54,6 +58,9 @@ const StyledDescription = styled.div`
 
 export const MultiWorkspaceDropdownDefaultComponents = () => {
   const currentWorkspace = useAtomStateValue(currentWorkspaceState);
+  const isMultiWorkspaceSingleDomainEnabled = useAtomStateValue(
+    isMultiWorkspaceSingleDomainEnabledState,
+  );
   const { t } = useLingui();
   const { redirectToWorkspaceDomain } = useRedirectToWorkspaceDomain();
   const availableWorkspaces = useAtomStateValue(availableWorkspacesState);
@@ -81,6 +88,21 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
   };
 
   const handleChange = async (availableWorkspace: AvailableWorkspace) => {
+    // Single-domain mode: every workspace shares the front domain, so switching
+    // must swap the authenticated token in place. Carry the workspace login
+    // token to /verify instead of relying on a per-subdomain session.
+    if (isMultiWorkspaceSingleDomainEnabled) {
+      const { pathname, searchParams } =
+        getAvailableWorkspacePathAndSearchParams(availableWorkspace);
+
+      redirectToWorkspaceDomain(
+        getWorkspaceUrl(availableWorkspace.workspaceUrls),
+        pathname,
+        searchParams,
+      );
+      return;
+    }
+
     redirectToWorkspaceDomain(
       getWorkspaceUrl(availableWorkspace.workspaceUrls),
     );

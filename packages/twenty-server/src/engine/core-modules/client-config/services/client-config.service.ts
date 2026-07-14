@@ -190,6 +190,11 @@ export class ClientConfigService {
       isMultiWorkspaceEnabled: this.twentyConfigService.get(
         'IS_MULTIWORKSPACE_ENABLED',
       ),
+      isMultiWorkspaceSingleDomainEnabled:
+        this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') === true &&
+        this.twentyConfigService.get(
+          'IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED',
+        ) === true,
       isEmailVerificationRequired: this.twentyConfigService.get(
         'IS_EMAIL_VERIFICATION_REQUIRED',
       ),

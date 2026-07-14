@@ -1,4 +1,5 @@
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
+import { isMultiWorkspaceSingleDomainEnabledState } from '@/client-config/states/isMultiWorkspaceSingleDomainEnabledState';
 import { useReadWorkspaceUrlFromCurrentLocation } from '@/domain-manager/hooks/useReadWorkspaceUrlFromCurrentLocation';
 import { useRedirectToWorkspaceDomain } from '@/domain-manager/hooks/useRedirectToWorkspaceDomain';
 import { lastAuthenticatedWorkspaceDomainState } from '@/domain-manager/states/lastAuthenticatedWorkspaceDomainState';
@@ -30,6 +31,9 @@ export const WorkspaceProviderEffect = () => {
   const isMultiWorkspaceEnabled = useAtomStateValue(
     isMultiWorkspaceEnabledState,
   );
+  const isMultiWorkspaceSingleDomainEnabled = useAtomStateValue(
+    isMultiWorkspaceSingleDomainEnabledState,
+  );
 
   const { initializeQueryParamState } = useInitializeQueryParamState();
 
@@ -44,6 +48,7 @@ export const WorkspaceProviderEffect = () => {
   useEffect(() => {
     if (
       isMultiWorkspaceEnabled &&
+      !isMultiWorkspaceSingleDomainEnabled &&
       isDefined(getPublicWorkspaceData) &&
       !isWorkspaceHostnameMatchCurrentLocationHostname(
         getPublicWorkspaceData.workspaceUrls,
@@ -61,11 +66,13 @@ export const WorkspaceProviderEffect = () => {
     getPublicWorkspaceData,
     currentLocationHostname,
     isWorkspaceHostnameMatchCurrentLocationHostname,
+    isMultiWorkspaceSingleDomainEnabled,
   ]);
 
   useEffect(() => {
     if (
       isMultiWorkspaceEnabled &&
+      !isMultiWorkspaceSingleDomainEnabled &&
       isDefaultDomain &&
       isDefined(lastAuthenticatedWorkspaceDomain) &&
       'workspaceUrl' in lastAuthenticatedWorkspaceDomain &&
@@ -80,6 +87,7 @@ export const WorkspaceProviderEffect = () => {
     }
   }, [
     isMultiWorkspaceEnabled,
+    isMultiWorkspaceSingleDomainEnabled,
     isDefaultDomain,
     lastAuthenticatedWorkspaceDomain,
     redirectToWorkspaceDomain,

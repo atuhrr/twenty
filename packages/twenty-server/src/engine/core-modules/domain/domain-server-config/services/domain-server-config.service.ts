@@ -17,9 +17,12 @@ export class DomainServerConfigService {
   getBaseUrl(): URL {
     const baseUrl = this.getFrontUrl();
 
+    // Single-domain multi-workspace serves the hub on the front domain itself,
+    // so the default subdomain must not be prepended.
     if (
       this.twentyConfigService.get('IS_MULTIWORKSPACE_ENABLED') &&
-      this.twentyConfigService.get('DEFAULT_SUBDOMAIN')
+      this.twentyConfigService.get('DEFAULT_SUBDOMAIN') &&
+      !this.twentyConfigService.get('IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED')
     ) {
       baseUrl.hostname = `${this.twentyConfigService.get('DEFAULT_SUBDOMAIN')}.${baseUrl.hostname}`;
     }
