@@ -67,7 +67,8 @@ Ler: `ssh root@95.217.152.146 "cat /opt/voka/deploy/.env"`. Variáveis presentes
 | `ACME_EMAIL` | e-mail do Let's Encrypt | — |
 | `APP_SECRET` | chave-mestra do Twenty: assina JWTs **e criptografa segredos no banco** | gerada uma vez; **perdê-la = perder tokens salvos no banco** — está no backup do `.env` |
 | `PG_PASSWORD` | senha do PostgreSQL | usada só dentro da rede Docker |
-| `IS_MULTIWORKSPACE_ENABLED` | `false` (single-workspace) | — |
+| `IS_MULTIWORKSPACE_ENABLED` | `true` (multiworkspace ligado em 15/07/2026) | — |
+| `IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED` | `true` — todas as workspaces no domínio único `app.zellate.com`; a workspace é resolvida pelo token de login, não pelo subdomínio | — |
 | `EMAIL_DRIVER`, `SMTP_HOST/PORT/USER/PASSWORD`, `EMAIL_FROM` | SMTP Resend (`smtp.resend.com:587`, user `resend`) | painel resend.com → API Keys |
 | `CAPTCHA_DRIVER`, `CAPTCHA_SITE_KEY`, `CAPTCHA_SECRET_KEY` | Cloudflare Turnstile | dash.cloudflare.com → Turnstile |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION` | credenciais do backup (bucket `zellate-backups`, região `hel1`) | console Hetzner → Object Storage |
