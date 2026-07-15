@@ -2,6 +2,7 @@ import {
   setSessionId,
   useEventTracker,
 } from '@/analytics/hooks/useEventTracker';
+import { VOKA_AUTH_PATHS } from '@/app/constants/VokaAuthPaths';
 import { useExecuteTasksOnAnyLocationChange } from '@/app/hooks/useExecuteTasksOnAnyLocationChange';
 import { isAppEffectRedirectEnabledState } from '@/app/states/isAppEffectRedirectEnabledState';
 import { ONBOARDING_PATHS } from '@/auth/constants/OnboardingPaths';
@@ -254,6 +255,28 @@ export const PageChangeEffect = () => {
         break;
       }
       case isMatchingLocation(location, AppPath.SignInUp): {
+        resetFocusStackToFocusItem({
+          focusStackItem: {
+            focusId: PageFocusId.SignInUp,
+            componentInstance: {
+              componentType: FocusComponentType.PAGE,
+              componentInstanceId: PageFocusId.SignInUp,
+            },
+            globalHotkeysConfig: {
+              enableGlobalHotkeysWithModifiers: false,
+              enableGlobalHotkeysConflictingWithKeyboard: false,
+            },
+          },
+        });
+        break;
+      }
+      // FORK: Voka CRM — as telas de auth próprias (/entrar, /cadastro,
+      // /recuperar-senha, /verificacao) precisam desativar os hotkeys globais,
+      // como a SignInUp nativa acima. Sem isto, atalhos de uma letra (ex.: 'g',
+      // 'a') são capturados em fase de captura antes de chegar aos inputs — o
+      // usuário não consegue digitar o e-mail e teclas-atalho podem navegar
+      // para fora da tela, jogando de volta para /entrar.
+      case VOKA_AUTH_PATHS.includes(location.pathname): {
         resetFocusStackToFocusItem({
           focusStackItem: {
             focusId: PageFocusId.SignInUp,
