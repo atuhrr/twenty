@@ -47,6 +47,10 @@ services:
       # Serve todas as workspaces no domínio único (front domain), sem subdomínio
       # por workspace — a workspace é resolvida pelo token, não pelo hostname.
       IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED: ${IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED:-false}
+      # Cadastro self-service: qualquer novo usuário cria seu próprio workspace
+      # (default do Twenty é true = só admin). Teto de 5 workspaces sem chave
+      # enterprise (MAX_WORKSPACES_WITHOUT_ENTERPRISE_KEY).
+      IS_WORKSPACE_CREATION_LIMITED_TO_SERVER_ADMINS: ${IS_WORKSPACE_CREATION_LIMITED_TO_SERVER_ADMINS:-true}
       # "logger" até o SMTP ser configurado; troque para "smtp" no .env
       EMAIL_DRIVER: ${EMAIL_DRIVER:-logger}
       EMAIL_SMTP_HOST: ${SMTP_HOST:-}
