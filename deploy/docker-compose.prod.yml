@@ -44,6 +44,9 @@ services:
       REDIS_URL: redis://redis:6379
       APP_SECRET: ${APP_SECRET}
       IS_MULTIWORKSPACE_ENABLED: ${IS_MULTIWORKSPACE_ENABLED:-false}
+      # Serve todas as workspaces no domínio único (front domain), sem subdomínio
+      # por workspace — a workspace é resolvida pelo token, não pelo hostname.
+      IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED: ${IS_MULTIWORKSPACE_SINGLE_DOMAIN_ENABLED:-false}
       # "logger" até o SMTP ser configurado; troque para "smtp" no .env
       EMAIL_DRIVER: ${EMAIL_DRIVER:-logger}
       EMAIL_SMTP_HOST: ${SMTP_HOST:-}
