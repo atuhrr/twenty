@@ -13,7 +13,7 @@ import {
 
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
-import { type Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { NotificationsService } from './notifications.service';
 
 @Controller('metadata/notifications')
@@ -22,18 +22,18 @@ export class NotificationsController {
   constructor(private readonly service: NotificationsService) {}
 
   @Get()
-  findRecent(@AuthWorkspace() workspace: Workspace) {
+  findRecent(@AuthWorkspace() workspace: WorkspaceEntity) {
     return this.service.findRecent(workspace.id);
   }
 
   @Get('unread-count')
-  async unreadCount(@AuthWorkspace() workspace: Workspace) {
+  async unreadCount(@AuthWorkspace() workspace: WorkspaceEntity) {
     return { count: await this.service.unreadCount(workspace.id) };
   }
 
   @Post()
   create(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Body() dto: { title: string; body?: string; type?: string; link?: string },
   ) {
     return this.service.create(workspace.id, dto);
@@ -42,7 +42,7 @@ export class NotificationsController {
   @Patch(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
   async markRead(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Param('id') id: string,
   ) {
     await this.service.markRead(workspace.id, id);
@@ -50,7 +50,7 @@ export class NotificationsController {
 
   @Patch('read-all')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async markAllRead(@AuthWorkspace() workspace: Workspace) {
+  async markAllRead(@AuthWorkspace() workspace: WorkspaceEntity) {
     await this.service.markAllRead(workspace.id);
   }
 }

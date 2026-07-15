@@ -27,6 +27,7 @@ import { WhatsappThreadSummaryDTO } from 'src/engine/core-modules/whatsapp/dtos/
 import { WhatsappService } from 'src/engine/core-modules/whatsapp/whatsapp.service';
 import { WhatsappConnectionStatus } from 'src/engine/core-modules/whatsapp/whatsapp-instance.entity';
 import {
+  ChannelType,
   WhatsappMessageDirection,
   WhatsappMessageStatus,
   WhatsappMessageType,
@@ -206,6 +207,7 @@ export class WhatsappResolver {
       status: WhatsappMessageStatus.SENT,
       timestamp: now,
       createdAt: now,
+      channelType: ChannelType.WHATSAPP,
     };
   }
 
@@ -304,6 +306,7 @@ export class WhatsappResolver {
       status: WhatsappMessageStatus.SENT,
       timestamp: now,
       createdAt: now,
+      channelType: ChannelType.WHATSAPP,
     };
   }
 }

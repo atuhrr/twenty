@@ -27,7 +27,7 @@ export class OmniChannelService {
     private readonly messengerAdapter: MessengerChannelAdapter,
     private readonly telegramAdapter: TelegramChannelAdapter,
   ) {
-    this.adapters = new Map([
+    this.adapters = new Map<string, IChannelAdapter>([
       ['instagram', instagramAdapter],
       ['messenger', messengerAdapter],
       ['telegram', telegramAdapter],

@@ -14,7 +14,7 @@ import {
 
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
-import { type Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { LossReasonsService } from './loss-reasons.service';
 
 @Controller('metadata/loss-reasons')
@@ -23,13 +23,13 @@ export class LossReasonsController {
   constructor(private readonly lossReasonsService: LossReasonsService) {}
 
   @Get()
-  findAll(@AuthWorkspace() workspace: Workspace) {
+  findAll(@AuthWorkspace() workspace: WorkspaceEntity) {
     return this.lossReasonsService.findAll(workspace.id);
   }
 
   @Post()
   create(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Body() dto: { label: string; position?: number },
   ) {
     return this.lossReasonsService.create(workspace.id, dto);
@@ -37,7 +37,7 @@ export class LossReasonsController {
 
   @Put(':id')
   update(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Param('id') id: string,
     @Body() dto: Partial<{ label: string; position: number }>,
   ) {
@@ -46,7 +46,7 @@ export class LossReasonsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@AuthWorkspace() workspace: Workspace, @Param('id') id: string) {
+  remove(@AuthWorkspace() workspace: WorkspaceEntity, @Param('id') id: string) {
     return this.lossReasonsService.remove(workspace.id, id);
   }
 }

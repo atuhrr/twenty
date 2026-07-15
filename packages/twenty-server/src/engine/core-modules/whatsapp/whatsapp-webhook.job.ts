@@ -306,7 +306,7 @@ export class WhatsappWebhookJob {
           updatedBy: { source: 'SYSTEM', name: 'WhatsApp' },
         } as never);
 
-        personId = (person as { id: string }).id;
+        personId = (person as unknown as { id: string }).id;
 
         const opportunityRepo =
           await this.globalWorkspaceOrmManager.getRepository<OpportunityWorkspaceEntity>(
@@ -325,7 +325,7 @@ export class WhatsappWebhookJob {
           updatedBy: { source: 'SYSTEM', name: 'WhatsApp' },
         } as never);
 
-        opportunityId = (opportunity as { id: string }).id;
+        opportunityId = (opportunity as unknown as { id: string }).id;
         },
         authContext,
       );

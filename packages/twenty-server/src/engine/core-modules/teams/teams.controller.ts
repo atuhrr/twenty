@@ -15,7 +15,7 @@ import {
 
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
-import { type Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { TeamsService } from './teams.service';
 
 @Controller('metadata/teams')
@@ -24,12 +24,15 @@ export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   @Get()
-  findAll(@AuthWorkspace() workspace: Workspace) {
+  findAll(@AuthWorkspace() workspace: WorkspaceEntity) {
     return this.teamsService.findAll(workspace.id);
   }
 
   @Get(':id')
-  async findOne(@AuthWorkspace() workspace: Workspace, @Param('id') id: string) {
+  async findOne(
+    @AuthWorkspace() workspace: WorkspaceEntity,
+    @Param('id') id: string,
+  ) {
     const team = await this.teamsService.findOne(workspace.id, id);
 
     if (!team) throw new NotFoundException('Equipe não encontrada');
@@ -39,7 +42,7 @@ export class TeamsController {
 
   @Post()
   create(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Body() dto: { name: string; description?: string; memberIds?: string[] },
   ) {
     return this.teamsService.create(workspace.id, dto);
@@ -47,7 +50,7 @@ export class TeamsController {
 
   @Put(':id')
   update(
-    @AuthWorkspace() workspace: Workspace,
+    @AuthWorkspace() workspace: WorkspaceEntity,
     @Param('id') id: string,
     @Body() dto: Partial<{ name: string; description: string; memberIds: string[] }>,
   ) {
@@ -56,7 +59,7 @@ export class TeamsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@AuthWorkspace() workspace: Workspace, @Param('id') id: string) {
+  remove(@AuthWorkspace() workspace: WorkspaceEntity, @Param('id') id: string) {
     return this.teamsService.remove(workspace.id, id);
   }
 }
