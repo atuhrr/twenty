@@ -175,8 +175,39 @@ Cloudflare está em SSL **Full** (Flexible causa loop de redirect) e ver os logs
 
 ## 2. Ritual de deploy (o caminho feliz)
 
-O deploy tem **duas metades independentes**: o front (buildado na máquina local, o servidor
-não tem memória para isso) e o server (imagem Docker buildada no servidor).
+### 2.0 Como o código chega no servidor (modelo mental — leia antes)
+
+O deploy **não é** "só um `git pull`" nem "empurrar uma imagem Docker pronta". É um **híbrido de
+três partes**, porque o servidor Hetzner não tem memória para buildar o front:
+
+```
+┌─ SUA MÁQUINA (Windows) ──────────────┐        ┌─ SERVIDOR (Hetzner /opt/voka) ─────────┐
+│                                      │        │                                        │
+│ 1. código-fonte  ──── git push ──────┼───────►│  git pull  (traz o fonte novo)         │
+│                                      │        │                                        │
+│ 2. front buildado ─── scp (tar) ─────┼───────►│  extrai em packages/twenty-front/build │
+│    (nx build twenty-front)           │        │                                        │
+│                                      │        │  3. docker compose build server        │
+│                                      │        │     (monta a IMAGEM aqui, do fonte      │
+│                                      │        │      + front extraído) → voka-crm:latest│
+│                                      │        │                                        │
+│                                      │        │  4. docker compose up -d server worker  │
+│                                      │        │     (recria os containers com a imagem) │
+└──────────────────────────────────────┘        └────────────────────────────────────────┘
+```
+
+Em uma frase: **o fonte vai por `git pull`; o front vai pré-buildado por `scp`; a imagem Docker
+é montada NO servidor** (não existe registry — a imagem `voka-crm:latest` só existe na máquina).
+Consequências práticas que explicam os erros mais comuns:
+
+- **Commitou e não deu push?** O `git pull` no servidor não vê a mudança → deploy sobe código velho.
+- **Não mandou o `build/` do front novo antes do `build server`?** A imagem **copia o front velho**
+  que já está no disco (o Dockerfile pula o build do front quando `build/` existe). Sempre: **scp do
+  front → depois `build server`**.
+- **Só `restart` em vez de `up -d`?** `restart` reusa a MESMA imagem e o MESMO `.env` — não aplica
+  imagem nova nem `.env` editado. Para aplicar, é **`up -d server worker`** (recria o container).
+- **Editou só o `.env`** (segredos/flags, fora do git)? Aí não tem `git pull`/imagem — basta
+  `up -d server worker` para o container reler o env.
 
 ### 2.1 Build do front (na máquina local, Git Bash)
 
@@ -274,6 +305,65 @@ docker compose -f deploy/docker-compose.prod.yml exec server yarn command:prod c
 
 E avisar o usuário que o navegador precisa de **hard reload** (Ctrl+Shift+R) — metadata
 velho no front gera erros "unknown fields".
+
+### 2.6 Receita completa (copiar de cima a baixo)
+
+Sequência única de um deploy típico (código + front). Troque `SUA-STRING-NOVA` por um trecho de
+texto que só existe no código desta entrega (serve de prova de que o bundle certo subiu).
+
+```bash
+# ── NA SUA MÁQUINA (Git Bash) ─────────────────────────────────────────────
+cd /c/Users/atuhr/crm/twenty
+
+# 1. Build do front
+NODE_OPTIONS="--max-old-space-size=5120" npx nx build twenty-front
+echo "EXIT=${PIPESTATUS[0]}"                                   # tem de ser 0
+grep -rl "SUA-STRING-NOVA" packages/twenty-front/build/assets/ # tem de achar algo — senão NÃO shipe
+
+# 2. Commit + push (sem isso, o git pull no servidor não vê nada)
+git add <arquivos>
+git commit --no-gpg-sign -m "feat(...): ..."
+git push origin feat/whatsapp-integration
+
+# 3. Empacotar e enviar o front pré-buildado
+cd packages/twenty-front
+tar -czf /tmp/voka-front-build.tgz build
+scp /tmp/voka-front-build.tgz root@95.217.152.146:/opt/voka/voka-front-build.tgz
+
+# ── NO SERVIDOR ───────────────────────────────────────────────────────────
+ssh root@95.217.152.146
+cd /opt/voka
+
+# 4. Puxar o fonte novo e trocar o front pelo recém-enviado (ANTES do build da imagem!)
+git pull --ff-only origin feat/whatsapp-integration
+rm -rf packages/twenty-front/build
+tar -xzf voka-front-build.tgz -C packages/twenty-front/ && rm voka-front-build.tgz
+
+# 5. (Só se mudou .env — flags/segredos) editar e conferir
+# nano deploy/.env
+
+# 6. Buildar a imagem NO servidor (nunca nohup — use systemd-run)
+systemctl reset-failed voka-build 2>/dev/null
+systemd-run --unit=voka-build --working-directory=/opt/voka \
+  /usr/bin/docker compose -f deploy/docker-compose.prod.yml build server
+journalctl -u voka-build -f                                   # Ctrl+C quando terminar
+systemctl show voka-build -p Result --value                   # "success"
+
+# 7. Recriar os containers com a imagem nova (e o .env novo)
+docker compose -f deploy/docker-compose.prod.yml up -d server worker
+docker compose -f deploy/docker-compose.prod.yml logs -f server | grep -m1 "Nest application successfully started"
+
+# 8. Migrations (só se a entrega tem instance command novo) — ver 2.5
+# docker compose -f deploy/docker-compose.prod.yml exec server node dist/command/command.js run-instance-commands --force
+
+# ── PROVA FINAL (do domínio, não do disco) ────────────────────────────────
+curl -s -o /dev/null -w "%{http_code}\n" https://app.zellate.com/healthz   # 200
+CHUNK=$(ssh root@95.217.152.146 "grep -rl 'SUA-STRING-NOVA' /opt/voka/packages/twenty-front/build/assets/ | head -1 | xargs -n1 basename")
+curl -s "https://app.zellate.com/assets/$CHUNK" | grep -c "SUA-STRING-NOVA"  # ≥ 1
+```
+
+> Se o passo 6 falhar, veja `journalctl -u voka-build` e a Seção 5.8. Se o server não subir no
+> passo 7, quase sempre é variável de ambiente vazia no `.env` (Seção 5.8, item 2).
 
 ---
 
